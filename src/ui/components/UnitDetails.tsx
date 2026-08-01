@@ -24,7 +24,7 @@ export function UnitDetails({ unit, onClose }: UnitDetailsProps) {
     <div className="unit-details-overlay" role="dialog" aria-modal="true" onClick={onClose}>
       <div className="unit-details" onClick={(e) => e.stopPropagation()}>
         <div className="unit-details__head">
-          <PixelArt kind="portrait" id={unit.portrait} glyph={unit.name.slice(0, 1)} />
+          <PixelArt kind="portrait" id={unit.portrait} glyph="人" />
           <div>
             <h3 className="unit-details__name">{unit.name}</h3>
             <span

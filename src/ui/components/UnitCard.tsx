@@ -60,7 +60,7 @@ export function UnitCard({
 
   const portrait = (
     <div className="unit-card__portrait">
-      <PixelArt kind="portrait" id={unit.portrait} glyph={unit.name.slice(0, 1)} />
+      <PixelArt kind="portrait" id={unit.portrait} glyph="人" />
       {badge}
     </div>
   )

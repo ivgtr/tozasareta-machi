@@ -177,9 +177,10 @@
   flex-shrink: 0;
 }
 
-.unit-card__portrait .ph-portrait {
+.unit-card__portrait :is(.ph-portrait, .ph-tile) {
   width: 44px;
   height: 44px;
+  font-size: 22px;
 }
 
 .unit-card__apt-badge {
@@ -197,12 +198,13 @@
 }
 
 .unit-card--compact {
+  width: 158px;
   min-width: 0;
   padding: 5px 8px;
   gap: 8px;
 }
 
-.unit-card--compact .ph-portrait {
+.unit-card--compact .unit-card__portrait :is(.ph-portrait, .ph-tile) {
   width: 32px;
   height: 32px;
   font-size: 16px;
@@ -218,9 +220,12 @@
 
 .unit-card__compact-name {
   flex: 1;
+  min-width: 0;
   font-size: 13px;
   letter-spacing: 0.05em;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .unit-card__body {
