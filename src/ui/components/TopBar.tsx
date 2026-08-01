@@ -34,7 +34,9 @@ export function TopBar({ state, canUndo, onUndo, onRestart }: TopBarProps) {
   return (
     <header className="play__top">
       <div className="play__day">
-        <span className="play__day-num">{Math.min(state.day, BALANCE.days)}</span>
+        <span key={Math.min(state.day, BALANCE.days)} className="play__day-num">
+          {Math.min(state.day, BALANCE.days)}
+        </span>
         <span className="play__day-total">/ {BALANCE.days}</span>
       </div>
       <div className="play__alerts">
