@@ -381,7 +381,11 @@ export const EVENTS: EventDef[] = [
           baseFx(c.state, 'trade_offer', 'budget', 20, '備蓄を売って予算を得た'),
         ],
       },
-      { id: 'decline', label: '断る', apply: () => [] },
+      {
+        id: 'decline',
+        label: '断る',
+        apply: (c) => [baseFx(c.state, 'trade_offer', 'morale', 0, '交易を断った')],
+      },
     ],
   },
   {
@@ -448,6 +452,12 @@ export const EVENTS: EventDef[] = [
         mutate: (state) => resolveExpedition(state, u.id),
       }
     },
-    choices: [{ id: 'skip', label: '見送る', apply: () => [] }],
+    choices: [
+      {
+        id: 'skip',
+        label: '見送る',
+        apply: (c) => [baseFx(c.state, 'expedition', 'morale', 0, '探索を見送った')],
+      },
+    ],
   },
 ]

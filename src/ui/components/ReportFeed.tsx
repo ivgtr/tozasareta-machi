@@ -32,7 +32,7 @@ export function ReportFeed({
               <span className="report__reason">
                 {animateLast && isLast ? <TypeText text={e.reason} /> : e.reason}
               </span>
-              {e.target in TARGET_LABEL ? (
+              {e.target in TARGET_LABEL && e.delta !== 0 ? (
                 <span
                   className={`report__delta ${e.delta >= 0 ? 'report__delta--up' : 'report__delta--down'}`}
                 >
