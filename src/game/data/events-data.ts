@@ -48,7 +48,10 @@ export const EVENTS: EventDef[] = [
       ]
       const picked = weightedPick(
         cands,
-        (c) => (c.kind === 'unique' ? 1 : Math.max(available.length, 1)),
+        (c) =>
+          c.kind === 'unique'
+            ? BALANCE.unit.arrivalUniqueWeight
+            : Math.max(available.length * BALANCE.unit.arrivalRandomCoef, 1),
         state.rng,
       )
       if (!picked) return { state, effects: [] }

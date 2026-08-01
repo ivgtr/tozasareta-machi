@@ -17,6 +17,8 @@ export const BALANCE = {
     traitChance: 0.3,
     arrivalBase: 0.4,
     arrivalPerDay: 0.06,
+    arrivalUniqueWeight: 1,
+    arrivalRandomCoef: 9,
   },
   effect: {
     repair: { base: 2, coef: 1.5 },
