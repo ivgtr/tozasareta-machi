@@ -77,4 +77,4 @@ export const BALANCE = {
   },
 } as const
 
-export const SAVE_VERSION = 3
+export const SAVE_VERSION = 4
