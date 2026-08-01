@@ -21,8 +21,8 @@ export const BALANCE = {
     arrivalRandomCoef: 9,
   },
   effect: {
-    repair: { base: 2, coef: 1.2 },
-    road: { base: 0, coef: 1.3 },
+    repair: { base: 2, coef: 1.05 },
+    road: { base: 0, coef: 1.05 },
     medical: { base: 2, coef: 1.1 },
     soup: { base: 3, coef: 1.0 },
   },
@@ -75,11 +75,11 @@ export const BALANCE = {
   expedition: {
     weight: 0.5,
     dayFrom: 4,
-    deathBase: 0.05,
-    injuryBase: 0.2,
-    food: 13,
-    stockpile: 9,
-    budget: 9,
+    deathBase: 0.06,
+    injuryBase: 0.24,
+    food: 9,
+    stockpile: 6,
+    budget: 6,
   },
   ending: {
     collapseMorale: 0,
