@@ -616,6 +616,24 @@
   animation: day-pop 0.4s steps(4);
 }
 
+.play__day-side {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.play__rescue {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: var(--cyan);
+}
+
+.play__rescue--soon {
+  color: var(--gold);
+  animation: flicker 2.5s steps(1) infinite;
+}
+
 @keyframes day-pop {
   0% {
     transform: scale(1.35);

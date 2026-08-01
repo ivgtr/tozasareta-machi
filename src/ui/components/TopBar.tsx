@@ -32,13 +32,20 @@ function deriveAlerts(state: GameState): Alert[] {
 
 export function TopBar({ state, canUndo, onUndo, onRestart }: TopBarProps) {
   const alerts = deriveAlerts(state)
+  const day = Math.min(state.day, BALANCE.days)
+  const rescueIn = Math.max(1, BALANCE.days - day + 1)
   return (
     <header className="play__top">
       <div className="play__day">
-        <span key={Math.min(state.day, BALANCE.days)} className="play__day-num">
-          {Math.min(state.day, BALANCE.days)}
+        <span key={day} className="play__day-num">
+          {day}
         </span>
-        <span className="play__day-total">/ {BALANCE.days}</span>
+        <div className="play__day-side">
+          <span className="play__day-total">/ {BALANCE.days}</span>
+          <span className={`play__rescue ${rescueIn <= 5 ? 'play__rescue--soon' : ''}`}>
+            救援まで あと{rescueIn}日
+          </span>
+        </div>
       </div>
       <div className="play__alerts">
         {alerts.length === 0 ? (

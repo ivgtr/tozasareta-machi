@@ -63,6 +63,9 @@ export const ART_SPECS: ArtSpec[] = [
   spec('event', 'wildlife', '獣', PALETTE.red, '野生動物の出没'),
   spec('event', 'clear_weather', '晴', PALETTE.cyan, '天候の回復'),
   spec('event', 'landslide_warning', '山', PALETTE.amber, '土砂災害警戒'),
+  spec('event', 'stranded_engineer', '技', PALETTE.cyan, '取り残された技術者'),
+  spec('event', 'retired_medic', '医', PALETTE.green, '隠居した医師'),
+  spec('event', 'young_volunteer', '青', PALETTE.gold, '若いボランティア'),
 
   spec('portrait', 'mayor', '長', PALETTE.gold, '町長'),
   spec('portrait', 'medic', '医', PALETTE.green, '医師'),
