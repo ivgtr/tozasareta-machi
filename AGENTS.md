@@ -1,97 +1,26 @@
-# AGENTS.md — 引き継ぎ資料
+# AGENTS.md
 
-本セッションの文脈と、次のセッションで作業を続けるための情報。最初にこのファイルと `docs/README.md` を読むこと。
+ブラウザで動くターン制運営シミュレーション「孤立した町の30日間」（Vite + React 19 + TypeScript）。
 
-## プロジェクト概要
+**作業前に必ず [`docs/README.md`](docs/README.md) を読むこと**（設計ドキュメントの目次）。
+現状・アーキテクチャ・次のステップ・詳細な規律は **[`docs/00-現状と引き継ぎ.md`](docs/00-現状と引き継ぎ.md)** に集約している。そちらが正。
 
-**孤立した町の30日間** — ブラウザで動くターン制運営シミュレーション。災害で孤立した町の臨時対策責任者として、ユニット（人員）を任務に配置し、30日間の再接続を耐え抜く。
-
-- 技術: Vite + React 19 + TypeScript(strict) + Vitest
-- 詳細設計: `docs/01`〜`docs/14`（`docs/README.md` が目次）
-
-## 現在の状態（commit `a9d61ea` 時点）
-
-- **v1（P1–P9）完成**: コアシステム（純粋 reducer / 30日 / 4エンディング / イベント / セーブ）
-- **v1.1（U1–U3）完成**: ユニットシステム（ユニークユニット / 統合到着 / スポットライトUX）
-- **アート導入中**: イベント・エンディング・タスクアイコン・背景(`scene/night.png`)の PNG を導入済み。ユニット肖像画は未（計画: `docs/14-汎用ユニット肖像画計画.md`）
-- **テスト68件 緑 / CI 緑**
-- **バランス確定**: 無作為プレイ生存率〜20% / 熟練〜98%（厳しめ目標）
-
-### アセット状況（`src/ui/assets/`）
-
-| 種別 | 状況 |
-| --- | --- |
-| `event/` | 導入済み（23枚。うち `refugees.png` は arrival 置換で**孤立**——削除or再利用候補） |
-| `ending/` | 導入済み（4枚） |
-| `icon/` | タスク+状態アイコン導入済み。**資源アイコン（food/power/medical/morale）は未**（現状フォールバックの文字タイル） |
-| `scene/` | `night.png` 導入済み |
-| `portrait/` | **未作成**（`docs/14` の汎用肖像画計画に従う） |
-
-## 実行・検証コマンド
+## コマンド
 
 ```bash
 npm install
-npm run dev          # プレイ（ブラウザ）
-npm test             # Vitest 全68件
-npm run typecheck    # tsc --noEmit
-npm run lint         # ESLint（game/ のDOM非依存をlintで強制）
-npm run build        # 本番ビルド
-npm run sim          # バランス測定（無作為生存率・ending分布をログ出力）
+npm run dev          # プレイ
+npm test             # テスト
+npm run typecheck    # 型チェック
+npm run lint         # lint（src/game のDOM非依存を強制）
+npm run build        # ビルド
+npm run sim          # バランス測定
 ```
 
-## アーキテクチャ
+## 最低限の規律（詳細は docs/00 参照）
 
-```
-src/game/     ゲームコア（DOM非依存・純粋。ここが心臓部）
-  types.ts      Unit/Effect/GameState 等の型
-  engine.ts     step(state, action) => { state, effects }（純粋 reducer）+ applyEffects
-  actions.ts    任務の効果計算（適性駆動）/ preview / autoAssign（おまかせ配置）
-  settlement.ts 日次清算（食料=人員×4/減衰/負傷/死亡/離脱/成長/特性）
-  events.ts     イベント発火エンジン（runEvents、mutate対応）
-  ending.ts     崩壊判定 / 4エンディング評価
-  rng.ts        シード付き乱数（決定性の要）
-  traits.ts     7特性の定義
-  data/
-    balance.ts  全数値（BALANCE。調整はここだけ触る）+ SAVE_VERSION=3
-    units.ts    初期4人 + ユニーク20体 + ランダム生成（名/適性由来の二つ名）
-    events-data.ts  全イベント定義（arrival=統合到着抽選）
-src/ui/       React UI
-  screens/    TitleScreen / PlayScreen
-  components/ UnitCard, DecisionBoard, StatusWall, *Overlay 群 等
-  hooks/      usePlayback（ビート再生）, useTokenDnD（Pointer Events DnD）
-  art/        PixelArt + manifest（アートスロット。PNGを自動検出）
-  assets/     PNG アセット（{kind}/{id}.png に置くと自動反映）
-  store.ts    zod スキーマ + セーブ整合性 / StoreProvider / settings
-tests/        Vitest（gameコア単体・決定性・simulation・UIスモーク・playback）
-```
-
-### 中核の契約
-
-- `step(state, action)` は**純粋**。同じ seed + 同じ行動 = 同じ結果（決定性テストで保証）。
-- 1日の解決は `commitDay` → 任務効果 → 清算 → イベント → 日付進行。
-- 再生（`usePlayback`）は**ビート単位**: `flow`（定常増減=レポートへ流す）/ `event` / `arrival`（後者は**スポットライト=ポーズ+カード+続行**）。イベントはすべてポーズする統一UX。
-
-## 主要な設計決定（要約）
-
-- **作業員→ユニークユニット**: 名 + 二つ名 + 4適性(労/技/医/魅) + 特性 + フレーバー。配置は「誰をどの任務へ」の一段。
-- **統合到着抽選**: 20体ユニークプール + ランダム生成の混合抽選。重みは日数逓増（`arrivalBase + day×arrivalPerDay`）、確定受け入れ、上限10、ユニークは重複なし（`flags.joinedUniques`）。
-- **ランダム名**: 和風単名/姓名/西洋名の混合生成。二つ名はピーク適性由来（力自慢/発明家/薬草通/人たらし）。
-- **ユニーク判定**: `unique` フラグ（二つ名の有無ではない）。カードの二つ名行は常時表示で高さ統一。
-- **バランス**: `BALANCE`（`src/game/data/balance.ts`）に一元化。無作為〜20%/熟練〜98%。
-
-## 次のステップ（未着手・候補）
-
-1. **ユニット肖像画**（`docs/14-汎用ユニット肖像画計画.md` に計画あり。`src/ui/assets/portrait/{id}.png`）
-2. **資源アイコン**（food/power/medical/morale の PNG。現状フォールバックの文字タイル）
-3. **孤立アセット整理**（`event/refugees.png` は arrival 置換で未使用）
-4. **実プレイテストのフィードバック反映**
-5. 拡張（`docs/04`: 地区/派閥/交易/外交 等）/ 選択型イベント（`docs/12` §13 将来）
-
-## 規律・注意点
-
-- **フェーズごとにコミット**（`docs/11` 参照。1フェーズ=1コミット、CI緑を条件に）
-- **数値は `balance.ts` に集約**。ロジックにマジックナンバーを書かない
-- **コードにコメントは原則追加しない**
-- **韓国語混入に注意**（過去に `소식`/`균형`/`바로` が混入した）。懸念があれば `[가-힣]` でgrep
-- セーブは zod スキーマ（`SAVE_VERSION=3`）。非互換の旧セーブは破棄→新規ゲーム
-- `src/game/` は DOM非依存（lintで強制）。UIからコアへの一方向依存を守る
+- フェーズごとにコミット（CI緑を条件に）
+- 数値は `src/game/data/balance.ts` に集約（マジックナンバー禁止）
+- コードにコメントは原則追加しない
+- `src/game/` は DOM非依存（UIからの一方向依存を守る）
+- 韓国語混入に注意（懸念があれば `[가-힣]` で grep）
