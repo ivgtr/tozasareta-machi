@@ -1,18 +1,30 @@
-import type { PointerEvent as ReactPointerEvent } from 'react'
-import type { Unit } from '../../game/types'
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+} from 'react'
+import type { Aptitude, Unit } from '../../game/types'
 import { TRAITS } from '../../game/traits'
+import { APTITUDE_LABEL } from '../../game/data/units'
 import { PixelArt } from '../art/PixelArt'
 
-const APT_COLOR: Record<'labor' | 'tech' | 'medical' | 'charm', string> = {
+const APT_SHORT: Record<Aptitude, string> = { labor: '労', tech: '技', medical: '医', charm: '魅' }
+const APT_COLOR: Record<Aptitude, string> = {
   labor: 'var(--amber)',
   tech: 'var(--cyan)',
   medical: 'var(--green)',
   charm: 'var(--gold)',
 }
 
+function topAptitude(unit: Unit): Aptitude {
+  const order: Aptitude[] = ['labor', 'tech', 'medical', 'charm']
+  return order.reduce((best, a) => (unit.apt[a] > unit.apt[best] ? a : best), order[0] as Aptitude)
+}
+
 interface UnitCardProps {
   unit: Unit
   selected?: boolean
+  compact?: boolean
   onClick?: () => void
   onDetails: () => void
   onPointerDown?: (e: ReactPointerEvent) => void
@@ -21,40 +33,88 @@ interface UnitCardProps {
 export function UnitCard({
   unit,
   selected = false,
+  compact = false,
   onClick,
   onDetails,
   onPointerDown,
 }: UnitCardProps) {
-  return (
-    <div
-      className={[
-        'unit-card',
-        selected ? 'unit-card--selected' : '',
-        unit.condition === 'injured' ? 'unit-card--injured' : '',
-      ]
-        .filter(Boolean)
-        .join(' ')}
+  const top = topAptitude(unit)
+  const classes = [
+    'unit-card',
+    compact ? 'unit-card--compact' : '',
+    selected ? 'unit-card--selected' : '',
+    unit.condition === 'injured' ? 'unit-card--injured' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  const badge = (
+    <span
+      className="unit-card__apt-badge"
+      style={{ background: APT_COLOR[top] }}
+      aria-label={`得意: ${APTITUDE_LABEL[top]} ${unit.apt[top]}`}
+    >
+      {APT_SHORT[top]}
+    </span>
+  )
+
+  const portrait = (
+    <div className="unit-card__portrait">
+      <PixelArt kind="portrait" id={unit.portrait} glyph={unit.name.slice(0, 1)} />
+      {badge}
+    </div>
+  )
+
+  const infoBtn = (
+    <button
+      type="button"
+      className="unit-card__info"
+      aria-label={`${unit.name}の詳細`}
+      onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => {
         e.stopPropagation()
-        onClick?.()
-      }}
-      onPointerDown={onPointerDown}
-      tabIndex={0}
-      role="button"
-      aria-label={unit.name}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onClick?.()
-        } else if (e.key === 'i' || e.key === 'I') {
-          e.preventDefault()
-          onDetails()
-        }
+        onDetails()
       }}
     >
-      <div className="unit-card__portrait">
-        <PixelArt kind="portrait" id={unit.portrait} glyph={unit.name.slice(0, 1)} />
+      ℹ
+    </button>
+  )
+
+  const rootProps = {
+    className: classes,
+    onClick: (e: ReactMouseEvent) => {
+      e.stopPropagation()
+      onClick?.()
+    },
+    onPointerDown,
+    tabIndex: 0,
+    role: 'button' as const,
+    'aria-label': unit.name,
+    onKeyDown: (e: ReactKeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        onClick?.()
+      } else if (e.key === 'i' || e.key === 'I') {
+        e.preventDefault()
+        onDetails()
+      }
+    },
+  }
+
+  if (compact) {
+    return (
+      <div {...rootProps}>
+        {portrait}
+        <span className="unit-card__compact-name">{unit.name}</span>
+        {unit.condition === 'injured' ? <span className="unit-card__badge">負傷</span> : null}
+        {infoBtn}
       </div>
+    )
+  }
+
+  return (
+    <div {...rootProps}>
+      {portrait}
       <div className="unit-card__body">
         <div className="unit-card__name">
           {unit.name}
@@ -81,17 +141,7 @@ export function UnitCard({
           </div>
         ) : null}
       </div>
-      <button
-        type="button"
-        className="unit-card__info"
-        aria-label={`${unit.name}の詳細`}
-        onClick={(e) => {
-          e.stopPropagation()
-          onDetails()
-        }}
-      >
-        ℹ
-      </button>
+      {infoBtn}
     </div>
   )
 }

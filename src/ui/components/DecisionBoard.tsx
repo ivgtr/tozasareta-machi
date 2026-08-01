@@ -51,6 +51,26 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
   const unassigned = state.units.filter((u) => !assignedIds.has(u.id))
   const remaining = unassigned.length
 
+  const spent = PHYSICAL_TASKS.reduce(
+    (acc, t) => {
+      if ((placements[t] ?? []).length > 0) {
+        const c = taskCost(t)
+        acc.budget += c.budget
+        acc.stockpile += c.stockpile
+      }
+      return acc
+    },
+    { budget: 0, stockpile: 0 },
+  )
+
+  const affordable = (task: TaskId): boolean => {
+    if ((placements[task] ?? []).length > 0) return true
+    const c = taskCost(task)
+    return (
+      state.budget - spent.budget >= c.budget && state.stockpile - spent.stockpile >= c.stockpile
+    )
+  }
+
   const trySetPlacements = (next: Placements): boolean => {
     let b = 0
     let s = 0
@@ -66,11 +86,11 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
     return true
   }
 
-  const moveUnitTo = (id: string, task: TaskId) => {
+  const moveUnitTo = (id: string, task: TaskId): boolean => {
     const next: Placements = {}
     for (const t of PHYSICAL_TASKS) next[t] = (placements[t] ?? []).filter((u) => u !== id)
     next[task] = [...(next[task] ?? []), id]
-    trySetPlacements(next)
+    return trySetPlacements(next)
   }
 
   const removeUnit = (id: string) => {
@@ -81,8 +101,8 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
 
   const placeSelected = (task: TaskId) => {
     if (!selectedUnit) return
-    moveUnitTo(selectedUnit, task)
-    setSelectedUnit(null)
+    const ok = moveUnitTo(selectedUnit, task)
+    if (ok) setSelectedUnit(null)
   }
 
   const selectUnit = (id: string) => setSelectedUnit((cur) => (cur === id ? null : id))
@@ -160,10 +180,12 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
             'taskslot',
             drag?.over === task ? 'taskslot--over' : '',
             selectedUnit ? 'taskslot--placeable' : '',
+            !affordable(task) ? 'taskslot--unaffordable' : '',
           ]
             .filter(Boolean)
             .join(' ')
           const cost = taskCost(task)
+          const isAffordable = affordable(task)
           const costText =
             cost.budget > 0
               ? `予算 ${cost.budget}`
@@ -191,7 +213,14 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
                 <PixelArt kind="icon" id={task} size="sm" />
                 <div className="taskslot__meta">
                   <div className="taskslot__name">{taskLabel(task)}</div>
-                  <div className="taskslot__cost">{costText}</div>
+                  <div
+                    className={
+                      isAffordable ? 'taskslot__cost' : 'taskslot__cost taskslot__cost--lack'
+                    }
+                  >
+                    {costText}
+                    {isAffordable ? '' : '（不足）'}
+                  </div>
                 </div>
                 <div className="taskslot__fx">{unitIds.length > 0 ? fxText : '人員を配置 →'}</div>
               </div>
@@ -230,6 +259,7 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
             <UnitCard
               key={u.id}
               unit={u}
+              compact
               selected={selectedUnit === u.id}
               onClick={() => selectUnit(u.id)}
               onDetails={() => setDetailsUnitId(u.id)}

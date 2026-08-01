@@ -87,4 +87,24 @@ describe('play', () => {
     fireEvent.click(card!.querySelector('.unit-card__info')!)
     expect(screen.getByText(/負傷しない/)).toBeTruthy()
   })
+
+  it('待機カードはコンパクトで得意適性バッジが表示される', () => {
+    const { container } = startGame()
+    expect(container.querySelector('.unit-card--compact')).not.toBeNull()
+    expect(container.querySelector('.unit-card__apt-badge')).not.toBeNull()
+  })
+
+  it('備蓄不足で炊き出しが支払不能と表示され、配置が拒否される', () => {
+    startGame()
+    for (let d = 0; d < 3; d++) {
+      fireEvent.click(screen.getByText('農夫'))
+      fireEvent.click(screen.getByText('炊き出し'))
+      fireEvent.click(screen.getByText('作戦を開始する'))
+      fireEvent.click(screen.getByText('このまま開始'))
+    }
+    expect(screen.getByText(/（不足）/)).toBeTruthy()
+    fireEvent.click(screen.getByText('農夫'))
+    fireEvent.click(screen.getByText('炊き出し'))
+    expect(screen.getByText('4人 未配置')).toBeTruthy()
+  })
 })

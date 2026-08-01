@@ -173,12 +173,54 @@
 }
 
 .unit-card__portrait {
+  position: relative;
   flex-shrink: 0;
 }
 
 .unit-card__portrait .ph-portrait {
   width: 44px;
   height: 44px;
+}
+
+.unit-card__apt-badge {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 19px;
+  height: 19px;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--night-900);
+  border: 2px solid var(--night-800);
+}
+
+.unit-card--compact {
+  min-width: 0;
+  padding: 5px 8px;
+  gap: 8px;
+}
+
+.unit-card--compact .ph-portrait {
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+}
+
+.unit-card--compact .unit-card__apt-badge {
+  width: 16px;
+  height: 16px;
+  font-size: 9px;
+  right: -4px;
+  bottom: -4px;
+}
+
+.unit-card__compact-name {
+  flex: 1;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 
 .unit-card__body {
@@ -442,6 +484,18 @@
 .taskslot--placeable {
   border-style: dashed;
   border-color: var(--frame-hi);
+}
+
+.taskslot--unaffordable {
+  opacity: 0.55;
+}
+
+.taskslot--unaffordable .taskslot__name {
+  color: var(--ink-dim);
+}
+
+.taskslot__cost--lack {
+  color: var(--red);
 }
 
 .taskslot__head {
