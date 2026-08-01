@@ -46,6 +46,7 @@ describe('play', () => {
       expect(screen.getByText(t)).toBeTruthy()
     for (const u of ['真壁史子', '榊直人', '森レナ', '岩倉源造'])
       expect(screen.getByText(u)).toBeTruthy()
+    expect(container.querySelectorAll('.unit-card .pixel-art')).toHaveLength(4)
   })
 
   it('ユニットを選択→任務クリックで配置され、未配置数が減る', () => {
