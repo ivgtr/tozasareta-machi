@@ -37,7 +37,7 @@ export const EVENTS: EventDef[] = [
     id: 'arrival',
     name: '人の到着',
     when: (c) => c.day >= 4 && c.state.units.length < BALANCE.unit.cap,
-    weight: () => 1,
+    weight: (c) => BALANCE.unit.arrivalBase + c.day * BALANCE.unit.arrivalPerDay,
     mutate: (state) => {
       const joined = state.flags.joinedUniques
       const available = UNIQUE_UNITS.filter((u) => !joined.includes(u.id))
@@ -227,7 +227,7 @@ export const EVENTS: EventDef[] = [
     weight: () => 0.3,
     apply: (c) => [
       baseFx(c.state, 'trader', 'budget', 25, '行商人との取引で予算を得た'),
-      baseFx(c.state, 'trader', 'morale', 2, '行商人が外の 소식을伝えてくれた'),
+      baseFx(c.state, 'trader', 'morale', 2, '行商人が外の知らせを伝えてくれた'),
     ],
   },
   {

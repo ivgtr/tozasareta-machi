@@ -170,7 +170,7 @@ export const INITIAL_UNITS: Unit[] = [
   },
 ]
 
-export const UNIQUE_UNITS: Unit[] = [
+const UNIQUE_UNIT_DEFS: Unit[] = [
   {
     id: 'stranded_engineer',
     name: 'フランツ',
@@ -393,6 +393,15 @@ export const UNIQUE_UNITS: Unit[] = [
   },
 ]
 
+export const UNIQUE_UNITS: Unit[] = UNIQUE_UNIT_DEFS.map((u) => ({ ...u, unique: true }))
+
+const ALIAS_BY_APT: Record<Aptitude, string> = {
+  labor: '力自慢',
+  tech: '発明家',
+  medical: '薬草通',
+  charm: '人たらし',
+}
+
 export function cloneUnit(unit: Unit, id = unit.id): Unit {
   return { ...unit, id, apt: { ...unit.apt }, traits: [...unit.traits] }
 }
@@ -427,6 +436,15 @@ export function makeRandomUnit(rng: RngState, taken: string[]): { unit: Unit; rn
   }
 
   const id = `recruit_${rng.counter}`
-  const unit: Unit = { id, name, portrait: id, apt, traits, condition: 'healthy', xp: 0 }
+  const unit: Unit = {
+    id,
+    name,
+    alias: ALIAS_BY_APT[peak],
+    portrait: id,
+    apt,
+    traits,
+    condition: 'healthy',
+    xp: 0,
+  }
   return { unit, rng: r }
 }

@@ -47,7 +47,7 @@ describe('events', () => {
     for (let i = 0; i < 10; i++) {
       const res = arrival.mutate!({ ...s, rng: { seed: 700 + i, counter: 0 } })
       const added = res.state.units[res.state.units.length - 1]!
-      expect(added.alias).toBeUndefined()
+      expect(added.unique).toBeUndefined()
     }
   })
 

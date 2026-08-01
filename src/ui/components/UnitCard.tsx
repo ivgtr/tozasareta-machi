@@ -107,7 +107,7 @@ export function UnitCard({
         {portrait}
         <div className="unit-card__id">
           <span className="unit-card__compact-name">{unit.name}</span>
-          {unit.alias ? <span className="unit-card__alias">{unit.alias}</span> : null}
+          <span className="unit-card__alias">{unit.alias ?? '—'}</span>
         </div>
         {unit.condition === 'injured' ? <span className="unit-card__badge">負傷</span> : null}
         {infoBtn}

@@ -18,7 +18,7 @@ interface ArrivalOverlayProps {
 }
 
 export function ArrivalOverlay({ unit, onContinue }: ArrivalOverlayProps) {
-  const unique = unit.alias !== undefined
+  const unique = unit.unique === true
 
   return (
     <div className="spotlight" role="dialog" aria-modal="true">

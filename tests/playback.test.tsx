@@ -24,7 +24,13 @@ const flowEffects: Effect[] = [
 const eventEffects: Effect[] = [
   { day: 1, source: 'task:restore_road', target: 'food', delta: 16, reason: '食料を搬入した' },
   { day: 1, source: 'event:infection', target: 'medical', delta: -15, reason: '感染症が広がった' },
-  { day: 1, source: 'event:infection', target: 'morale', delta: -10, reason: '不安で士気が下がった' },
+  {
+    day: 1,
+    source: 'event:infection',
+    target: 'morale',
+    delta: -10,
+    reason: '不安で士気が下がった',
+  },
 ]
 
 beforeEach(() => {

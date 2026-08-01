@@ -2,7 +2,7 @@ export const BALANCE = {
   days: 30,
   unit: {
     start: 4,
-    cap: 8,
+    cap: 10,
     foodPerUnit: 4,
     growthThreshold: 5,
     injuryChance: 0.25,
@@ -15,6 +15,8 @@ export const BALANCE = {
     aptPeakMin: 5,
     aptPeakMax: 8,
     traitChance: 0.3,
+    arrivalBase: 0.4,
+    arrivalPerDay: 0.06,
   },
   effect: {
     repair: { base: 2, coef: 1.5 },

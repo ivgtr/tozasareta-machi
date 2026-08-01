@@ -12,6 +12,7 @@ export interface Unit {
   id: string
   name: string
   alias?: string
+  unique?: boolean
   flavor?: string
   portrait: string
   apt: Record<Aptitude, number>
