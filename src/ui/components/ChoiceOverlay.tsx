@@ -14,6 +14,8 @@ export function ChoiceOverlay({ state, onChoose }: ChoiceOverlayProps) {
   const event = findEvent(pending.eventId)
   if (!event) return null
   const options = choiceOptions(state, event).filter((o) => pending.optionIds.includes(o.id))
+  const unitOptions = options.filter((o) => o.id.startsWith('send_'))
+  const otherOptions = options.filter((o) => !o.id.startsWith('send_'))
 
   return (
     <div className="choice-overlay" role="dialog" aria-modal="true">
@@ -23,18 +25,26 @@ export function ChoiceOverlay({ state, onChoose }: ChoiceOverlayProps) {
           <PixelArt kind="event" id={event.id} />
         </div>
         <h3 className="choice-overlay__name">{event.name}</h3>
-        <div className="choice-overlay__options">
-          {options.map((o) => (
-            <PixelButton
-              key={o.id}
-              className="choice-overlay__option"
-              onClick={() => onChoose(o.id)}
-            >
-              <span className="choice-overlay__label">{o.label}</span>
-              {o.desc ? <span className="choice-overlay__desc">{o.desc}</span> : null}
-            </PixelButton>
-          ))}
-        </div>
+        {unitOptions.length > 0 ? (
+          <div className="choice-overlay__unit-grid">
+            {unitOptions.map((o) => (
+              <PixelButton
+                key={o.id}
+                className="choice-overlay__unit"
+                onClick={() => onChoose(o.id)}
+              >
+                <span className="choice-overlay__label">{o.label}</span>
+                {o.desc ? <span className="choice-overlay__desc">{o.desc}</span> : null}
+              </PixelButton>
+            ))}
+          </div>
+        ) : null}
+        {otherOptions.map((o) => (
+          <PixelButton key={o.id} className="choice-overlay__option" onClick={() => onChoose(o.id)}>
+            <span className="choice-overlay__label">{o.label}</span>
+            {o.desc ? <span className="choice-overlay__desc">{o.desc}</span> : null}
+          </PixelButton>
+        ))}
       </div>
     </div>
   )

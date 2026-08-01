@@ -135,7 +135,9 @@ describe('choice overlay', () => {
       pendingChoice: { eventId: 'expedition', optionIds: opts.map((o) => o.id) },
     }
     const { container } = render(<ChoiceOverlay state={state} onChoose={() => {}} />)
-    const options = container.querySelectorAll('.choice-overlay__option')
-    expect(options.length).toBe(s.units.length + 1)
+    const unitBtns = container.querySelectorAll('.choice-overlay__unit')
+    const otherBtns = container.querySelectorAll('.choice-overlay__option')
+    expect(unitBtns.length).toBe(s.units.length)
+    expect(otherBtns.length).toBe(1)
   })
 })

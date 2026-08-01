@@ -1119,6 +1119,8 @@
 
 .choice-overlay__card {
   width: min(440px, 92vw);
+  max-height: min(92vh, 620px);
+  overflow-y: auto;
   padding: 26px 24px;
   background: var(--night-700);
   border: 3px solid var(--gold);
@@ -1156,6 +1158,26 @@
   flex-direction: column;
   gap: 8px;
   width: 100%;
+}
+
+.choice-overlay__unit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+
+.choice-overlay__unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  padding: 6px 4px;
+}
+
+.choice-overlay__unit .choice-overlay__label {
+  font-size: 12px;
 }
 
 .choice-overlay__option {
