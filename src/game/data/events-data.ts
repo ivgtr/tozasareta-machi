@@ -30,7 +30,7 @@ export const EVENTS: EventDef[] = [
     when: (c) => c.state.resources.power > 20,
     weight: (c) => 0.4 + (c.state.resources.power > 70 ? 0.2 : 0),
     apply: (c) => [
-      baseFx(c.state, 'generator_failure', 'power', -25, '発電機が故障し、電力が大きく落ちた'),
+      baseFx(c.state, 'generator_failure', 'power', -32, '発電機が故障し、電力が大きく落ちた'),
     ],
   },
   {
@@ -106,12 +106,42 @@ export const EVENTS: EventDef[] = [
     ],
   },
   {
+    id: 'foraging',
+    name: '食料の調達',
+    when: (c) => c.day >= 5 && c.state.resources.food < 80,
+    weight: () => 0.45,
+    apply: (c) => [
+      baseFx(c.state, 'foraging', 'food', 26, '周辺の山で食料を調達した'),
+      baseFx(c.state, 'foraging', 'morale', 2, '食料のめどが立ち安堵が広がった'),
+    ],
+  },
+  {
+    id: 'power_restored',
+    name: '仮設発電の復旧',
+    when: (c) => c.day >= 5 && c.state.resources.power < 70,
+    weight: () => 0.45,
+    apply: (c) => [
+      baseFx(c.state, 'power_restored', 'power', 26, '仮設発電が一時的に復旧した'),
+      baseFx(c.state, 'power_restored', 'morale', 2, '灯りが戻り希望が湧いた'),
+    ],
+  },
+  {
+    id: 'medical_donation',
+    name: '医薬品の寄贈',
+    when: (c) => c.day >= 5 && c.state.resources.medical < 70,
+    weight: () => 0.45,
+    apply: (c) => [
+      baseFx(c.state, 'medical_donation', 'medical', 26, '近隣から医薬品が寄せられた'),
+      baseFx(c.state, 'medical_donation', 'morale', 2, '医療のめどが立ち安堵が広がった'),
+    ],
+  },
+  {
     id: 'road_collapse',
     name: '道路の再崩落',
     when: (c) => c.day >= 6,
     weight: () => 0.4,
     apply: (c) => [
-      baseFx(c.state, 'road_collapse', 'food', -20, '豪雨で復旧中の道路が再び崩れた'),
+      baseFx(c.state, 'road_collapse', 'food', -28, '豪雨で復旧中の道路が再び崩れた'),
       baseFx(c.state, 'road_collapse', 'morale', -3, '復旧作業のやり直しに落胆が広がった'),
     ],
   },
@@ -150,7 +180,7 @@ export const EVENTS: EventDef[] = [
     when: (c) => c.state.resources.medical < 30,
     weight: (c) => ((30 - c.state.resources.medical) / 30) * 2 + c.flags.daysWithoutMedical * 0.5,
     apply: (c) => [
-      baseFx(c.state, 'infection', 'medical', -15, '医療を放置したため感染症が広がった'),
+      baseFx(c.state, 'infection', 'medical', -22, '医療を放置したため感染症が広がった'),
       baseFx(c.state, 'infection', 'morale', -10, '感染症への不安で士気が下がった'),
     ],
   },

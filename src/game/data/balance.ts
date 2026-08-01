@@ -22,7 +22,7 @@ export const BALANCE = {
   },
   effect: {
     repair: { base: 2, coef: 1.5 },
-    road: { base: 0, coef: 1.9 },
+    road: { base: 0, coef: 1.6 },
     medical: { base: 2, coef: 1.3 },
     soup: { base: 3, coef: 1.0 },
   },
@@ -36,10 +36,10 @@ export const BALANCE = {
   },
   food: { start: 100 },
   budget: { start: 100, income: 30, bonus: 15, bonusAt: 50 },
-  power: { start: 60, decay: 8 },
+  power: { start: 60, decay: 10 },
   medical: {
     start: 60,
-    decay: 6,
+    decay: 8,
     extraDecay: 2,
     lowPowerAt: 30,
     neglectAt: 30,
