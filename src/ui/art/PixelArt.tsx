@@ -9,20 +9,33 @@ interface PixelArtProps {
   kind: ArtKind
   id: string
   size?: ArtSize
+  glyph?: string
 }
 
-export function PixelArt({ kind, id, size = 'md' }: PixelArtProps) {
+export function PixelArt({ kind, id, size = 'md', glyph }: PixelArtProps) {
   const spec = artSpec(kind, id)
   const url = resolveArtUrl(kind, id)
   if (url) {
     return <img className={`pixel-art pixel-art--${size}`} src={url} alt={spec?.label ?? id} />
   }
-  return <PlaceholderArt kind={kind} id={id} size={size} />
+  return <PlaceholderArt kind={kind} id={id} size={size} glyph={glyph} />
 }
 
-function PlaceholderArt({ kind, id, size }: PixelArtProps) {
+function PlaceholderArt({ kind, id, size, glyph }: PixelArtProps) {
   const spec = artSpec(kind, id)
-  if (!spec) return <div className={`ph ph--missing ph--${size}`}>?</div>
+  const g = spec?.glyph ?? glyph
+
+  if (!spec) {
+    if (g) {
+      return (
+        <span className={`ph-tile ph-tile--${size}`} role="img" aria-label={id}>
+          {g}
+        </span>
+      )
+    }
+    return <div className={`ph ph--missing ph--${size}`}>?</div>
+  }
+
   const style = { '--ph-color': spec.color } as CSSProperties
 
   switch (kind) {
@@ -49,7 +62,7 @@ function PlaceholderArt({ kind, id, size }: PixelArtProps) {
     case 'portrait':
       return (
         <div className="ph-portrait" style={style} role="img" aria-label={spec.label}>
-          <span className="ph-portrait__silhouette">人</span>
+          <span className="ph-portrait__silhouette">{g ?? '人'}</span>
           <span className="ph-portrait__role">{spec.glyph}</span>
         </div>
       )

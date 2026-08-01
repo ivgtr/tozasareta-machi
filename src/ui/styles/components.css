@@ -43,10 +43,7 @@
 }
 
 .pixel-button:focus-visible,
-.roster__char:focus-visible,
-.taskslot__char:focus-visible,
 .ration-toggle:focus-visible,
-.pool:focus-visible,
 .title__motion:focus-visible {
   outline: 3px solid var(--gold);
   outline-offset: 2px;

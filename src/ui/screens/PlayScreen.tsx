@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import type { DayPlan, GameState, TaskId } from '../../game/types'
+import type { DayPlan, GameState } from '../../game/types'
 import { step, applyEffects } from '../../game/engine'
 import { BALANCE } from '../../game/data/balance'
 import { useStore } from '../store-context'
@@ -30,50 +29,13 @@ function DayBoard({
   animateReport: boolean
   onCommit: (plan: DayPlan) => void
 }) {
-  const [selectedChar, setSelectedChar] = useState<string | null>(null)
-  const [chars, setChars] = useState<Partial<Record<TaskId, string>>>({})
-
-  const assignChar = (task: TaskId) => {
-    if (!selectedChar) return
-    setChars((prev) => {
-      const next: Partial<Record<TaskId, string>> = {}
-      for (const [k, v] of Object.entries(prev)) {
-        if (v !== selectedChar) next[k as TaskId] = v
-      }
-      next[task] = selectedChar
-      return next
-    })
-    setSelectedChar(null)
-  }
-
-  const releaseChar = (task: TaskId) =>
-    setChars((prev) => {
-      const next = { ...prev }
-      delete next[task]
-      return next
-    })
-
   return (
     <main className="play__grid">
       <PixelPanel title="町の状況" className="play__status">
-        <StatusWall
-          state={state}
-          chars={chars}
-          selectedChar={selectedChar}
-          busy={busy}
-          onSelectChar={setSelectedChar}
-        />
+        <StatusWall state={state} />
       </PixelPanel>
       <PixelPanel title="本日の対応" className="play__board">
-        <DecisionBoard
-          state={state}
-          chars={chars}
-          selectedChar={selectedChar}
-          busy={busy}
-          onCommit={onCommit}
-          onAssignChar={assignChar}
-          onReleaseChar={releaseChar}
-        />
+        <DecisionBoard state={state} busy={busy} onCommit={onCommit} />
       </PixelPanel>
       <PixelPanel title="本部記録" className="play__log">
         <ReportFeed report={report} animateLast={animateReport} />

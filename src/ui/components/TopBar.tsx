@@ -19,7 +19,8 @@ interface Alert {
 function deriveAlerts(state: GameState): Alert[] {
   const alerts: Alert[] = []
   const r = state.resources
-  if (r.food < BALANCE.food.consume * BALANCE.morale.lowFoodDays)
+  const consume = state.units.length * BALANCE.unit.foodPerUnit
+  if (r.food < consume * BALANCE.morale.lowFoodDays)
     alerts.push({ icon: 'alert_warning', text: '食料の残りが少ない', tone: 'warning' })
   if (r.medical < BALANCE.medical.neglectAt)
     alerts.push({ icon: 'alert_danger', text: '医療体制が逼迫', tone: 'danger' })

@@ -5,8 +5,11 @@ import type { GameState } from '../src/game/types'
 
 const base = (): GameState => createInitialState(1)
 
-const deltas = (state: GameState, task: Parameters<typeof resolvePlacement>[1]['task'], unitIds: string[]) =>
-  resolvePlacement(state, { task, unitIds })
+const deltas = (
+  state: GameState,
+  task: Parameters<typeof resolvePlacement>[1]['task'],
+  unitIds: string[],
+) => resolvePlacement(state, { task, unitIds })
 
 const sum = (fx: ReturnType<typeof resolvePlacement>, target: string) =>
   fx.filter((e) => e.target === target).reduce((s, e) => s + e.delta, 0)
@@ -55,12 +58,20 @@ describe('resolvePlacement（適性駆動）', () => {
 
   it('負傷中は効果が半減する', () => {
     const s = base()
-    const healthy = sum(resolvePlacement(s, { task: 'repair_power', unitIds: ['engineer'] }), 'power')
+    const healthy = sum(
+      resolvePlacement(s, { task: 'repair_power', unitIds: ['engineer'] }),
+      'power',
+    )
     const injuredState: GameState = {
       ...s,
-      units: s.units.map((u) => (u.id === 'engineer' ? { ...u, condition: 'injured' as const } : u)),
+      units: s.units.map((u) =>
+        u.id === 'engineer' ? { ...u, condition: 'injured' as const } : u,
+      ),
     }
-    const injured = sum(resolvePlacement(injuredState, { task: 'repair_power', unitIds: ['engineer'] }), 'power')
+    const injured = sum(
+      resolvePlacement(injuredState, { task: 'repair_power', unitIds: ['engineer'] }),
+      'power',
+    )
     expect(injured).toBeLessThan(healthy)
   })
 })

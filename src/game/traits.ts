@@ -18,7 +18,12 @@ export interface TraitInfo {
 }
 
 export const TRAITS: Record<TraitId, TraitInfo> = {
-  hard_worker: { id: 'hard_worker', name: '働き者', desc: '任務の効果が1.3倍になる', positive: true },
+  hard_worker: {
+    id: 'hard_worker',
+    name: '働き者',
+    desc: '任務の効果が1.3倍になる',
+    positive: true,
+  },
   leader: { id: 'leader', name: '指導者', desc: '同じ任務の他ユニットの適性+2', positive: true },
   sturdy: { id: 'sturdy', name: '頑丈', desc: '負傷しない', positive: true },
   popular: { id: 'popular', name: '人気者', desc: '毎日、士気+1', positive: true },

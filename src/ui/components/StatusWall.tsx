@@ -1,16 +1,11 @@
-import type { GameState, TaskId } from '../../game/types'
+import type { GameState } from '../../game/types'
 import { BALANCE } from '../../game/data/balance'
 import { moraleLabel } from '../../game/state'
 import { Gauge } from './Gauge'
-import { Roster } from './Roster'
 import { PALETTE } from '../art/manifest'
 
 interface StatusWallProps {
   state: GameState
-  chars: Partial<Record<TaskId, string>>
-  selectedChar: string | null
-  busy?: boolean
-  onSelectChar: (id: string | null) => void
 }
 
 function capacityWord(value: number): string {
@@ -20,15 +15,10 @@ function capacityWord(value: number): string {
   return '機能停止寸前'
 }
 
-export function StatusWall({
-  state,
-  chars,
-  selectedChar,
-  busy = false,
-  onSelectChar,
-}: StatusWallProps) {
+export function StatusWall({ state }: StatusWallProps) {
   const r = state.resources
-  const foodDays = Math.floor(r.food / BALANCE.food.consume)
+  const consume = state.units.length * BALANCE.unit.foodPerUnit
+  const foodDays = consume > 0 ? Math.floor(r.food / consume) : 99
   const income =
     BALANCE.budget.income + (r.power >= BALANCE.budget.bonusAt ? BALANCE.budget.bonus : 0)
 
@@ -39,7 +29,7 @@ export function StatusWall({
         value={r.food}
         max={200}
         color={PALETTE.amber}
-        stateWord={`残り約 ${foodDays} 日`}
+        stateWord={`残り約 ${foodDays} 日（1日 −${consume}）`}
       />
       <Gauge label="電力" value={r.power} color={PALETTE.cyan} stateWord={capacityWord(r.power)} />
       <Gauge
@@ -60,23 +50,14 @@ export function StatusWall({
           <dd>{state.stockpile}</dd>
         </div>
         <div>
-          <dt>作業員</dt>
-          <dd>{state.workers}</dd>
+          <dt>人員</dt>
+          <dd>{state.units.length}</dd>
         </div>
       </dl>
       <p className="statuswall__forecast">
-        日々の清算: 食料 −{BALANCE.food.consume} / 予算 +{income}
+        日々の清算: 食料 −{consume} / 予算 +{income}
         {r.power < BALANCE.budget.bonusAt ? '（電力回復で増収）' : ''}
       </p>
-
-      <h3 className="statuswall__sub">人員</h3>
-      <Roster
-        characters={state.characters}
-        chars={chars}
-        selected={selectedChar}
-        busy={busy}
-        onSelect={onSelectChar}
-      />
     </div>
   )
 }

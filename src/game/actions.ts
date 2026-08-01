@@ -20,7 +20,11 @@ const TASK_RES: Record<
   TaskId,
   { res: 'food' | 'power' | 'medical' | 'morale'; base: number; coef: number } | null
 > = {
-  repair_power: { res: 'power', base: BALANCE.effect.repair.base, coef: BALANCE.effect.repair.coef },
+  repair_power: {
+    res: 'power',
+    base: BALANCE.effect.repair.base,
+    coef: BALANCE.effect.repair.coef,
+  },
   restore_road: { res: 'food', base: BALANCE.effect.road.base, coef: BALANCE.effect.road.coef },
   reinforce_medical: {
     res: 'medical',
@@ -42,7 +46,12 @@ const TASK_REASON: Record<TaskId, string> = {
 export function taskCost(task: TaskId): { budget: number; stockpile: number } {
   const t = BALANCE.tasks
   return {
-    budget: task === 'repair_power' ? t.repair_power.budget : task === 'reinforce_medical' ? t.reinforce_medical.budget : 0,
+    budget:
+      task === 'repair_power'
+        ? t.repair_power.budget
+        : task === 'reinforce_medical'
+          ? t.reinforce_medical.budget
+          : 0,
     stockpile: task === 'soup_kitchen' ? t.soup_kitchen.stockpile : 0,
   }
 }
@@ -89,9 +98,21 @@ export function resolvePlacement(state: GameState, placement: Placement): Effect
   const effects: Effect[] = []
   const cost = taskCost(placement.task)
   if (cost.budget > 0)
-    effects.push({ day, source: `task:${placement.task}`, target: 'budget', delta: -cost.budget, reason: '予算を使った' })
+    effects.push({
+      day,
+      source: `task:${placement.task}`,
+      target: 'budget',
+      delta: -cost.budget,
+      reason: '予算を使った',
+    })
   if (cost.stockpile > 0)
-    effects.push({ day, source: `task:${placement.task}`, target: 'stockpile', delta: -cost.stockpile, reason: '備蓄を使った' })
+    effects.push({
+      day,
+      source: `task:${placement.task}`,
+      target: 'stockpile',
+      delta: -cost.stockpile,
+      reason: '備蓄を使った',
+    })
   effects.push({
     day,
     source: `task:${placement.task}`,
@@ -169,12 +190,12 @@ export function autoAssign(state: GameState): DayPlan {
     let bestVal = 0
     for (const t of PHYSICAL_TASKS) {
       const cost = taskCost(t)
-      const wouldExceed =
-        budget - cost.budget < 0 || stockpile - cost.stockpile < 0
+      const wouldExceed = budget - cost.budget < 0 || stockpile - cost.stockpile < 0
       const alreadyPaid = buckets[t].length > 0
       if (!alreadyPaid && wouldExceed) continue
       const trial: Placement = { task: t, unitIds: [...buckets[t], u.id] }
-      const gain = placementValue(state, trial) - placementValue(state, { task: t, unitIds: buckets[t] })
+      const gain =
+        placementValue(state, trial) - placementValue(state, { task: t, unitIds: buckets[t] })
       if (gain > bestVal) {
         bestVal = gain
         bestTask = t

@@ -35,7 +35,9 @@ describe('settlement', () => {
     const s = base()
     const { state } = settle(s, { ration: false, worked: [] })
     expect(state.budget).toBe(
-      s.budget + BALANCE.budget.income + (s.resources.power >= BALANCE.budget.bonusAt ? BALANCE.budget.bonus : 0),
+      s.budget +
+        BALANCE.budget.income +
+        (s.resources.power >= BALANCE.budget.bonusAt ? BALANCE.budget.bonus : 0),
     )
   })
 
@@ -43,7 +45,9 @@ describe('settlement', () => {
     const s: GameState = {
       ...base(),
       resources: { ...base().resources, medical: 80 },
-      units: base().units.map((u) => (u.id === 'engineer' ? { ...u, condition: 'injured' as const } : u)),
+      units: base().units.map((u) =>
+        u.id === 'engineer' ? { ...u, condition: 'injured' as const } : u,
+      ),
     }
     const { state } = settle(s, { ration: false, worked: [] })
     expect(state.units.find((u) => u.id === 'engineer')?.condition).toBe('healthy')

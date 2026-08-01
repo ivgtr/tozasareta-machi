@@ -25,46 +25,66 @@ const startGame = () => {
   return utils
 }
 
+const dayNum = (container: HTMLElement) => container.querySelector('.play__day-num')?.textContent
+
 describe('title', () => {
   it('ブリーフィングが表示され、セーブなしでは続きからが出ない', () => {
     render(<App />)
     expect(screen.getByText(/緊急派遣要請/)).toBeTruthy()
-    expect(screen.getByText(/臨時対策責任者/)).toBeTruthy()
     expect(screen.queryByText('続きから')).toBeNull()
-  })
-
-  it('指揮所へ でプレイ画面に遷移する', () => {
-    startGame()
-    expect(screen.getByText('町の状況')).toBeTruthy()
-    expect(screen.getByText('本日の対応')).toBeTruthy()
   })
 })
 
 describe('play', () => {
-  it('4つの任務が名前・効果つきで描画される', () => {
+  it('3ゾーンと4任務・初期4ユニットが描画される', () => {
     startGame()
-    for (const name of ['発電所の修理', '道路復旧', '医療班増員', '炊き出し']) {
-      expect(screen.getByText(name)).toBeTruthy()
-    }
-    expect(screen.getByText('作業員プール')).toBeTruthy()
+    for (const t of ['町の状況', '本日の対応', '本部記録']) expect(screen.getByText(t)).toBeTruthy()
+    for (const t of ['発電所の修理', '道路復旧', '医療班増員', '炊き出し'])
+      expect(screen.getByText(t)).toBeTruthy()
+    for (const u of ['嘉悦', '医師', '技術者', '農夫']) expect(screen.getByText(u)).toBeTruthy()
   })
 
-  it('作戦を開始すると日が進む', () => {
-    const { container } = startGame()
-    const dayNum = () => container.querySelector('.play__day-num')?.textContent
-    expect(dayNum()).toBe('1')
-    fireEvent.click(screen.getByText('作戦を開始する'))
-    expect(dayNum()).toBe('2')
+  it('ユニットを選択→任務クリックで配置され、未配置数が減る', () => {
+    startGame()
+    expect(screen.getByText('4人 未配置')).toBeTruthy()
+    fireEvent.click(screen.getByText('農夫'))
+    fireEvent.click(screen.getByText('道路復旧'))
+    expect(screen.getByText('3人 未配置')).toBeTruthy()
   })
 
-  it('任務をクリックすると作業員が配置され、undo で戻る', () => {
+  it('おまかせ配置で全員が配置される', () => {
+    startGame()
+    fireEvent.click(screen.getByText('おまかせ配置'))
+    expect(screen.queryByText(/人 未配置/)).toBeNull()
+  })
+
+  it('リセットで配置が解除される', () => {
+    startGame()
+    fireEvent.click(screen.getByText('おまかせ配置'))
+    fireEvent.click(screen.getByText('リセット'))
+    expect(screen.getByText('4人 未配置')).toBeTruthy()
+  })
+
+  it('未配置がいると確認が入り、了承で日が進む', () => {
     const { container } = startGame()
-    const slot = container.querySelector<HTMLElement>('[data-slot="restore_road"]')
-    expect(slot).not.toBeNull()
-    fireEvent.click(slot!)
-    expect(slot!.querySelectorAll('.taskslot__token')).toHaveLength(1)
     fireEvent.click(screen.getByText('作戦を開始する'))
-    fireEvent.click(screen.getByText('一手戻る'))
-    expect(container.querySelector('.play__day-num')?.textContent).toBe('1')
+    expect(screen.getByText('4人の人員が未配置です')).toBeTruthy()
+    fireEvent.click(screen.getByText('このまま開始'))
+    expect(dayNum(container)).toBe('2')
+  })
+
+  it('全員配置なら確認なしで日が進む', () => {
+    const { container } = startGame()
+    fireEvent.click(screen.getByText('おまかせ配置'))
+    fireEvent.click(screen.getByText('作戦を開始する'))
+    expect(dayNum(container)).toBe('2')
+  })
+
+  it('ユニットの詳細モーダルで特性の説明が見える', () => {
+    startGame()
+    const card = screen.getByText('農夫').closest('.unit-card')
+    expect(card).not.toBeNull()
+    fireEvent.click(card!.querySelector('.unit-card__info')!)
+    expect(screen.getByText(/負傷しない/)).toBeTruthy()
   })
 })

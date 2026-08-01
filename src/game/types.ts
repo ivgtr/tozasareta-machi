@@ -1,20 +1,10 @@
 export type TaskId =
-  | 'repair_power'
-  | 'restore_road'
-  | 'reinforce_medical'
-  | 'soup_kitchen'
-  | 'ration'
+  'repair_power' | 'restore_road' | 'reinforce_medical' | 'soup_kitchen' | 'ration'
 
 export type Aptitude = 'labor' | 'tech' | 'medical' | 'charm'
 
 export type TraitId =
-  | 'hard_worker'
-  | 'leader'
-  | 'sturdy'
-  | 'popular'
-  | 'frail'
-  | 'troublemaker'
-  | 'clumsy'
+  'hard_worker' | 'leader' | 'sturdy' | 'popular' | 'frail' | 'troublemaker' | 'clumsy'
 
 export type Condition = 'healthy' | 'injured'
 
@@ -29,13 +19,7 @@ export interface Unit {
 }
 
 export type EffectTarget =
-  | 'food'
-  | 'power'
-  | 'medical'
-  | 'morale'
-  | 'budget'
-  | 'stockpile'
-  | `flag:${string}`
+  'food' | 'power' | 'medical' | 'morale' | 'budget' | 'stockpile' | `flag:${string}`
 
 export interface Effect {
   day: number
@@ -118,8 +102,4 @@ export interface EventDef {
 }
 
 export type NumericFlag =
-  | 'daysWithoutMedical'
-  | 'daysFoodCut'
-  | 'casualties'
-  | 'refugeesAccepted'
-  | 'cooperation'
+  'daysWithoutMedical' | 'daysFoodCut' | 'casualties' | 'refugeesAccepted' | 'cooperation'

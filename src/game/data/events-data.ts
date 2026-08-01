@@ -16,7 +16,13 @@ function addUnit(state: GameState, unit: Unit, reason: string, morale: number) {
   return {
     state: { ...state, units: [...state.units, unit] },
     effects: [
-      { day: state.day, source: `event:${unit.id}`, target: 'morale' as const, delta: morale, reason },
+      {
+        day: state.day,
+        source: `event:${unit.id}`,
+        target: 'morale' as const,
+        delta: morale,
+        reason,
+      },
     ],
   }
 }
@@ -48,7 +54,9 @@ export const EVENTS: EventDef[] = [
     name: '発電機の故障',
     when: (c) => c.state.resources.power > 20,
     weight: (c) => 0.4 + (c.state.resources.power > 70 ? 0.2 : 0),
-    apply: (c) => [baseFx(c.state, 'generator_failure', 'power', -25, '発電機が故障し、電力が大きく落ちた')],
+    apply: (c) => [
+      baseFx(c.state, 'generator_failure', 'power', -25, '発電機が故障し、電力が大きく落ちた'),
+    ],
   },
   {
     id: 'refugees',
@@ -105,7 +113,9 @@ export const EVENTS: EventDef[] = [
     name: '配分への反発',
     when: (c) => c.flags.daysFoodCut >= 2,
     weight: (c) => 0.5 + c.flags.daysFoodCut * 0.3,
-    apply: (c) => [baseFx(c.state, 'ration_protest', 'morale', -8, '一部の住民が物資配分に反発した')],
+    apply: (c) => [
+      baseFx(c.state, 'ration_protest', 'morale', -8, '一部の住民が物資配分に反発した'),
+    ],
   },
   {
     id: 'rescue_contact',
@@ -113,7 +123,9 @@ export const EVENTS: EventDef[] = [
     once: true,
     when: (c) => c.day >= 18 && c.day <= 26,
     weight: () => 1,
-    apply: (c) => [baseFx(c.state, 'rescue_contact', 'morale', 15, '救援隊から「あと5日で到着」と連絡が来た')],
+    apply: (c) => [
+      baseFx(c.state, 'rescue_contact', 'morale', 15, '救援隊から「あと5日で到着」と連絡が来た'),
+    ],
   },
   {
     id: 'infection',
@@ -171,7 +183,9 @@ export const EVENTS: EventDef[] = [
     once: true,
     when: (c) => c.day >= 10,
     weight: () => 0.25,
-    apply: (c) => [baseFx(c.state, 'radio_repair', 'morale', 6, '無線機が修復され、外部と連絡が取れた')],
+    apply: (c) => [
+      baseFx(c.state, 'radio_repair', 'morale', 6, '無線機が修復され、外部と連絡が取れた'),
+    ],
   },
   {
     id: 'childbirth',
@@ -189,7 +203,9 @@ export const EVENTS: EventDef[] = [
     name: '高齢者の死去',
     when: (c) => c.state.resources.medical < 40,
     weight: (c) => 0.3 + c.flags.daysWithoutMedical * 0.2,
-    apply: (c) => [baseFx(c.state, 'elder_death', 'morale', -8, '高齢者が亡くなり、町に喪の空気が漂った')],
+    apply: (c) => [
+      baseFx(c.state, 'elder_death', 'morale', -8, '高齢者が亡くなり、町に喪の空気が漂った'),
+    ],
   },
   {
     id: 'trader',

@@ -45,7 +45,8 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
   eff('budget', income, bonus > 0 ? '電力が安定し、商業から予算を得た' : '町の活動から予算を得た')
 
   for (const u of units) {
-    if (u.traits.includes('popular')) addMorale(B.trait.popularMorale, `${u.name}の存在が人心を和ませた`)
+    if (u.traits.includes('popular'))
+      addMorale(B.trait.popularMorale, `${u.name}の存在が人心を和ませた`)
     if (u.traits.includes('troublemaker'))
       addMorale(B.trait.troublemakerMorale, `${u.name}が揉め事を起こした`)
   }
@@ -130,7 +131,11 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
     addMorale(B.morale.lowFood, '食料の残りが少なく、不安が広がった')
   if (medical < B.medical.neglectAt) addMorale(B.morale.lowMedical, '医療体制への不安が広がった')
   if (power < 30) addMorale(B.morale.lowPower, '暗闇への不満が広がった')
-  if (food >= units.length * B.unit.foodPerUnit * B.morale.lowFoodDays && medical >= B.morale.calmMedicalAt && power >= B.morale.calmPowerAt)
+  if (
+    food >= units.length * B.unit.foodPerUnit * B.morale.lowFoodDays &&
+    medical >= B.morale.calmMedicalAt &&
+    power >= B.morale.calmPowerAt
+  )
     addMorale(B.morale.calm, '穏やかな一日だった')
 
   if (morale >= B.morale.coopAt) {

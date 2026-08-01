@@ -28,7 +28,10 @@ describe('events', () => {
     const full: GameState = {
       ...base(),
       day: 6,
-      units: Array.from({ length: BALANCE.unit.cap }, (_, i) => ({ ...base().units[0]!, id: `u${i}` })),
+      units: Array.from({ length: BALANCE.unit.cap }, (_, i) => ({
+        ...base().units[0]!,
+        id: `u${i}`,
+      })),
     }
     expect(refugees.weight({ state: full, flags: full.flags, day: 6 })).toBe(0)
   })
@@ -43,7 +46,11 @@ describe('events', () => {
   })
 
   it('once イベントは発火済みになると候補から外れる', () => {
-    const s: GameState = { ...base(), day: 20, flags: { ...base().flags, fired: ['rescue_contact'] } }
+    const s: GameState = {
+      ...base(),
+      day: 20,
+      flags: { ...base().flags, fired: ['rescue_contact'] },
+    }
     // 何回回しても rescue_contact の効果は出ない
     for (let i = 0; i < 20; i++) {
       const r = runEvents({ ...s, rng: { seed: 500 + i, counter: 0 } })
