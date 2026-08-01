@@ -4,8 +4,9 @@
 }
 
 .pixel-art--sm {
-  width: 48px;
-  height: 48px;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
 }
 
 .pixel-art--md {

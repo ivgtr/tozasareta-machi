@@ -229,6 +229,7 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
                   <UnitCard
                     key={u.id}
                     unit={u}
+                    compact
                     onDetails={() => setDetailsUnitId(u.id)}
                     onClick={() => removeUnit(u.id)}
                     onPointerDown={startDrag(`unit:${u.id}`)}
