@@ -10,8 +10,15 @@ const idle: DayPlan = { placements: [], ration: false }
 function play(seed: number, planFor: (s: GameState) => DayPlan): GameState {
   let s = createInitialState(seed)
   let guard = 0
-  while (s.phase === 'planning' && guard++ < 40) {
-    s = step(s, { type: 'commitDay', plan: planFor(s) }).state
+  while (s.phase !== 'ended' && guard++ < 80) {
+    if (s.phase === 'planning') {
+      s = step(s, { type: 'commitDay', plan: planFor(s) }).state
+    } else if (s.phase === 'choice') {
+      const optionId = s.pendingChoice?.optionIds[0] ?? ''
+      s = step(s, { type: 'resolveChoice', optionId }).state
+    } else {
+      break
+    }
   }
   return s
 }

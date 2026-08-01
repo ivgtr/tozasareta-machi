@@ -14,6 +14,7 @@ import { ReportFeed } from '../components/ReportFeed'
 import { EndingOverlay } from '../components/EndingOverlay'
 import { PlaybackOverlay } from '../components/PlaybackOverlay'
 import { ArrivalOverlay } from '../components/ArrivalOverlay'
+import { ChoiceOverlay } from '../components/ChoiceOverlay'
 import { PixelPanel } from '../components/PixelPanel'
 import { PixelButton } from '../components/PixelButton'
 import '../styles/play.css'
@@ -80,6 +81,12 @@ export function PlayScreen({ onExit }: { onExit: () => void }) {
     dispatch({ type: 'commitDay', plan })
     start(state, result.effects)
   }
+  const resolveChoice = (optionId: string) => {
+    if (busy) return
+    const result = step(state, { type: 'resolveChoice', optionId })
+    dispatch({ type: 'resolveChoice', optionId })
+    start(state, result.effects)
+  }
   const undo = () => dispatch({ type: 'undo' })
   const restart = () => {
     if (window.confirm('新しいゲームを始めますか？現在の進行は失われます。')) {
@@ -113,6 +120,9 @@ export function PlayScreen({ onExit }: { onExit: () => void }) {
         </PixelButton>
       ) : null}
       {overlay}
+      {!busy && state.phase === 'choice' ? (
+        <ChoiceOverlay state={state} onChoose={resolveChoice} />
+      ) : null}
       {busy ? null : (
         <EndingOverlay
           state={state}

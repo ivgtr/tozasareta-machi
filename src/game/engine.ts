@@ -104,8 +104,9 @@ function processQueue(input: GameState): StepResult {
 
     if ((event.kind ?? 'auto') === 'auto') {
       const res = applyAutoEvent(s, event)
+      const applied = applyEffects(res.state, res.effects)
       produced.push(...res.effects)
-      s = appendReport({ ...res.state, pendingEvents: rest }, res.effects)
+      s = appendReport({ ...applied, pendingEvents: rest }, res.effects)
       continue
     }
 
@@ -159,8 +160,9 @@ function resolveChoiceStep(prev: GameState, optionId: string): StepResult {
   if (!option) return { state: prev, effects: [] }
 
   const res = applyChoiceOption(prev, event, option)
+  const applied = applyEffects(res.state, res.effects)
   const produced = [...res.effects]
-  const s = appendReport({ ...res.state, pendingChoice: undefined }, res.effects)
+  const s = appendReport({ ...applied, pendingChoice: undefined }, res.effects)
 
   const result = processQueue(s)
   return { state: result.state, effects: [...produced, ...result.effects] }
@@ -169,5 +171,6 @@ function resolveChoiceStep(prev: GameState, optionId: string): StepResult {
 export function step(prev: GameState, action: Action): StepResult {
   if (prev.phase === 'ended') return { state: prev, effects: [] }
   if (action.type === 'resolveChoice') return resolveChoiceStep(prev, action.optionId)
+  if (prev.phase !== 'planning') return { state: prev, effects: [] }
   return commitDayStep(prev, action.plan)
 }

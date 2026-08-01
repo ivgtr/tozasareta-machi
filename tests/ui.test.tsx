@@ -101,12 +101,17 @@ describe('play', () => {
   })
 
   it('備蓄不足で炊き出しが支払不能と表示され、配置が拒否される', () => {
-    startGame()
+    const { container } = startGame()
+    const dismissChoice = () => {
+      const opt = container.querySelector<HTMLElement>('.choice-overlay__option')
+      if (opt) fireEvent.click(opt)
+    }
     for (let d = 0; d < 3; d++) {
       fireEvent.click(screen.getByText('岩倉源造'))
       fireEvent.click(screen.getByText('炊き出し'))
       fireEvent.click(screen.getByText('作戦を開始する'))
       fireEvent.click(screen.getByText('このまま開始'))
+      dismissChoice()
     }
     expect(screen.getByText(/（不足）/)).toBeTruthy()
     fireEvent.click(screen.getByText('岩倉源造'))

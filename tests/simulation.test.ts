@@ -80,9 +80,26 @@ function assertInvariants(s: GameState) {
   expect(new Set(s.flags.fired).size).toBe(s.flags.fired.length)
 }
 
-type Strategy = (state: GameState, rng: RngState) => { plan: DayPlan; rng: RngState }
+type PlanStrategy = (state: GameState, rng: RngState) => { plan: DayPlan; rng: RngState }
+type ChoiceStrategy = (state: GameState, rng: RngState) => { optionId: string; rng: RngState }
 
-function simulate(games: number, makePlan: Strategy): { survived: number; endings: Record<Ending, number> } {
+const randomChoice: ChoiceStrategy = (s, rng) => {
+  const ids = s.pendingChoice?.optionIds ?? []
+  if (ids.length === 0) return { optionId: '', rng }
+  const [v, r1] = nextRandom(rng)
+  return { optionId: ids[Math.floor(v * ids.length)] ?? '', rng: r1 }
+}
+
+const skilledChoice: ChoiceStrategy = (s, rng) => {
+  const ids = s.pendingChoice?.optionIds ?? []
+  return { optionId: ids[0] ?? '', rng }
+}
+
+function simulate(
+  games: number,
+  makePlan: PlanStrategy,
+  chooseOption: ChoiceStrategy,
+): { survived: number; endings: Record<Ending, number> } {
   const endings: Record<Ending, number> = {
     full_recovery: 0,
     managed_sacrifice: 0,
@@ -93,10 +110,18 @@ function simulate(games: number, makePlan: Strategy): { survived: number; ending
     let s = createInitialState(1000 + g)
     let rng: RngState = { seed: 9000 + g, counter: 0 }
     let guard = 0
-    while (s.phase === 'planning' && guard++ < 45) {
-      const { plan, rng: next } = makePlan(s, rng)
-      rng = next
-      s = step(s, { type: 'commitDay', plan }).state
+    while (s.phase !== 'ended' && guard++ < 100) {
+      if (s.phase === 'planning') {
+        const { plan, rng: next } = makePlan(s, rng)
+        rng = next
+        s = step(s, { type: 'commitDay', plan }).state
+      } else if (s.phase === 'choice') {
+        const { optionId, rng: next } = chooseOption(s, rng)
+        rng = next
+        s = step(s, { type: 'resolveChoice', optionId }).state
+      } else {
+        break
+      }
       assertInvariants(s)
     }
     expect(s.phase).toBe('ended')
@@ -106,12 +131,12 @@ function simulate(games: number, makePlan: Strategy): { survived: number; ending
   return { survived: games - endings.collapse, endings }
 }
 
-const skilledPlan: Strategy = (s, rng) => ({ plan: autoAssign(s), rng })
+const skilledPlan: PlanStrategy = (s, rng) => ({ plan: autoAssign(s), rng })
 
 describe('simulation', () => {
   it('無作為プレイで不変条件が保たれ、必ず終了する', () => {
     const GAMES = 40
-    const { survived, endings } = simulate(GAMES, randomPlan)
+    const { survived, endings } = simulate(GAMES, randomPlan, randomChoice)
     console.log(
       `[sim:random] ${GAMES} games / survived ${survived} (${Math.round((survived / GAMES) * 100)}%)`,
       endings,
@@ -120,7 +145,7 @@ describe('simulation', () => {
 
   it('おまかせ配置（熟練）で不変条件が保たれ、必ず終了する', () => {
     const GAMES = 60
-    const { survived, endings } = simulate(GAMES, skilledPlan)
+    const { survived, endings } = simulate(GAMES, skilledPlan, skilledChoice)
     console.log(
       `[sim:skilled] ${GAMES} games / survived ${survived} (${Math.round((survived / GAMES) * 100)}%)`,
       endings,

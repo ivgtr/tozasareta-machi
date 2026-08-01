@@ -66,6 +66,10 @@ export const ART_SPECS: ArtSpec[] = [
   spec('event', 'clear_weather', '晴', PALETTE.cyan, '天候の回復'),
   spec('event', 'landslide_warning', '山', PALETTE.amber, '土砂災害警戒'),
 
+  spec('event', 'trade_offer', '商', PALETTE.amber, '交易の申し出'),
+  spec('event', 'power_crisis', '電', PALETTE.red, '電力の逼迫'),
+  spec('event', 'stockpile_crisis', '備', PALETTE.gold, '備蓄の扱い'),
+
   spec('portrait', 'mayor', '長', PALETTE.gold, '真壁史子'),
   spec('portrait', 'medic', '医', PALETTE.green, '榊直人'),
   spec('portrait', 'engineer', '工', PALETTE.cyan, '森レナ'),

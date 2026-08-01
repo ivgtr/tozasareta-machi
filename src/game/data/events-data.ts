@@ -288,4 +288,92 @@ export const EVENTS: EventDef[] = [
     weight: () => 0.3,
     apply: (c) => [baseFx(c.state, 'landslide_warning', 'morale', -4, '土砂災害警戒が発令された')],
   },
+  {
+    id: 'trade_offer',
+    name: '交易の申し出',
+    kind: 'choice',
+    when: (c) => c.day >= 6,
+    weight: () => 0.4,
+    choices: [
+      {
+        id: 'buy_food',
+        label: '食料を買う',
+        desc: '予算15 → 食料+20',
+        when: (c) => c.state.budget >= 15,
+        apply: (c) => [
+          baseFx(c.state, 'trade_offer', 'budget', -15, '食料の代金を払った'),
+          baseFx(c.state, 'trade_offer', 'food', 20, '食料を買い入れた'),
+        ],
+      },
+      {
+        id: 'buy_medical',
+        label: '医薬品を買う',
+        desc: '予算15 → 医療+20',
+        when: (c) => c.state.budget >= 15,
+        apply: (c) => [
+          baseFx(c.state, 'trade_offer', 'budget', -15, '医薬品の代金を払った'),
+          baseFx(c.state, 'trade_offer', 'medical', 20, '医薬品を買い入れた'),
+        ],
+      },
+      {
+        id: 'sell_stockpile',
+        label: '備蓄を売る',
+        desc: '備蓄10 → 予算+20',
+        when: (c) => c.state.stockpile >= 10,
+        apply: (c) => [
+          baseFx(c.state, 'trade_offer', 'stockpile', -10, '備蓄を売却した'),
+          baseFx(c.state, 'trade_offer', 'budget', 20, '備蓄を売って予算を得た'),
+        ],
+      },
+      { id: 'decline', label: '断る', apply: () => [] },
+    ],
+  },
+  {
+    id: 'power_crisis',
+    name: '電力の逼迫',
+    kind: 'choice',
+    when: (c) => c.state.resources.power < 40,
+    weight: () => 0.4,
+    choices: [
+      {
+        id: 'divert_medical',
+        label: '医療の電力を回す',
+        desc: '医療-15 / 電力+20',
+        apply: (c) => [
+          baseFx(c.state, 'power_crisis', 'medical', -15, '医療の電力を発電に回した'),
+          baseFx(c.state, 'power_crisis', 'power', 20, '電力を確保した'),
+        ],
+      },
+      {
+        id: 'endure_dark',
+        label: '暗闇に耐える',
+        desc: '士気-8',
+        apply: (c) => [baseFx(c.state, 'power_crisis', 'morale', -8, '暗闇に不満が募った')],
+      },
+    ],
+  },
+  {
+    id: 'stockpile_crisis',
+    name: '備蓄の扱い',
+    kind: 'choice',
+    when: (c) => c.day >= 8 && c.state.stockpile >= 15,
+    weight: () => 0.35,
+    choices: [
+      {
+        id: 'distribute',
+        label: '備蓄を配る',
+        desc: '備蓄-15 / 士気+12',
+        apply: (c) => [
+          baseFx(c.state, 'stockpile_crisis', 'stockpile', -15, '備蓄を住民に配った'),
+          baseFx(c.state, 'stockpile_crisis', 'morale', 12, '備蓄の配給で士気が上がった'),
+        ],
+      },
+      {
+        id: 'reserve',
+        label: '温存する',
+        desc: '士気-5',
+        apply: (c) => [baseFx(c.state, 'stockpile_crisis', 'morale', -5, '備蓄を温存し、不満が出た')],
+      },
+    ],
+  },
 ]
