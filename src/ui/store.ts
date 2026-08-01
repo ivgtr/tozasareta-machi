@@ -10,9 +10,7 @@ export interface StoreState {
 }
 
 export type StoreAction =
-  | { type: 'newGame'; seed: number }
-  | { type: 'commitDay'; plan: DayPlan }
-  | { type: 'undo' }
+  { type: 'newGame'; seed: number } | { type: 'commitDay'; plan: DayPlan } | { type: 'undo' }
 
 export const HISTORY_LIMIT = 30
 const SAVE_KEY = 'tozasareta-machi:save'

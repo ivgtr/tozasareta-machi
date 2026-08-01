@@ -9,10 +9,8 @@ import {
 import { createInitialState } from '../src/game/state'
 import type { DayPlan } from '../src/game/types'
 
-const fresh = (): StoreState => storeReducer(
-  { state: createInitialState(1), history: [] },
-  { type: 'newGame', seed: 1 },
-)
+const fresh = (): StoreState =>
+  storeReducer({ state: createInitialState(1), history: [] }, { type: 'newGame', seed: 1 })
 
 const roadPlan: DayPlan = { assignments: [{ task: 'restore_road', workers: 2 }] }
 

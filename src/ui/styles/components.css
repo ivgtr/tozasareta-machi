@@ -1,0 +1,127 @@
+.pixel-panel {
+  background: var(--night-700);
+  border: 3px solid var(--frame-hi);
+  box-shadow:
+    inset 0 0 0 3px var(--night-800),
+    6px 6px 0 rgba(0, 0, 0, 0.45);
+  padding: 12px;
+}
+
+.pixel-panel__title {
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 2px dashed var(--frame-lo);
+  font-size: var(--fs-h2);
+  letter-spacing: 0.12em;
+  color: var(--gold);
+}
+
+.pixel-button {
+  padding: 10px 18px;
+  background: var(--night-600);
+  color: var(--ink);
+  border: 3px solid var(--frame-hi);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.45);
+  font-size: var(--fs-body);
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.pixel-button:hover:not(:disabled) {
+  background: var(--frame-hi);
+  color: var(--night-900);
+}
+
+.pixel-button:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
+}
+
+.pixel-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pixel-button--primary {
+  background: var(--amber);
+  color: var(--night-900);
+  font-weight: 700;
+}
+
+.pixel-button--primary:hover:not(:disabled) {
+  background: var(--gold);
+  color: var(--night-900);
+}
+
+.gauge {
+  margin-bottom: 12px;
+}
+
+.gauge__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.gauge__label {
+  letter-spacing: 0.12em;
+}
+
+.gauge__num {
+  font-family: var(--font-pixel);
+  font-size: var(--fs-num);
+  color: var(--ink);
+}
+
+.gauge__cells {
+  display: flex;
+  gap: 3px;
+  margin: 4px 0;
+}
+
+.gauge__cell {
+  flex: 1;
+  height: 14px;
+  background: var(--night-800);
+  border: 2px solid var(--frame-lo);
+}
+
+.gauge__cell--on {
+  background: var(--gauge-color, var(--green));
+  border-color: var(--frame-hi);
+}
+
+.gauge--low .gauge__cell--on {
+  animation: blink 1s steps(1) infinite;
+}
+
+.gauge__word {
+  font-size: var(--fs-small);
+  color: var(--ink-dim);
+  letter-spacing: 0.06em;
+}
+
+.type-caret {
+  animation: blink 0.8s steps(1) infinite;
+  color: var(--cyan);
+}
+
+.worker-token {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  background: var(--night-600);
+  color: var(--amber);
+  border: 2px solid var(--frame-hi);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45);
+  font-size: 18px;
+  user-select: none;
+}
+
+.worker-token--dim {
+  opacity: 0.3;
+  border-color: var(--frame-lo);
+  color: var(--ink-dim);
+}
