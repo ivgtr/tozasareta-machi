@@ -26,19 +26,33 @@ export function StatusWall({ state }: StatusWallProps) {
     <div className="statuswall">
       <Gauge
         label="食料"
+        icon="food"
         value={r.food}
         max={200}
         color={PALETTE.amber}
         stateWord={`残り約 ${foodDays} 日（1日 −${consume}）`}
       />
-      <Gauge label="電力" value={r.power} color={PALETTE.cyan} stateWord={capacityWord(r.power)} />
+      <Gauge
+        label="電力"
+        icon="power"
+        value={r.power}
+        color={PALETTE.cyan}
+        stateWord={capacityWord(r.power)}
+      />
       <Gauge
         label="医療"
+        icon="medical"
         value={r.medical}
         color={PALETTE.green}
         stateWord={capacityWord(r.medical)}
       />
-      <Gauge label="士気" value={r.morale} color={PALETTE.gold} stateWord={moraleLabel(r.morale)} />
+      <Gauge
+        label="士気"
+        icon="morale"
+        value={r.morale}
+        color={PALETTE.gold}
+        stateWord={moraleLabel(r.morale)}
+      />
 
       <dl className="statuswall__stocks">
         <div>

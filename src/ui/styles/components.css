@@ -67,11 +67,14 @@
 .gauge__head {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
 }
 
 .gauge__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   letter-spacing: 0.12em;
 }
 

@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { PixelArt } from '../art/PixelArt'
 
 interface GaugeProps {
   label: string
@@ -7,9 +8,10 @@ interface GaugeProps {
   color?: string
   segments?: number
   stateWord?: string
+  icon?: string
 }
 
-export function Gauge({ label, value, max = 100, color, segments = 10, stateWord }: GaugeProps) {
+export function Gauge({ label, value, max = 100, color, segments = 10, stateWord, icon }: GaugeProps) {
   const ratio = Math.max(0, Math.min(1, value / max))
   const lit = Math.round(ratio * segments)
   const low = ratio < 0.25
@@ -19,7 +21,10 @@ export function Gauge({ label, value, max = 100, color, segments = 10, stateWord
       style={{ '--gauge-color': color } as CSSProperties}
     >
       <div className="gauge__head">
-        <span className="gauge__label">{label}</span>
+        <span className="gauge__label">
+          {icon ? <PixelArt kind="icon" id={icon} size="sm" /> : null}
+          {label}
+        </span>
         <span className="gauge__num">{Math.round(value)}</span>
       </div>
       <div
