@@ -1,10 +1,28 @@
 import { describe, expect, it } from 'vitest'
 import {
   RANDOM_PORTRAIT_IDS,
+  UNIQUE_UNITS,
   makeRandomUnit,
   selectRandomPortrait,
 } from '../src/game/data/units'
 import type { RngState } from '../src/game/types'
+import { artSpec } from '../src/ui/art/manifest'
+
+describe('unique unit portraits', () => {
+  it('30体のID・名前・肖像IDが重複しない', () => {
+    expect(UNIQUE_UNITS).toHaveLength(30)
+    expect(new Set(UNIQUE_UNITS.map((unit) => unit.id)).size).toBe(30)
+    expect(new Set(UNIQUE_UNITS.map((unit) => unit.name)).size).toBe(30)
+    expect(new Set(UNIQUE_UNITS.map((unit) => unit.portrait)).size).toBe(30)
+  })
+
+  it('全ユニークの肖像スロットとフレーバーが定義されている', () => {
+    for (const unit of UNIQUE_UNITS) {
+      expect(artSpec('portrait', unit.portrait)?.label).toBe(unit.name)
+      expect(unit.flavor).toBeTruthy()
+    }
+  })
+})
 
 describe('selectRandomPortrait', () => {
   it('同一入力で同一IDを返す（決定性）', () => {
