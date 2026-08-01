@@ -98,7 +98,7 @@ export const ART_SPECS: ArtSpec[] = [
   spec('portrait', 'edomaru', '錬', PALETTE.cyan, 'エド丸'),
   spec('portrait', 'hoshinousagi', '織', PALETTE.gold, '星野うさぎ'),
   spec('portrait', 'manzaburo', '船', PALETTE.amber, '万三郎'),
-  spec('portrait', 'nantei', '灯', PALETTE.green, '南丁'),
+  spec('portrait', 'nantei', '灯', PALETTE.green, '夜鳴ケイ'),
   spec('portrait', 'kibunza', '商', PALETTE.gold, '紀文左'),
 
   spec('ending', 'full_recovery', '復', PALETTE.green, '完全復旧'),
