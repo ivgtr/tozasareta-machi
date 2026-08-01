@@ -36,9 +36,12 @@ describe('title', () => {
 })
 
 describe('play', () => {
-  it('3ゾーンと4任務・初期4ユニットが描画される', () => {
-    startGame()
-    for (const t of ['町の状況', '本日の対応', '本部記録']) expect(screen.getByText(t)).toBeTruthy()
+  it('3ゾーンと町の様子・4任務・初期4ユニットが描画される', () => {
+    const { container } = startGame()
+    for (const t of ['町の状況', '本日の対応', '本部記録', '町の様子'])
+      expect(screen.getByText(t)).toBeTruthy()
+    expect(container.querySelector('.play__town-view .skyline')).not.toBeNull()
+    expect(container.querySelector('.play__footer')).toBeNull()
     for (const t of ['発電所の修理', '道路復旧', '医療班増員', '炊き出し'])
       expect(screen.getByText(t)).toBeTruthy()
     for (const u of ['嘉悦', '医師', '技術者', '農夫']) expect(screen.getByText(u)).toBeTruthy()

@@ -23,12 +23,14 @@ function DayBoard({
   busy,
   report,
   animateReport,
+  danger,
   onCommit,
 }: {
   state: GameState
   busy: boolean
   report: GameState['report']
   animateReport: boolean
+  danger: boolean
   onCommit: (plan: DayPlan) => void
 }) {
   return (
@@ -39,9 +41,14 @@ function DayBoard({
       <PixelPanel title="本日の対応" className="play__board">
         <DecisionBoard state={state} busy={busy} onCommit={onCommit} />
       </PixelPanel>
-      <PixelPanel title="本部記録" className="play__log">
-        <ReportFeed report={report} animateLast={animateReport} />
-      </PixelPanel>
+      <div className="play__right">
+        <PixelPanel title="本部記録" className="play__log">
+          <ReportFeed report={report} animateLast={animateReport} />
+        </PixelPanel>
+        <PixelPanel title="町の様子" className="play__town-view">
+          <Skyline power={state.resources.power} morale={state.resources.morale} danger={danger} />
+        </PixelPanel>
+      </div>
     </main>
   )
 }
@@ -97,11 +104,9 @@ export function PlayScreen({ onExit }: { onExit: () => void }) {
         busy={busy}
         report={reportEffects}
         animateReport={busy}
+        danger={danger}
         onCommit={commit}
       />
-      <footer className="play__footer">
-        <Skyline power={view.resources.power} morale={view.resources.morale} danger={danger} />
-      </footer>
       {busy && !waiting ? (
         <PixelButton className="play__skip" onClick={skip}>
           スキップ ▶▶
