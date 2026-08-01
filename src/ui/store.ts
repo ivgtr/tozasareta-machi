@@ -15,6 +15,10 @@ export type StoreAction =
 export const HISTORY_LIMIT = 30
 const SAVE_KEY = 'tozasareta-machi:save'
 
+export function randomSeed(): number {
+  return Math.floor(Math.random() * 0x7fffffff)
+}
+
 export function storeReducer(store: StoreState, action: StoreAction): StoreState {
   switch (action.type) {
     case 'newGame':

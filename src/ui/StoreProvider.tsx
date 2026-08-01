@@ -1,12 +1,8 @@
 import { useEffect, useReducer, type ReactNode } from 'react'
 import type { StoreState } from './store'
-import { loadStore, saveStore, storeReducer } from './store'
+import { loadStore, randomSeed, saveStore, storeReducer } from './store'
 import { StoreContext } from './store-context'
 import { createInitialState } from '../game/state'
-
-function randomSeed(): number {
-  return Math.floor(Math.random() * 0x7fffffff)
-}
 
 function initStore(): StoreState {
   return loadStore() ?? { state: createInitialState(randomSeed()), history: [] }

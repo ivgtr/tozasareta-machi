@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/game/state'
 import { step } from '../src/game/engine'
+import { preview } from '../src/game/actions'
 import { BALANCE } from '../src/game/data/balance'
 import type { DayPlan, GameState } from '../src/game/types'
 
@@ -48,5 +49,23 @@ describe('engine', () => {
     const after = step(s, { type: 'commitDay', plan: steadyPlan })
     expect(after.state).toBe(s)
     expect(after.effects).toHaveLength(0)
+  })
+
+  it('preview は実際の任務フェーズの効果と一致する', () => {
+    const s0 = createInitialState(5)
+    const plan: DayPlan = {
+      assignments: [
+        { task: 'repair_power', workers: 1, characterId: 'engineer' },
+        { task: 'restore_road', workers: 2 },
+        { task: 'ration', workers: 0 },
+      ],
+    }
+    const pv = preview(s0, plan).filter((e) => e.source !== 'task:ration')
+    const applied = step(s0, { type: 'commitDay', plan }).effects.filter(
+      (e) => e.source.startsWith('task:') && e.source !== 'task:ration',
+    )
+    const key = (e: { source: string; target: string; delta: number }) =>
+      `${e.source}|${e.target}|${e.delta}`
+    expect(pv.map(key).sort()).toEqual(applied.map(key).sort())
   })
 })

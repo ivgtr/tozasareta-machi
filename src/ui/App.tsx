@@ -1,5 +1,10 @@
-import { PreviewScreen } from './screens/PreviewScreen'
+import { StoreProvider } from './StoreProvider'
+import { PlayScreen } from './screens/PlayScreen'
 
 export function App() {
-  return <PreviewScreen />
+  return (
+    <StoreProvider>
+      <PlayScreen />
+    </StoreProvider>
+  )
 }
