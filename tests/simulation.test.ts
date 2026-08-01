@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/game/state'
 import { step } from '../src/game/engine'
-import { PHYSICAL_TASKS, taskCost } from '../src/game/actions'
+import { PHYSICAL_TASKS, autoAssign, taskCost } from '../src/game/actions'
 import { nextRandom } from '../src/game/rng'
 import type { DayPlan, Ending, GameState, RngState, TaskId } from '../src/game/types'
 
@@ -80,32 +80,49 @@ function assertInvariants(s: GameState) {
   expect(new Set(s.flags.fired).size).toBe(s.flags.fired.length)
 }
 
+type Strategy = (state: GameState, rng: RngState) => { plan: DayPlan; rng: RngState }
+
+function simulate(games: number, makePlan: Strategy): { survived: number; endings: Record<Ending, number> } {
+  const endings: Record<Ending, number> = {
+    full_recovery: 0,
+    managed_sacrifice: 0,
+    self_governance: 0,
+    collapse: 0,
+  }
+  for (let g = 0; g < games; g++) {
+    let s = createInitialState(1000 + g)
+    let rng: RngState = { seed: 9000 + g, counter: 0 }
+    let guard = 0
+    while (s.phase === 'planning' && guard++ < 45) {
+      const { plan, rng: next } = makePlan(s, rng)
+      rng = next
+      s = step(s, { type: 'commitDay', plan }).state
+      assertInvariants(s)
+    }
+    expect(s.phase).toBe('ended')
+    expect(s.ending).toBeDefined()
+    if (s.ending) endings[s.ending] += 1
+  }
+  return { survived: games - endings.collapse, endings }
+}
+
+const skilledPlan: Strategy = (s, rng) => ({ plan: autoAssign(s), rng })
+
 describe('simulation', () => {
   it('無作為プレイで不変条件が保たれ、必ず終了する', () => {
     const GAMES = 40
-    const endings: Record<Ending, number> = {
-      full_recovery: 0,
-      managed_sacrifice: 0,
-      self_governance: 0,
-      collapse: 0,
-    }
-    for (let g = 0; g < GAMES; g++) {
-      let s = createInitialState(1000 + g)
-      let rng: RngState = { seed: 9000 + g, counter: 0 }
-      let guard = 0
-      while (s.phase === 'planning' && guard++ < 45) {
-        const { plan, rng: next } = randomPlan(s, rng)
-        rng = next
-        s = step(s, { type: 'commitDay', plan }).state
-        assertInvariants(s)
-      }
-      expect(s.phase).toBe('ended')
-      expect(s.ending).toBeDefined()
-      if (s.ending) endings[s.ending] += 1
-    }
-    const survived = GAMES - endings.collapse
+    const { survived, endings } = simulate(GAMES, randomPlan)
     console.log(
-      `[simulation] ${GAMES} games / survived ${survived} (${Math.round((survived / GAMES) * 100)}%)`,
+      `[sim:random] ${GAMES} games / survived ${survived} (${Math.round((survived / GAMES) * 100)}%)`,
+      endings,
+    )
+  })
+
+  it('おまかせ配置（熟練）で不変条件が保たれ、必ず終了する', () => {
+    const GAMES = 60
+    const { survived, endings } = simulate(GAMES, skilledPlan)
+    console.log(
+      `[sim:skilled] ${GAMES} games / survived ${survived} (${Math.round((survived / GAMES) * 100)}%)`,
       endings,
     )
   })
