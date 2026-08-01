@@ -1153,6 +1153,13 @@
   letter-spacing: 0.12em;
 }
 
+.choice-overlay__event-desc {
+  margin: 0;
+  font-size: var(--fs-small);
+  line-height: 1.7;
+  color: var(--ink-dim);
+}
+
 .choice-overlay__options {
   display: flex;
   flex-direction: column;

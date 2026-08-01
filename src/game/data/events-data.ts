@@ -435,6 +435,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'expedition',
     name: '探索の機会',
+    desc: '誰かを選んで探索に出す。負傷や死亡の危険がある。',
     kind: 'choice',
     when: (c) => c.day >= BALANCE.expedition.dayFrom && c.state.units.length > 0,
     weight: () => BALANCE.expedition.weight,
@@ -443,7 +444,7 @@ export const EVENTS: EventDef[] = [
       return {
         id: `send_${u.id}`,
         label: `${u.name}を行かせる`,
-        desc: `最大適性 ${aptMax}・負傷や死亡の危険あり`,
+        desc: `最大適性 ${aptMax}`,
         mutate: (state) => resolveExpedition(state, u.id),
       }
     },

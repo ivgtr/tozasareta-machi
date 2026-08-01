@@ -123,6 +123,7 @@ export interface ChoiceOption {
 export interface EventDef {
   id: string
   name: string
+  desc?: string
   kind?: 'auto' | 'choice'
   once?: boolean
   when: (ctx: EvalContext) => boolean

@@ -25,6 +25,7 @@ export function ChoiceOverlay({ state, onChoose }: ChoiceOverlayProps) {
           <PixelArt kind="event" id={event.id} />
         </div>
         <h3 className="choice-overlay__name">{event.name}</h3>
+        {event.desc ? <p className="choice-overlay__event-desc">{event.desc}</p> : null}
         {unitOptions.length > 0 ? (
           <div className="choice-overlay__unit-grid">
             {unitOptions.map((o) => (
