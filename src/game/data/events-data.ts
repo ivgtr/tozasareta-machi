@@ -75,6 +75,7 @@ export const EVENTS: EventDef[] = [
       const { unit, rng: r2 } = makeRandomUnit(
         rng,
         state.units.map((u) => u.name),
+        state.units.map((u) => u.portrait),
       )
       return {
         state: {

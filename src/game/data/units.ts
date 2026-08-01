@@ -395,6 +395,32 @@ const UNIQUE_UNIT_DEFS: Unit[] = [
 
 export const UNIQUE_UNITS: Unit[] = UNIQUE_UNIT_DEFS.map((u) => ({ ...u, unique: true }))
 
+export const RANDOM_PORTRAIT_IDS = [
+  'recruit_workwear_a',
+  'recruit_workwear_b',
+  'recruit_utility_a',
+  'recruit_utility_b',
+  'recruit_care_a',
+  'recruit_care_b',
+  'recruit_townsfolk_a',
+  'recruit_townsfolk_b',
+] as const
+
+export function selectRandomPortrait(
+  seed: number,
+  unitId: string,
+  usedPortraits: readonly string[],
+): string {
+  const available = RANDOM_PORTRAIT_IDS.filter((id) => !usedPortraits.includes(id))
+  const pool = available.length > 0 ? available : [...RANDOM_PORTRAIT_IDS]
+  let h = seed
+  for (let i = 0; i < unitId.length; i++) {
+    h = Math.imul(h ^ unitId.charCodeAt(i), 0x9e3779b9)
+  }
+  h = (h ^ (h >>> 16)) >>> 0
+  return pool[h % pool.length]!
+}
+
 const ALIAS_BY_APT: Record<Aptitude, string> = {
   labor: '力自慢',
   tech: '発明家',
@@ -406,7 +432,11 @@ export function cloneUnit(unit: Unit, id = unit.id): Unit {
   return { ...unit, id, apt: { ...unit.apt }, traits: [...unit.traits] }
 }
 
-export function makeRandomUnit(rng: RngState, taken: string[]): { unit: Unit; rng: RngState } {
+export function makeRandomUnit(
+  rng: RngState,
+  taken: string[],
+  usedPortraits: readonly string[] = [],
+): { unit: Unit; rng: RngState } {
   const { name, rng: r0 } = makeRandomName(rng, taken)
   let r = r0
 
@@ -440,7 +470,7 @@ export function makeRandomUnit(rng: RngState, taken: string[]): { unit: Unit; rn
     id,
     name,
     alias: ALIAS_BY_APT[peak],
-    portrait: id,
+    portrait: selectRandomPortrait(rng.seed, id, usedPortraits),
     apt,
     traits,
     condition: 'healthy',

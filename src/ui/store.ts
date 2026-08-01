@@ -3,6 +3,7 @@ import type { DayPlan, EffectTarget, GameState } from '../game/types'
 import { createInitialState } from '../game/state'
 import { step } from '../game/engine'
 import { SAVE_VERSION } from '../game/data/balance'
+import { RANDOM_PORTRAIT_IDS, selectRandomPortrait } from '../game/data/units'
 
 export interface StoreState {
   state: GameState
@@ -116,6 +117,34 @@ const SaveDataSchema = z.object({
 
 const migrations: Record<number, (raw: unknown) => unknown> = {}
 
+const PORTRAIT_POOL = new Set<string>(RANDOM_PORTRAIT_IDS)
+
+function normalizePortraits(store: StoreState): StoreState {
+  const assigned = new Map<string, string>()
+
+  const normalizeState = (state: GameState): GameState => {
+    const used: string[] = []
+    const units = state.units.map((unit) => {
+      if (PORTRAIT_POOL.has(unit.portrait)) {
+        used.push(unit.portrait)
+        return unit
+      }
+      if (!unit.id.startsWith('recruit_')) return unit
+      let portrait = assigned.get(unit.id)
+      if (!portrait) {
+        portrait = selectRandomPortrait(state.rng.seed, unit.id, used)
+        assigned.set(unit.id, portrait)
+      }
+      used.push(portrait)
+      return { ...unit, portrait }
+    })
+    return { ...state, units }
+  }
+
+  const history = store.history.map(normalizeState)
+  return { state: normalizeState(store.state), history }
+}
+
 export function serializeStore(store: StoreState): string {
   const data: z.infer<typeof SaveDataSchema> = { version: SAVE_VERSION, store }
   return JSON.stringify(data)
@@ -139,7 +168,7 @@ export function parseStore(json: string): StoreState | null {
     }
     const parsed = SaveDataSchema.safeParse(raw)
     if (!parsed.success || parsed.data.version !== SAVE_VERSION) return null
-    return parsed.data.store
+    return normalizePortraits(parsed.data.store)
   } catch {
     return null
   }

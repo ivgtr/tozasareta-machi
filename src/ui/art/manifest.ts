@@ -67,6 +67,15 @@ export const ART_SPECS: ArtSpec[] = [
   spec('portrait', 'medic', '医', PALETTE.green, '医師'),
   spec('portrait', 'engineer', '工', PALETTE.cyan, '技術者'),
 
+  spec('portrait', 'recruit_workwear_a', '作', PALETTE.amber, '汎用加入者・作業着A'),
+  spec('portrait', 'recruit_workwear_b', '作', PALETTE.amber, '汎用加入者・作業着B'),
+  spec('portrait', 'recruit_utility_a', '整', PALETTE.cyan, '汎用加入者・整備A'),
+  spec('portrait', 'recruit_utility_b', '整', PALETTE.cyan, '汎用加入者・整備B'),
+  spec('portrait', 'recruit_care_a', '救', PALETTE.green, '汎用加入者・救護A'),
+  spec('portrait', 'recruit_care_b', '救', PALETTE.green, '汎用加入者・救護B'),
+  spec('portrait', 'recruit_townsfolk_a', '住', PALETTE.gold, '汎用加入者・住民A'),
+  spec('portrait', 'recruit_townsfolk_b', '住', PALETTE.gold, '汎用加入者・住民B'),
+
   spec('portrait', 'shidohiko', '技', PALETTE.cyan, 'シド彦'),
   spec('portrait', 'noguchieisei', '医', PALETTE.green, '野口栄世'),
   spec('portrait', 'midoriyaizumi', '労', PALETTE.amber, '緑谷出三'),
