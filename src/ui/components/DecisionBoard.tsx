@@ -51,6 +51,7 @@ interface DecisionBoardProps {
   state: GameState
   chars: Partial<Record<TaskId, string>>
   selectedChar: string | null
+  busy?: boolean
   onCommit: (plan: DayPlan) => void
   onAssignChar: (task: TaskId) => void
   onReleaseChar: (task: TaskId) => void
@@ -60,6 +61,7 @@ export function DecisionBoard({
   state,
   chars,
   selectedChar,
+  busy = false,
   onCommit,
   onAssignChar,
   onReleaseChar,
@@ -163,7 +165,7 @@ export function DecisionBoard({
   }
 
   return (
-    <div className="board">
+    <div className={['board', busy ? 'board--busy' : ''].filter(Boolean).join(' ')}>
       <ul className="board__tasks">
         {PHYSICAL_TASKS.map((task) => {
           const w = workers[task] ?? 0
@@ -262,7 +264,7 @@ export function DecisionBoard({
         </span>
       </div>
 
-      <PixelButton primary className="board__commit" disabled={ended} onClick={commit}>
+      <PixelButton primary className="board__commit" disabled={ended || busy} onClick={commit}>
         作戦を開始する
       </PixelButton>
 

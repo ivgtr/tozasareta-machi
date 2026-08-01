@@ -6,10 +6,11 @@ interface RosterProps {
   characters: Character[]
   chars: Partial<Record<TaskId, string>>
   selected: string | null
+  busy?: boolean
   onSelect: (id: string | null) => void
 }
 
-export function Roster({ characters, chars, selected, onSelect }: RosterProps) {
+export function Roster({ characters, chars, selected, busy = false, onSelect }: RosterProps) {
   const placedTask = (charId: string): string | null => {
     for (const [task, id] of Object.entries(chars)) {
       if (id === charId) return artSpec('icon', task)?.label ?? task
@@ -33,6 +34,7 @@ export function Roster({ characters, chars, selected, onSelect }: RosterProps) {
             key={c.id}
             type="button"
             className={classes}
+            disabled={busy}
             onClick={() => onSelect(selected === c.id ? null : c.id)}
           >
             <PixelArt kind="portrait" id={c.id} />

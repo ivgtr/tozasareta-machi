@@ -453,6 +453,51 @@
   font-size: 16px;
 }
 
+.play--busy .taskslot,
+.play--busy .pool,
+.play--busy .ration-toggle {
+  pointer-events: none;
+  opacity: 0.75;
+}
+
+.board--busy .board__commit {
+  opacity: 0.45;
+}
+
+.play__skip {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 60;
+}
+
+.event-overlay {
+  position: fixed;
+  left: 50%;
+  bottom: 90px;
+  z-index: 55;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.event-overlay__card {
+  width: min(320px, 84vw);
+  padding: 10px;
+  background: var(--night-700);
+  border: 3px solid var(--amber);
+  box-shadow:
+    inset 0 0 0 3px var(--night-800),
+    6px 6px 0 rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+
+.event-overlay__name {
+  display: block;
+  margin-top: 8px;
+  letter-spacing: 0.12em;
+  color: var(--amber);
+}
+
 @media (max-width: 1100px) {
   .play__grid {
     grid-template-columns: 1fr 1fr;

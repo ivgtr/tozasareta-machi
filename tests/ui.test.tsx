@@ -1,12 +1,23 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { App } from '../src/ui/App'
 
 beforeEach(() => {
   if (typeof window !== 'undefined') window.localStorage?.clear()
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: query.includes('reduce'),
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  }))
 })
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+})
 
 describe('ui smoke', () => {
   it('プレイ画面の3ゾーンが描画される', () => {

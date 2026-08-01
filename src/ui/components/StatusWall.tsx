@@ -9,6 +9,7 @@ interface StatusWallProps {
   state: GameState
   chars: Partial<Record<TaskId, string>>
   selectedChar: string | null
+  busy?: boolean
   onSelectChar: (id: string | null) => void
 }
 
@@ -19,7 +20,13 @@ function capacityWord(value: number): string {
   return '機能停止寸前'
 }
 
-export function StatusWall({ state, chars, selectedChar, onSelectChar }: StatusWallProps) {
+export function StatusWall({
+  state,
+  chars,
+  selectedChar,
+  busy = false,
+  onSelectChar,
+}: StatusWallProps) {
   const r = state.resources
   const foodDays = Math.floor(r.food / BALANCE.food.consume)
   const income =
@@ -67,6 +74,7 @@ export function StatusWall({ state, chars, selectedChar, onSelectChar }: StatusW
         characters={state.characters}
         chars={chars}
         selected={selectedChar}
+        busy={busy}
         onSelect={onSelectChar}
       />
     </div>

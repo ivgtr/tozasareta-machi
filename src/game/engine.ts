@@ -14,7 +14,7 @@ const NUMERIC_FLAGS = [
   'cooperation',
 ] as const
 
-function applyEffects(prev: GameState, effects: Effect[]): GameState {
+export function applyEffects(prev: GameState, effects: Effect[]): GameState {
   let { food, power, medical, morale } = prev.resources
   let { workers, budget, stockpile } = prev
   const flags = { ...prev.flags, fired: [...prev.flags.fired] }
