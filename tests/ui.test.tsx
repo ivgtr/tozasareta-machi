@@ -28,7 +28,15 @@ describe('ui smoke', () => {
     expect(screen.getByText('作戦を開始する')).toBeTruthy()
   })
 
-  it('作戦を開始すると日が進ぶ', () => {
+  it('4つの任務が名前・効果つきで描画される', () => {
+    render(<App />)
+    for (const name of ['発電所の修理', '道路復旧', '医療班増員', '炊き出し']) {
+      expect(screen.getByText(name)).toBeTruthy()
+    }
+    expect(screen.getByText('作業員プール')).toBeTruthy()
+  })
+
+  it('作戦を開始すると日が進む', () => {
     const { container } = render(<App />)
     const dayNum = () => container.querySelector('.play__day-num')?.textContent
     expect(dayNum()).toBe('1')
