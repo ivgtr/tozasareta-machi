@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/game/state'
-import { runEvents } from '../src/game/events'
+import { choiceOptions, runEvents } from '../src/game/events'
 import { EVENTS } from '../src/game/data/events-data'
 import { UNIQUE_UNITS } from '../src/game/data/units'
 import { BALANCE } from '../src/game/data/balance'
@@ -62,5 +62,14 @@ describe('events', () => {
       const r = runEvents({ ...s, rng: { seed: 500 + i, counter: 0 } })
       expect(r.effects.some((e) => e.source === 'event:rescue_contact')).toBe(false)
     }
+  })
+
+  it('探索イベントは全ユニットの選択肢と見送りを返す', () => {
+    const s: GameState = { ...base(), day: 6 }
+    const expedition = EVENTS.find((e) => e.id === 'expedition')!
+    const opts = choiceOptions(s, expedition)
+    const sendOpts = opts.filter((o) => o.id.startsWith('send_'))
+    expect(sendOpts).toHaveLength(s.units.length)
+    expect(opts.some((o) => o.id === 'skip')).toBe(true)
   })
 })

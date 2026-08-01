@@ -1,5 +1,5 @@
 import type { GameState } from '../../game/types'
-import { findEvent } from '../../game/events'
+import { choiceOptions, findEvent } from '../../game/events'
 import { PixelArt } from '../art/PixelArt'
 import { PixelButton } from './PixelButton'
 
@@ -12,8 +12,8 @@ export function ChoiceOverlay({ state, onChoose }: ChoiceOverlayProps) {
   const pending = state.pendingChoice
   if (!pending) return null
   const event = findEvent(pending.eventId)
-  if (!event || !event.choices) return null
-  const options = event.choices.filter((o) => pending.optionIds.includes(o.id))
+  if (!event) return null
+  const options = choiceOptions(state, event).filter((o) => pending.optionIds.includes(o.id))
 
   return (
     <div className="choice-overlay" role="dialog" aria-modal="true">

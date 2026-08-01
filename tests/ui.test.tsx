@@ -2,6 +2,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { App } from '../src/ui/App'
+import { ChoiceOverlay } from '../src/ui/components/ChoiceOverlay'
+import { createInitialState } from '../src/game/state'
+import { choiceOptions, findEvent } from '../src/game/events'
+import type { GameState } from '../src/game/types'
 
 beforeEach(() => {
   if (typeof window !== 'undefined') window.localStorage?.clear()
@@ -117,5 +121,21 @@ describe('play', () => {
     fireEvent.click(screen.getByText('岩倉源造'))
     fireEvent.click(screen.getByText('炊き出し'))
     expect(screen.getByText('4人 未配置')).toBeTruthy()
+  })
+})
+
+describe('choice overlay', () => {
+  it('探索イベントでユニットごとの選択肢が表示される', () => {
+    const s: GameState = { ...createInitialState(1), day: 6 }
+    const expedition = findEvent('expedition')!
+    const opts = choiceOptions(s, expedition)
+    const state: GameState = {
+      ...s,
+      phase: 'choice',
+      pendingChoice: { eventId: 'expedition', optionIds: opts.map((o) => o.id) },
+    }
+    const { container } = render(<ChoiceOverlay state={state} onChoose={() => {}} />)
+    const options = container.querySelectorAll('.choice-overlay__option')
+    expect(options.length).toBe(s.units.length + 1)
   })
 })
