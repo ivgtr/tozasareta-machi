@@ -1,47 +1,43 @@
-import type { Action, Effect, EffectTarget, GameState, NumericFlag, StepResult } from './types'
+import type { Action, Effect, GameState, NumericFlag, StepResult } from './types'
 import { BALANCE } from './data/balance'
-import { availableWorkers, clamp } from './state'
-import { resolveAssignment, sanitizePlan } from './actions'
-import { settle } from './settlement'
+import { resolvePlacement, sanitizePlan } from './actions'
+import { settle, type WorkEntry } from './settlement'
 import { runEvents } from './events'
 import { checkCollapse, evaluate } from './ending'
 
-const NUMERIC_FLAGS = [
+const NUMERIC_FLAGS: NumericFlag[] = [
   'daysWithoutMedical',
   'daysFoodCut',
   'casualties',
   'refugeesAccepted',
   'cooperation',
-] as const
+]
 
 export function applyEffects(prev: GameState, effects: Effect[]): GameState {
   let { food, power, medical, morale } = prev.resources
-  let { workers, budget, stockpile } = prev
+  let { budget, stockpile } = prev
   const flags = { ...prev.flags, fired: [...prev.flags.fired] }
 
   for (const e of effects) {
-    const t: EffectTarget = e.target
+    const t = e.target
     switch (t) {
       case 'food':
         food = Math.max(0, food + e.delta)
         break
       case 'power':
-        power = clamp(power + e.delta, 0, 100)
+        power = Math.max(0, Math.min(100, power + e.delta))
         break
       case 'medical':
-        medical = clamp(medical + e.delta, 0, 100)
+        medical = Math.max(0, Math.min(100, medical + e.delta))
         break
       case 'morale':
-        morale = clamp(morale + e.delta, 0, 100)
+        morale = Math.max(0, Math.min(100, morale + e.delta))
         break
       case 'budget':
         budget = Math.max(0, budget + e.delta)
         break
       case 'stockpile':
         stockpile = Math.max(0, stockpile + e.delta)
-        break
-      case 'workers':
-        workers = Math.max(0, workers + e.delta)
         break
       default: {
         if (t.startsWith('flag:')) {
@@ -54,14 +50,7 @@ export function applyEffects(prev: GameState, effects: Effect[]): GameState {
       }
     }
   }
-  return {
-    ...prev,
-    resources: { food, power, medical, morale },
-    workers,
-    budget,
-    stockpile,
-    flags,
-  }
+  return { ...prev, resources: { food, power, medical, morale }, budget, stockpile, flags }
 }
 
 export function step(prev: GameState, action: Action): StepResult {
@@ -69,12 +58,13 @@ export function step(prev: GameState, action: Action): StepResult {
 
   const plan = sanitizePlan(prev, action.plan)
   const effects: Effect[] = []
-  const rationed = plan.assignments.some((a) => a.task === 'ration')
-
-  for (const a of plan.assignments) effects.push(...resolveAssignment(prev, a))
+  for (const p of plan.placements) effects.push(...resolvePlacement(prev, p))
   let s = applyEffects(prev, effects)
 
-  const settled = settle(s, rationed)
+  const worked: WorkEntry[] = plan.placements.flatMap((p) =>
+    p.unitIds.map((unitId) => ({ unitId, task: p.task })),
+  )
+  const settled = settle(s, { ration: plan.ration, worked })
   s = settled.state
   effects.push(...settled.effects)
 
@@ -84,7 +74,6 @@ export function step(prev: GameState, action: Action): StepResult {
   s = applyEffects(s, ev.effects)
 
   const day = s.day + 1
-  const workers = availableWorkers(s.resources.morale)
   let phase = s.phase
   let ending = s.ending
   if (checkCollapse(s)) {
@@ -95,6 +84,6 @@ export function step(prev: GameState, action: Action): StepResult {
     ending = evaluate(s)
   }
 
-  s = { ...s, day, workers, phase, ending, report: effects }
+  s = { ...s, day, phase, ending, report: effects }
   return { state: s, effects }
 }

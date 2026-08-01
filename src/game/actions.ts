@@ -1,141 +1,141 @@
-import type { Assignment, Character, DayPlan, Effect, GameState, TaskId } from './types'
+import type { Aptitude, DayPlan, Effect, GameState, Placement, TaskId, Unit } from './types'
 import { BALANCE } from './data/balance'
 
-interface TaskDef {
-  id: TaskId
-  minWorkers: number
-  budgetCost: number
-  stockpileCost: number
-  specialty?: string
+export const PHYSICAL_TASKS: TaskId[] = [
+  'repair_power',
+  'restore_road',
+  'reinforce_medical',
+  'soup_kitchen',
+]
+
+export const TASK_APT: Record<TaskId, Aptitude | null> = {
+  repair_power: 'tech',
+  restore_road: 'labor',
+  reinforce_medical: 'medical',
+  soup_kitchen: 'charm',
+  ration: null,
 }
 
-export const TASKS: Record<TaskId, TaskDef> = {
-  repair_power: {
-    id: 'repair_power',
-    minWorkers: 1,
-    budgetCost: BALANCE.tasks.repair_power.budget,
-    stockpileCost: 0,
-    specialty: 'engineer',
-  },
-  restore_road: { id: 'restore_road', minWorkers: 1, budgetCost: 0, stockpileCost: 0 },
+const TASK_RES: Record<
+  TaskId,
+  { res: 'food' | 'power' | 'medical' | 'morale'; base: number; coef: number } | null
+> = {
+  repair_power: { res: 'power', base: BALANCE.effect.repair.base, coef: BALANCE.effect.repair.coef },
+  restore_road: { res: 'food', base: BALANCE.effect.road.base, coef: BALANCE.effect.road.coef },
   reinforce_medical: {
-    id: 'reinforce_medical',
-    minWorkers: 1,
-    budgetCost: BALANCE.tasks.reinforce_medical.budget,
-    stockpileCost: 0,
-    specialty: 'medic',
+    res: 'medical',
+    base: BALANCE.effect.medical.base,
+    coef: BALANCE.effect.medical.coef,
   },
-  soup_kitchen: {
-    id: 'soup_kitchen',
-    minWorkers: 1,
-    budgetCost: 0,
-    stockpileCost: BALANCE.tasks.soup_kitchen.stockpile,
-    specialty: 'mayor',
-  },
-  ration: { id: 'ration', minWorkers: 0, budgetCost: 0, stockpileCost: 0 },
+  soup_kitchen: { res: 'morale', base: BALANCE.effect.soup.base, coef: BALANCE.effect.soup.coef },
+  ration: null,
 }
 
-function findCharacter(state: GameState, id: string | undefined): Character | undefined {
-  if (!id) return undefined
-  return state.characters.find((c) => c.id === id)
+const TASK_REASON: Record<TaskId, string> = {
+  repair_power: '発電設備を修理し、電力が回復した',
+  restore_road: '道路を復旧し、食料を搬入した',
+  reinforce_medical: '医療班を増員した',
+  soup_kitchen: '炊き出しを行い、住民が元気を取り戻した',
+  ration: '',
 }
 
-function specialtyBonus(def: TaskDef, character: Character | undefined, divisor: number): number {
-  if (!character || !def.specialty || character.id !== def.specialty) return 0
-  return Math.round(character.skill / divisor)
-}
-
-export function resolveAssignment(state: GameState, assignment: Assignment): Effect[] {
-  const def = TASKS[assignment.task]
-  const day = state.day
-  const w = assignment.workers
-  const who = findCharacter(state, assignment.characterId)
-  const effects: Effect[] = []
-  const push = (target: Effect['target'], delta: number, reason: string) =>
-    effects.push({ day, source: `task:${def.id}`, target, delta, reason })
-
-  switch (def.id) {
-    case 'repair_power': {
-      push('budget', -def.budgetCost, '発電設備の修理に予算を使った')
-      const gain =
-        BALANCE.power.repairBase +
-        BALANCE.power.repairPerWorker * w +
-        specialtyBonus(def, who, BALANCE.tasks.repair_power.divisor)
-      push('power', gain, '発電設備を修理し、電力が回復した')
-      break
-    }
-    case 'restore_road': {
-      const food = BALANCE.food.perWorker * w
-      const stock = BALANCE.stockpile.perWorker * w
-      push('food', food, '道路を復旧し、食料を搬入した')
-      push('stockpile', stock, '道路を復旧し、備蓄を搬入した')
-      break
-    }
-    case 'reinforce_medical': {
-      push('budget', -def.budgetCost, '医療班の増員に予算を使った')
-      const factor = state.resources.power >= BALANCE.medical.lowPowerAt ? 1 : 0.6
-      const gain = Math.round(
-        (BALANCE.medical.reinforceBase +
-          BALANCE.medical.reinforcePerWorker * w +
-          specialtyBonus(def, who, BALANCE.tasks.reinforce_medical.divisor)) *
-          factor,
-      )
-      push('medical', gain, factor === 1 ? '医療班を増員した' : '電力不足の中、医療班を増員した')
-      break
-    }
-    case 'soup_kitchen': {
-      push('stockpile', -def.stockpileCost, '炊き出しに備蓄を使った')
-      const gain =
-        BALANCE.tasks.soup_kitchen.base +
-        specialtyBonus(def, who, BALANCE.tasks.soup_kitchen.divisor)
-      push('morale', gain, '炊き出しを行い、住民が元気を取り戻した')
-      break
-    }
-    case 'ration':
-      break
+export function taskCost(task: TaskId): { budget: number; stockpile: number } {
+  const t = BALANCE.tasks
+  return {
+    budget: task === 'repair_power' ? t.repair_power.budget : task === 'reinforce_medical' ? t.reinforce_medical.budget : 0,
+    stockpile: task === 'soup_kitchen' ? t.soup_kitchen.stockpile : 0,
   }
+}
+
+export function effectMult(unit: Unit): number {
+  let m = 1
+  if (unit.traits.includes('hard_worker')) m *= BALANCE.trait.hard_worker
+  if (unit.traits.includes('frail')) m *= BALANCE.trait.frail
+  if (unit.condition === 'injured') m *= BALANCE.trait.injuredFactor
+  return m
+}
+
+function unitsOnTask(state: GameState, placement: Placement): Unit[] {
+  const list: Unit[] = []
+  for (const id of placement.unitIds) {
+    const u = state.units.find((x) => x.id === id)
+    if (u) list.push(u)
+  }
+  return list
+}
+
+export function placementValue(state: GameState, placement: Placement): number {
+  const spec = TASK_RES[placement.task]
+  const apt = TASK_APT[placement.task]
+  if (!spec || !apt) return 0
+  const onTask = unitsOnTask(state, placement)
+  if (onTask.length === 0) return 0
+  const hasLeader = onTask.some((u) => u.traits.includes('leader'))
+  let aptSum = 0
+  for (const u of onTask) {
+    let a = u.apt[apt]
+    if (hasLeader && !u.traits.includes('leader')) a += BALANCE.trait.leaderBonus
+    aptSum += a * effectMult(u)
+  }
+  return Math.round(spec.base + aptSum * spec.coef)
+}
+
+export function resolvePlacement(state: GameState, placement: Placement): Effect[] {
+  const spec = TASK_RES[placement.task]
+  if (!spec) return []
+  const onTask = unitsOnTask(state, placement)
+  if (onTask.length === 0) return []
+  const day = state.day
+  const effects: Effect[] = []
+  const cost = taskCost(placement.task)
+  if (cost.budget > 0)
+    effects.push({ day, source: `task:${placement.task}`, target: 'budget', delta: -cost.budget, reason: '予算を使った' })
+  if (cost.stockpile > 0)
+    effects.push({ day, source: `task:${placement.task}`, target: 'stockpile', delta: -cost.stockpile, reason: '備蓄を使った' })
+  effects.push({
+    day,
+    source: `task:${placement.task}`,
+    target: spec.res,
+    delta: placementValue(state, placement),
+    reason: TASK_REASON[placement.task],
+  })
   return effects
 }
 
 export function sanitizePlan(state: GameState, plan: DayPlan): DayPlan {
-  const usedCharacters = new Set<string>()
-  let remaining = state.workers
-  const assignments: Assignment[] = []
-  for (const a of plan.assignments) {
-    const def = TASKS[a.task]
-    if (!def) continue
-    const workers = Math.max(def.minWorkers === 0 ? 0 : 1, Math.floor(a.workers))
-    if (def.minWorkers > 0) {
-      if (workers > remaining) continue
-      remaining -= workers
+  const used = new Set<string>()
+  const placements: Placement[] = []
+  let budget = state.budget
+  let stockpile = state.stockpile
+  for (const p of plan.placements) {
+    const unitIds: string[] = []
+    for (const id of p.unitIds) {
+      if (used.has(id)) continue
+      if (!state.units.some((u) => u.id === id)) continue
+      used.add(id)
+      unitIds.push(id)
     }
-    if (a.characterId) {
-      if (usedCharacters.has(a.characterId)) continue
-      if (!findCharacter(state, a.characterId)) continue
-      usedCharacters.add(a.characterId)
-    }
-    if (state.budget < def.budgetCost) continue
-    if (state.stockpile < def.stockpileCost) continue
-    assignments.push({
-      task: a.task,
-      workers: def.minWorkers === 0 ? 0 : workers,
-      characterId: a.characterId,
-    })
+    if (unitIds.length === 0) continue
+    const cost = taskCost(p.task)
+    if (budget < cost.budget || stockpile < cost.stockpile) continue
+    budget -= cost.budget
+    stockpile -= cost.stockpile
+    placements.push({ task: p.task, unitIds })
   }
-  return { assignments }
+  return { placements, ration: plan.ration }
 }
 
 export function preview(state: GameState, plan: DayPlan): Effect[] {
   const clean = sanitizePlan(state, plan)
   const effects: Effect[] = []
-  for (const a of clean.assignments) effects.push(...resolveAssignment(state, a))
-  if (clean.assignments.some((a) => a.task === 'ration')) {
-    const saved = Math.round(BALANCE.food.consume * 0.5)
+  for (const p of clean.placements) effects.push(...resolvePlacement(state, p))
+  if (clean.ration) {
+    const consume = Math.round(state.units.length * BALANCE.unit.foodPerUnit * 0.5)
     effects.push({
       day: state.day,
       source: 'task:ration',
       target: 'food',
-      delta: saved,
+      delta: consume,
       reason: '配給を絞り、消費を抑える見込み',
     })
     effects.push({
@@ -147,4 +147,51 @@ export function preview(state: GameState, plan: DayPlan): Effect[] {
     })
   }
   return effects
+}
+
+function maxApt(u: Unit): number {
+  return Math.max(u.apt.labor, u.apt.tech, u.apt.medical, u.apt.charm)
+}
+
+export function autoAssign(state: GameState): DayPlan {
+  const buckets: Record<TaskId, string[]> = {
+    repair_power: [],
+    restore_road: [],
+    reinforce_medical: [],
+    soup_kitchen: [],
+    ration: [],
+  }
+  let budget = state.budget
+  let stockpile = state.stockpile
+  const sorted = [...state.units].sort((a, b) => maxApt(b) - maxApt(a))
+  for (const u of sorted) {
+    let bestTask: TaskId | null = null
+    let bestVal = 0
+    for (const t of PHYSICAL_TASKS) {
+      const cost = taskCost(t)
+      const wouldExceed =
+        budget - cost.budget < 0 || stockpile - cost.stockpile < 0
+      const alreadyPaid = buckets[t].length > 0
+      if (!alreadyPaid && wouldExceed) continue
+      const trial: Placement = { task: t, unitIds: [...buckets[t], u.id] }
+      const gain = placementValue(state, trial) - placementValue(state, { task: t, unitIds: buckets[t] })
+      if (gain > bestVal) {
+        bestVal = gain
+        bestTask = t
+      }
+    }
+    if (bestTask) {
+      if (buckets[bestTask].length === 0) {
+        const cost = taskCost(bestTask)
+        budget -= cost.budget
+        stockpile -= cost.stockpile
+      }
+      buckets[bestTask].push(u.id)
+    }
+  }
+  const placements: Placement[] = PHYSICAL_TASKS.filter((t) => buckets[t].length > 0).map((t) => ({
+    task: t,
+    unitIds: buckets[t],
+  }))
+  return { placements, ration: false }
 }

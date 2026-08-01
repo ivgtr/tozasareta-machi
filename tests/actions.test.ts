@@ -1,84 +1,110 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/game/state'
-import { preview, resolveAssignment, sanitizePlan } from '../src/game/actions'
+import { autoAssign, preview, resolvePlacement, sanitizePlan } from '../src/game/actions'
 import type { GameState } from '../src/game/types'
 
 const base = (): GameState => createInitialState(1)
 
-const delta = (effects: ReturnType<typeof resolveAssignment>, target: string) =>
-  effects.filter((e) => e.target === target).reduce((sum, e) => sum + e.delta, 0)
+const deltas = (state: GameState, task: Parameters<typeof resolvePlacement>[1]['task'], unitIds: string[]) =>
+  resolvePlacement(state, { task, unitIds })
 
-describe('actions', () => {
-  it('repair_power は予算を消費し電力を回復する', () => {
-    const fx = resolveAssignment(base(), { task: 'repair_power', workers: 2 })
-    expect(delta(fx, 'budget')).toBe(-20)
-    expect(delta(fx, 'power')).toBeGreaterThan(0)
+const sum = (fx: ReturnType<typeof resolvePlacement>, target: string) =>
+  fx.filter((e) => e.target === target).reduce((s, e) => s + e.delta, 0)
+
+describe('resolvePlacement（適性駆動）', () => {
+  it('技術者を発電所に置くと電力が回復し予算を消費する', () => {
+    const fx = deltas(base(), 'repair_power', ['engineer'])
+    expect(sum(fx, 'power')).toBeGreaterThan(0)
+    expect(sum(fx, 'budget')).toBe(-20)
   })
 
-  it('repair_power は技術者を割くと効果が増える', () => {
-    const plain = resolveAssignment(base(), { task: 'repair_power', workers: 2 })
-    const boosted = resolveAssignment(base(), {
-      task: 'repair_power',
-      workers: 2,
-      characterId: 'engineer',
-    })
-    expect(delta(boosted, 'power')).toBeGreaterThan(delta(plain, 'power'))
+  it('農夫を道路に置くと食料が入る', () => {
+    expect(sum(deltas(base(), 'restore_road', ['farmer']), 'food')).toBeGreaterThan(0)
   })
 
-  it('restore_road は作業員数に比例して食料と備蓄を搬入する', () => {
-    const w1 = resolveAssignment(base(), { task: 'restore_road', workers: 1 })
-    const w3 = resolveAssignment(base(), { task: 'restore_road', workers: 3 })
-    expect(delta(w3, 'food')).toBe(delta(w1, 'food') * 3)
-    expect(delta(w1, 'stockpile')).toBeGreaterThan(0)
+  it('適性が高いほど効果が大きい', () => {
+    const high = sum(deltas(base(), 'repair_power', ['engineer']), 'power') // tech 9
+    const low = sum(deltas(base(), 'repair_power', ['farmer']), 'power') // tech 3
+    expect(high).toBeGreaterThan(low)
   })
 
-  it('reinforce_medical は低電力で効率が落ちる', () => {
-    const low: GameState = { ...base(), resources: { ...base().resources, power: 10 } }
-    const full = resolveAssignment(base(), { task: 'reinforce_medical', workers: 2 })
-    const weak = resolveAssignment(low, { task: 'reinforce_medical', workers: 2 })
-    expect(delta(weak, 'medical')).toBeLessThan(delta(full, 'medical'))
+  it('複数配置は合算される', () => {
+    const one = sum(deltas(base(), 'restore_road', ['farmer']), 'food')
+    const two = sum(deltas(base(), 'restore_road', ['farmer', 'engineer']), 'food')
+    expect(two).toBeGreaterThan(one)
   })
 
-  it('soup_kitchen は備蓄を消費し士気を回復する', () => {
-    const fx = resolveAssignment(base(), { task: 'soup_kitchen', workers: 1 })
-    expect(delta(fx, 'stockpile')).toBe(-15)
-    expect(delta(fx, 'morale')).toBeGreaterThan(0)
+  it('指導者と同じ任務の他ユニットは適性が底上げされる', () => {
+    const mayorAlone = sum(deltas(base(), 'soup_kitchen', ['mayor']), 'morale')
+    const withLeader = sum(deltas(base(), 'soup_kitchen', ['farmer', 'mayor']), 'morale')
+    expect(withLeader).toBeGreaterThan(mayorAlone)
+  })
+
+  it('働き者は効果が増え、虚弱は減る', () => {
+    const s = base()
+    const plain = { ...s.units[3]!, id: 'p', traits: [] }
+    const hard = { ...plain, id: 'h', traits: ['hard_worker' as const] }
+    const frail = { ...plain, id: 'f', traits: ['frail' as const] }
+    const st: GameState = { ...s, units: [plain, hard, frail] }
+    const base_ = sum(resolvePlacement(st, { task: 'restore_road', unitIds: ['p'] }), 'food')
+    const hardV = sum(resolvePlacement(st, { task: 'restore_road', unitIds: ['h'] }), 'food')
+    const frailV = sum(resolvePlacement(st, { task: 'restore_road', unitIds: ['f'] }), 'food')
+    expect(hardV).toBeGreaterThan(base_)
+    expect(frailV).toBeLessThan(base_)
+  })
+
+  it('負傷中は効果が半減する', () => {
+    const s = base()
+    const healthy = sum(resolvePlacement(s, { task: 'repair_power', unitIds: ['engineer'] }), 'power')
+    const injuredState: GameState = {
+      ...s,
+      units: s.units.map((u) => (u.id === 'engineer' ? { ...u, condition: 'injured' as const } : u)),
+    }
+    const injured = sum(resolvePlacement(injuredState, { task: 'repair_power', unitIds: ['engineer'] }), 'power')
+    expect(injured).toBeLessThan(healthy)
   })
 })
 
 describe('sanitizePlan', () => {
-  it('作業員総数を超える割り当ては除かれる', () => {
+  it('同一ユニットの重複配置は除かれる', () => {
     const plan = sanitizePlan(base(), {
-      assignments: [
-        { task: 'restore_road', workers: 4 },
-        { task: 'repair_power', workers: 4 },
+      placements: [
+        { task: 'repair_power', unitIds: ['engineer'] },
+        { task: 'restore_road', unitIds: ['engineer'] },
       ],
+      ration: false,
     })
-    const total = plan.assignments.reduce((s, a) => s + a.workers, 0)
-    expect(total).toBeLessThanOrEqual(base().workers)
+    const count = plan.placements.reduce((s, p) => s + p.unitIds.length, 0)
+    expect(count).toBe(1)
   })
 
   it('予算不足の任務は除かれる', () => {
-    const poor: GameState = { ...base(), budget: 5 }
-    const plan = sanitizePlan(poor, { assignments: [{ task: 'repair_power', workers: 1 }] })
-    expect(plan.assignments).toHaveLength(0)
-  })
-
-  it('同一人物の重複割り当ては除かれる', () => {
-    const plan = sanitizePlan(base(), {
-      assignments: [
-        { task: 'repair_power', workers: 1, characterId: 'engineer' },
-        { task: 'reinforce_medical', workers: 1, characterId: 'engineer' },
-      ],
+    const poor: GameState = { ...base(), budget: 0 }
+    const plan = sanitizePlan(poor, {
+      placements: [{ task: 'repair_power', unitIds: ['engineer'] }],
+      ration: false,
     })
-    expect(plan.assignments).toHaveLength(1)
+    expect(plan.placements).toHaveLength(0)
   })
 })
 
 describe('preview', () => {
   it('配給を絞ると食料温存と士気減の見込みを返す', () => {
-    const fx = preview(base(), { assignments: [{ task: 'ration', workers: 0 }] })
-    expect(delta(fx, 'food')).toBeGreaterThan(0)
-    expect(delta(fx, 'morale')).toBeLessThan(0)
+    const fx = preview(base(), { placements: [], ration: true })
+    expect(sum(fx, 'food')).toBeGreaterThan(0)
+    expect(sum(fx, 'morale')).toBeLessThan(0)
+  })
+})
+
+describe('autoAssign', () => {
+  it('全ユニットを重複なく配置する', () => {
+    const s = base()
+    const plan = autoAssign(s)
+    const ids = plan.placements.flatMap((p) => p.unitIds)
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(ids.length).toBeGreaterThan(0)
+    for (const id of ids) {
+      expect(s.units.some((u) => u.id === id)).toBe(true)
+    }
   })
 })

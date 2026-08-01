@@ -44,11 +44,31 @@ const ResourcesSchema = z.object({
   morale: z.number(),
 })
 
-const CharacterSchema = z.object({
+const AptSchema = z.object({
+  labor: z.number(),
+  tech: z.number(),
+  medical: z.number(),
+  charm: z.number(),
+})
+
+const TraitSchema = z.enum([
+  'hard_worker',
+  'leader',
+  'sturdy',
+  'popular',
+  'frail',
+  'troublemaker',
+  'clumsy',
+])
+
+const UnitSchema = z.object({
   id: z.string(),
   name: z.string(),
-  role: z.string(),
-  skill: z.number(),
+  portrait: z.string(),
+  apt: AptSchema,
+  traits: z.array(TraitSchema),
+  condition: z.enum(['healthy', 'injured']),
+  xp: z.number(),
 })
 
 const FlagsSchema = z.object({
@@ -77,10 +97,9 @@ const GameStateSchema = z.object({
   day: z.number(),
   phase: z.enum(['planning', 'ended']),
   resources: ResourcesSchema,
-  workers: z.number(),
   budget: z.number(),
   stockpile: z.number(),
-  characters: z.array(CharacterSchema),
+  units: z.array(UnitSchema),
   flags: FlagsSchema,
   rng: RngSchema,
   report: z.array(EffectSchema),

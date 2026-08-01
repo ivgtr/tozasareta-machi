@@ -3,9 +3,7 @@ import { BALANCE } from './data/balance'
 
 export function checkCollapse(state: GameState): boolean {
   const e = BALANCE.ending
-  return (
-    state.resources.morale <= e.collapseMorale || state.flags.casualties >= e.collapseCasualties
-  )
+  return state.resources.morale <= e.collapseMorale || state.units.length === 0
 }
 
 export function evaluate(state: GameState): Ending {
@@ -16,7 +14,7 @@ export function evaluate(state: GameState): Ending {
   if (
     power >= e.fullRecovery.power &&
     medical >= e.fullRecovery.medical &&
-    casualties < e.fullRecovery.maxCasualties
+    casualties <= e.fullRecovery.maxCasualties
   )
     return 'full_recovery'
   if (cooperation >= e.selfGovernanceCoop) return 'self_governance'

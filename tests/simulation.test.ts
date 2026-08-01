@@ -1,46 +1,56 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/game/state'
 import { step } from '../src/game/engine'
-import { BALANCE } from '../src/game/data/balance'
+import { PHYSICAL_TASKS, taskCost } from '../src/game/actions'
 import { nextRandom } from '../src/game/rng'
 import type { DayPlan, Ending, GameState, RngState, TaskId } from '../src/game/types'
 
-const TASK_POOL: TaskId[] = ['repair_power', 'restore_road', 'reinforce_medical', 'soup_kitchen']
-const TASK_COST: Record<string, { budget: number; stockpile: number }> = {
-  repair_power: { budget: BALANCE.tasks.repair_power.budget, stockpile: 0 },
-  restore_road: { budget: 0, stockpile: 0 },
-  reinforce_medical: { budget: BALANCE.tasks.reinforce_medical.budget, stockpile: 0 },
-  soup_kitchen: { budget: 0, stockpile: BALANCE.tasks.soup_kitchen.stockpile },
+function shuffle<T>(arr: T[], rng: RngState): { list: T[]; rng: RngState } {
+  const list = [...arr]
+  let r = rng
+  for (let i = list.length - 1; i > 0; i--) {
+    const [v, rr] = nextRandom(r)
+    r = rr
+    const j = Math.floor(v * (i + 1))
+    const tmp = list[i] as T
+    list[i] = list[j] as T
+    list[j] = tmp
+  }
+  return { list, rng: r }
 }
 
 function randomPlan(state: GameState, rng: RngState): { plan: DayPlan; rng: RngState } {
-  const assignments: DayPlan['assignments'] = []
-  let r = rng
-  let remaining = state.workers
+  const { list, rng: r0 } = shuffle(state.units, rng)
+  let r = r0
   let budget = state.budget
   let stockpile = state.stockpile
-  let attempts = 0
-  while (remaining > 0 && attempts++ < 12) {
-    const [v, r1] = nextRandom(r)
-    r = r1
-    const task = TASK_POOL[Math.floor(v * TASK_POOL.length)]
-    if (task === undefined) continue
-    const cost = TASK_COST[task]
-    if (cost === undefined) continue
-    if (budget < cost.budget || stockpile < cost.stockpile) continue
-    const [wv, r2] = nextRandom(r)
-    r = r2
-    const w = 1 + Math.floor(wv * Math.min(2, remaining))
-    if (w > remaining) continue
-    remaining -= w
-    budget -= cost.budget
-    stockpile -= cost.stockpile
-    assignments.push({ task, workers: w })
+  const buckets: Record<TaskId, string[]> = {
+    repair_power: [],
+    restore_road: [],
+    reinforce_medical: [],
+    soup_kitchen: [],
+    ration: [],
   }
-  const [rv, r3] = nextRandom(r)
-  r = r3
-  if (rv < 0.15) assignments.push({ task: 'ration', workers: 0 })
-  return { plan: { assignments }, rng: r }
+  for (const u of list) {
+    const [tv, r1] = nextRandom(r)
+    r = r1
+    const t = PHYSICAL_TASKS[Math.floor(tv * PHYSICAL_TASKS.length)] ?? 'restore_road'
+    const cost = taskCost(t)
+    const firstIn = buckets[t].length === 0
+    if (firstIn && (budget < cost.budget || stockpile < cost.stockpile)) continue
+    if (firstIn) {
+      budget -= cost.budget
+      stockpile -= cost.stockpile
+    }
+    buckets[t].push(u.id)
+  }
+  const [rv, r2] = nextRandom(r)
+  r = r2
+  const placements = PHYSICAL_TASKS.filter((t) => buckets[t].length > 0).map((t) => ({
+    task: t,
+    unitIds: buckets[t],
+  }))
+  return { plan: { placements, ration: rv < 0.15 }, rng: r }
 }
 
 function assertInvariants(s: GameState) {
@@ -51,8 +61,8 @@ function assertInvariants(s: GameState) {
     s.resources.morale,
     s.budget,
     s.stockpile,
-    s.workers,
     s.flags.casualties,
+    s.units.length,
   ]
   for (const n of nums) expect(Number.isNaN(n)).toBe(false)
   expect(s.resources.morale).toBeGreaterThanOrEqual(0)
@@ -65,7 +75,8 @@ function assertInvariants(s: GameState) {
   expect(s.budget).toBeGreaterThanOrEqual(0)
   expect(s.stockpile).toBeGreaterThanOrEqual(0)
   expect(s.flags.casualties).toBeGreaterThanOrEqual(0)
-  expect(s.day).toBeLessThanOrEqual(BALANCE.days + 1)
+  expect(s.units.length).toBeGreaterThanOrEqual(0)
+  expect(s.day).toBeLessThanOrEqual(31)
   expect(new Set(s.flags.fired).size).toBe(s.flags.fired.length)
 }
 
@@ -87,7 +98,6 @@ describe('simulation', () => {
         rng = next
         s = step(s, { type: 'commitDay', plan }).state
         assertInvariants(s)
-        if (s.phase === 'planning') expect(s.workers).toBeGreaterThanOrEqual(BALANCE.workers.min)
       }
       expect(s.phase).toBe('ended')
       expect(s.ending).toBeDefined()

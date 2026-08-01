@@ -1,22 +1,12 @@
 import type { GameState } from './types'
 import { BALANCE, SAVE_VERSION } from './data/balance'
-import { INITIAL_CHARACTERS } from './data/characters'
+import { INITIAL_UNITS, cloneUnit } from './data/units'
 
 export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
 }
 
-export function availableWorkers(morale: number): number {
-  const w = BALANCE.workers
-  let n = w.base
-  if (morale >= w.volunteer) n += 1
-  if (morale < w.penaltyA) n -= 1
-  if (morale < w.penaltyB) n -= 1
-  return Math.max(w.min, n)
-}
-
 export function createInitialState(seed: number): GameState {
-  const morale = BALANCE.morale.start
   return {
     version: SAVE_VERSION,
     day: 1,
@@ -25,12 +15,11 @@ export function createInitialState(seed: number): GameState {
       food: BALANCE.food.start,
       power: BALANCE.power.start,
       medical: BALANCE.medical.start,
-      morale,
+      morale: BALANCE.morale.start,
     },
-    workers: availableWorkers(morale),
     budget: BALANCE.budget.start,
-    stockpile: BALANCE.stockpile.start,
-    characters: INITIAL_CHARACTERS.map((c) => ({ ...c })),
+    stockpile: 50,
+    units: INITIAL_UNITS.map((u) => cloneUnit(u)),
     flags: {
       daysWithoutMedical: 0,
       daysFoodCut: 0,

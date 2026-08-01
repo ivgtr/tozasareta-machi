@@ -17,10 +17,19 @@ export function runEvents(prev: GameState): RunEventsResult {
   const picked = weightedPick(candidates, (e) => e.weight(ctx), prev.rng)
   if (!picked) return { state: prev, effects: [] }
   const [event, rng] = picked
-  const effects = event.apply(ctx)
-  const fired = event.once ? [...prev.flags.fired, event.id] : prev.flags.fired
-  return {
-    state: { ...prev, flags: { ...prev.flags, fired }, rng },
-    effects,
+
+  let state: GameState = { ...prev, rng }
+  let effects: Effect[]
+  if (event.mutate) {
+    const res = event.mutate(state)
+    state = res.state
+    effects = res.effects
+  } else {
+    effects = event.apply ? event.apply({ ...ctx, state }) : []
   }
+
+  if (event.once) {
+    state = { ...state, flags: { ...state.flags, fired: [...state.flags.fired, event.id] } }
+  }
+  return { state, effects }
 }

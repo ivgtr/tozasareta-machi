@@ -1,8 +1,41 @@
 export type TaskId =
-  'repair_power' | 'restore_road' | 'reinforce_medical' | 'soup_kitchen' | 'ration'
+  | 'repair_power'
+  | 'restore_road'
+  | 'reinforce_medical'
+  | 'soup_kitchen'
+  | 'ration'
+
+export type Aptitude = 'labor' | 'tech' | 'medical' | 'charm'
+
+export type TraitId =
+  | 'hard_worker'
+  | 'leader'
+  | 'sturdy'
+  | 'popular'
+  | 'frail'
+  | 'troublemaker'
+  | 'clumsy'
+
+export type Condition = 'healthy' | 'injured'
+
+export interface Unit {
+  id: string
+  name: string
+  portrait: string
+  apt: Record<Aptitude, number>
+  traits: TraitId[]
+  condition: Condition
+  xp: number
+}
 
 export type EffectTarget =
-  'food' | 'power' | 'medical' | 'morale' | 'workers' | 'budget' | 'stockpile' | `flag:${string}`
+  | 'food'
+  | 'power'
+  | 'medical'
+  | 'morale'
+  | 'budget'
+  | 'stockpile'
+  | `flag:${string}`
 
 export interface Effect {
   day: number
@@ -19,13 +52,6 @@ export interface Resources {
   morale: number
 }
 
-export interface Character {
-  id: string
-  name: string
-  role: string
-  skill: number
-}
-
 export interface Flags {
   daysWithoutMedical: number
   daysFoodCut: number
@@ -34,9 +60,6 @@ export interface Flags {
   cooperation: number
   fired: string[]
 }
-
-export type NumericFlag =
-  'daysWithoutMedical' | 'daysFoodCut' | 'casualties' | 'refugeesAccepted' | 'cooperation'
 
 export interface RngState {
   seed: number
@@ -52,24 +75,23 @@ export interface GameState {
   day: number
   phase: Phase
   resources: Resources
-  workers: number
   budget: number
   stockpile: number
-  characters: Character[]
+  units: Unit[]
   flags: Flags
   rng: RngState
   report: Effect[]
   ending?: Ending
 }
 
-export interface Assignment {
+export interface Placement {
   task: TaskId
-  workers: number
-  characterId?: string
+  unitIds: string[]
 }
 
 export interface DayPlan {
-  assignments: Assignment[]
+  placements: Placement[]
+  ration: boolean
 }
 
 export type Action = { type: 'commitDay'; plan: DayPlan }
@@ -91,5 +113,13 @@ export interface EventDef {
   once?: boolean
   when: (ctx: EvalContext) => boolean
   weight: (ctx: EvalContext) => number
-  apply: (ctx: EvalContext) => Effect[]
+  apply?: (ctx: EvalContext) => Effect[]
+  mutate?: (state: GameState) => { state: GameState; effects: Effect[] }
 }
+
+export type NumericFlag =
+  | 'daysWithoutMedical'
+  | 'daysFoodCut'
+  | 'casualties'
+  | 'refugeesAccepted'
+  | 'cooperation'

@@ -12,7 +12,10 @@ import type { DayPlan } from '../src/game/types'
 const fresh = (): StoreState =>
   storeReducer({ state: createInitialState(1), history: [] }, { type: 'newGame', seed: 1 })
 
-const roadPlan: DayPlan = { assignments: [{ task: 'restore_road', workers: 2 }] }
+const roadPlan: DayPlan = {
+  placements: [{ task: 'restore_road', unitIds: ['farmer'] }],
+  ration: false,
+}
 
 describe('storeReducer', () => {
   it('newGame は初期状態と空の履歴を返す', () => {
