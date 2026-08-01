@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/game/state'
 import { runEvents } from '../src/game/events'
 import { EVENTS } from '../src/game/data/events-data'
+import { UNIQUE_UNITS } from '../src/game/data/units'
 import { BALANCE } from '../src/game/data/balance'
 import type { GameState } from '../src/game/types'
 
@@ -13,18 +14,18 @@ describe('events', () => {
     expect(runEvents(s)).toEqual(runEvents(s))
   })
 
-  it('避難者イベントはユニットを1人追加する（mutate）', () => {
-    const refugees = EVENTS.find((e) => e.id === 'refugees')!
-    expect(refugees.mutate).toBeDefined()
+  it('到着イベントはユニットを1人追加し、unit: 効果を持つ', () => {
+    const arrival = EVENTS.find((e) => e.id === 'arrival')!
+    expect(arrival.mutate).toBeDefined()
     const s: GameState = { ...base(), day: 6 }
     const before = s.units.length
-    const res = refugees.mutate!(s)
+    const res = arrival.mutate!(s)
     expect(res.state.units.length).toBe(before + 1)
-    expect(res.effects.some((e) => e.source === 'event:refugees')).toBe(true)
+    expect(res.effects.some((e) => e.target.startsWith('unit:'))).toBe(true)
   })
 
-  it('ロスターが上限なら避難者の重みは0', () => {
-    const refugees = EVENTS.find((e) => e.id === 'refugees')!
+  it('ロスターが上限なら到着の重みは0', () => {
+    const arrival = EVENTS.find((e) => e.id === 'arrival')!
     const full: GameState = {
       ...base(),
       day: 6,
@@ -33,16 +34,21 @@ describe('events', () => {
         id: `u${i}`,
       })),
     }
-    expect(refugees.weight({ state: full, flags: full.flags, day: 6 })).toBe(0)
+    expect(arrival.when({ state: full, flags: full.flags, day: 6 })).toBe(false)
   })
 
-  it('ユニーク加入イベントは固定ユニットを増やす', () => {
-    const eng = EVENTS.find((e) => e.id === 'stranded_engineer')!
-    const s: GameState = { ...base(), day: 9 }
-    const before = s.units.length
-    const res = eng.mutate!(s)
-    expect(res.state.units.length).toBe(before + 1)
-    expect(res.state.units.some((u) => u.name === 'フランツ')).toBe(true)
+  it('加入済みのユニークは再び来ない（ランダムのみになる）', () => {
+    const arrival = EVENTS.find((e) => e.id === 'arrival')!
+    const s: GameState = {
+      ...base(),
+      day: 6,
+      flags: { ...base().flags, joinedUniques: UNIQUE_UNITS.map((u) => u.id) },
+    }
+    for (let i = 0; i < 10; i++) {
+      const res = arrival.mutate!({ ...s, rng: { seed: 700 + i, counter: 0 } })
+      const added = res.state.units[res.state.units.length - 1]!
+      expect(added.alias).toBeUndefined()
+    }
   })
 
   it('once イベントは発火済みになると候補から外れる', () => {

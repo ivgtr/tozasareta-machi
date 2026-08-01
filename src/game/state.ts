@@ -27,6 +27,7 @@ export function createInitialState(seed: number): GameState {
       refugeesAccepted: 0,
       cooperation: 0,
       fired: [],
+      joinedUniques: [],
     },
     rng: { seed, counter: 0 },
     report: [],

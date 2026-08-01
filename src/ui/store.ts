@@ -65,6 +65,7 @@ const UnitSchema = z.object({
   id: z.string(),
   name: z.string(),
   alias: z.string().optional(),
+  flavor: z.string().optional(),
   portrait: z.string(),
   apt: AptSchema,
   traits: z.array(TraitSchema),
@@ -79,6 +80,7 @@ const FlagsSchema = z.object({
   refugeesAccepted: z.number(),
   cooperation: z.number(),
   fired: z.array(z.string()),
+  joinedUniques: z.array(z.string()),
 })
 
 const RngSchema = z.object({ seed: z.number(), counter: z.number() })

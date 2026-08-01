@@ -32,14 +32,14 @@ export function ReportFeed({
               <span className="report__reason">
                 {animateLast && isLast ? <TypeText text={e.reason} /> : e.reason}
               </span>
-              {e.target.startsWith('flag:') ? null : (
+              {e.target in TARGET_LABEL ? (
                 <span
                   className={`report__delta ${e.delta >= 0 ? 'report__delta--up' : 'report__delta--down'}`}
                 >
                   {TARGET_LABEL[e.target] ?? e.target} {e.delta >= 0 ? '+' : ''}
                   {e.delta}
                 </span>
-              )}
+              ) : null}
             </li>
           )
         })}

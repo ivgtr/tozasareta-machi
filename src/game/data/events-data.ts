@@ -1,6 +1,7 @@
 import type { Effect, EffectTarget, EventDef, GameState, Unit } from '../types'
 import { BALANCE } from './balance'
 import { cloneUnit, makeRandomUnit, UNIQUE_UNITS } from './units'
+import { weightedPick } from '../rng'
 
 function baseFx(
   state: GameState,
@@ -10,32 +11,6 @@ function baseFx(
   reason: string,
 ): Effect {
   return { day: state.day, source: `event:${id}`, target, delta, reason }
-}
-
-function addUnit(state: GameState, unit: Unit, reason: string, morale: number) {
-  return {
-    state: { ...state, units: [...state.units, unit] },
-    effects: [
-      {
-        day: state.day,
-        source: `event:${unit.id}`,
-        target: 'morale' as const,
-        delta: morale,
-        reason,
-      },
-    ],
-  }
-}
-
-function uniqueEvent(unit: Unit, fromDay: number, reason: string): EventDef {
-  return {
-    id: unit.id,
-    name: unit.name,
-    once: true,
-    when: (c) => c.day >= fromDay && c.state.units.length < BALANCE.unit.cap,
-    weight: () => 0.6,
-    mutate: (state) => addUnit(state, cloneUnit(unit), reason, 3),
-  }
 }
 
 export const EVENTS: EventDef[] = [
@@ -59,27 +34,62 @@ export const EVENTS: EventDef[] = [
     ],
   },
   {
-    id: 'refugees',
-    name: '隣町からの避難者',
-    when: (c) => c.day >= 5,
-    weight: (c) => (c.state.units.length < BALANCE.unit.cap ? 1 : 0),
+    id: 'arrival',
+    name: '人の到着',
+    when: (c) => c.day >= 4 && c.state.units.length < BALANCE.unit.cap,
+    weight: () => 1,
     mutate: (state) => {
-      const { unit, rng } = makeRandomUnit(
+      const joined = state.flags.joinedUniques
+      const available = UNIQUE_UNITS.filter((u) => !joined.includes(u.id))
+      type Cand = { kind: 'unique'; unit: Unit } | { kind: 'random' }
+      const cands: Cand[] = [
+        ...available.map((u) => ({ kind: 'unique' as const, unit: u })),
+        { kind: 'random' as const },
+      ]
+      const picked = weightedPick(
+        cands,
+        (c) => (c.kind === 'unique' ? 1 : Math.max(available.length, 1)),
         state.rng,
+      )
+      if (!picked) return { state, effects: [] }
+      const [cand, rng] = picked
+      if (cand.kind === 'unique') {
+        const unit = cloneUnit(cand.unit)
+        return {
+          state: {
+            ...state,
+            units: [...state.units, unit],
+            rng,
+            flags: {
+              ...state.flags,
+              joinedUniques: [...joined, unit.id],
+              refugeesAccepted: state.flags.refugeesAccepted + 1,
+            },
+          },
+          effects: [
+            baseFx(state, 'arrival', `unit:${unit.id}`, 0, `${unit.name}が町に辿り着いた`),
+            baseFx(state, 'arrival', 'morale', 2, '新たな仲間に希望が湧いた'),
+          ],
+        }
+      }
+      const { unit, rng: r2 } = makeRandomUnit(
+        rng,
         state.units.map((u) => u.name),
       )
       return {
-        state: { ...state, units: [...state.units, unit], rng },
+        state: {
+          ...state,
+          units: [...state.units, unit],
+          rng: r2,
+          flags: { ...state.flags, refugeesAccepted: state.flags.refugeesAccepted + 1 },
+        },
         effects: [
-          baseFx(state, 'refugees', 'morale', 2, `${unit.name}が仲間に加わった`),
-          baseFx(state, 'refugees', 'flag:refugeesAccepted', 1, '避難者を受け入れた'),
+          baseFx(state, 'arrival', `unit:${unit.id}`, 0, `${unit.name}が町に辿り着いた`),
+          baseFx(state, 'arrival', 'morale', 2, '新たな仲間に希望が湧いた'),
         ],
       }
     },
   },
-  uniqueEvent(UNIQUE_UNITS[0] as Unit, 8, '取り残されていた技術者が合流した'),
-  uniqueEvent(UNIQUE_UNITS[1] as Unit, 11, '隠居した医師が駆けつけてくれた'),
-  uniqueEvent(UNIQUE_UNITS[2] as Unit, 6, '若いボランティアが志願した'),
   {
     id: 'hidden_stockpile',
     name: '隠し備蓄の発見',

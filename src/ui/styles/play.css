@@ -919,3 +919,166 @@
     width: 100%;
   }
 }
+
+.arrival-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  background: rgba(5, 7, 26, 0.9);
+}
+
+.arrival-overlay__card {
+  width: min(420px, 92vw);
+  padding: 26px 24px;
+  background: var(--night-700);
+  border: 3px solid var(--gold);
+  box-shadow:
+    inset 0 0 0 3px var(--night-800),
+    8px 8px 0 rgba(0, 0, 0, 0.5);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  animation: overlay-in 0.3s ease-out;
+}
+
+.arrival-overlay__kicker {
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--gold);
+}
+
+.arrival-overlay__portrait .ph-portrait {
+  width: 88px;
+  height: 88px;
+}
+
+.arrival-overlay__portrait .ph-portrait__silhouette {
+  font-size: 46px;
+}
+
+.arrival-overlay__name {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: 0.1em;
+}
+
+.arrival-overlay__alias {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--ink-dim);
+}
+
+.arrival-overlay__apt {
+  margin: 4px 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.arrival-overlay__apt-row {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.arrival-overlay__apt-row dt {
+  font-size: var(--fs-small);
+  letter-spacing: 0.1em;
+}
+
+.arrival-overlay__apt-row dd {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.arrival-overlay__bar {
+  flex: 1;
+  height: 12px;
+  background: var(--night-900);
+  border: 2px solid var(--frame-lo);
+}
+
+.arrival-overlay__bar-fill {
+  height: 100%;
+}
+
+.arrival-overlay__apt-num {
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  width: 24px;
+  text-align: right;
+}
+
+.arrival-overlay__traits {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+}
+
+.arrival-overlay__trait {
+  font-size: var(--fs-small);
+  color: var(--green);
+}
+
+.arrival-overlay__trait--neg {
+  color: var(--red);
+}
+
+.arrival-overlay__flavor {
+  margin: 4px 0 0;
+  padding-top: 8px;
+  border-top: 2px dashed var(--frame-lo);
+  font-size: var(--fs-small);
+  line-height: 1.8;
+  color: var(--ink);
+}
+
+.arrival-card {
+  position: fixed;
+  left: 50%;
+  bottom: 90px;
+  z-index: 90;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--night-700);
+  border: 3px solid var(--frame-hi);
+  box-shadow:
+    inset 0 0 0 3px var(--night-800),
+    6px 6px 0 rgba(0, 0, 0, 0.5);
+  animation: overlay-in 0.25s ease-out;
+}
+
+.arrival-card .ph-portrait {
+  width: 40px;
+  height: 40px;
+}
+
+.arrival-card .ph-portrait__silhouette {
+  font-size: 20px;
+}
+
+.arrival-card__name {
+  font-size: 15px;
+  letter-spacing: 0.05em;
+}
+
+.arrival-card__apt {
+  display: flex;
+  gap: 8px;
+  font-family: var(--font-pixel);
+  font-size: 8px;
+}

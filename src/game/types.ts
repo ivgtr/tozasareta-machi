@@ -12,6 +12,7 @@ export interface Unit {
   id: string
   name: string
   alias?: string
+  flavor?: string
   portrait: string
   apt: Record<Aptitude, number>
   traits: TraitId[]
@@ -20,7 +21,14 @@ export interface Unit {
 }
 
 export type EffectTarget =
-  'food' | 'power' | 'medical' | 'morale' | 'budget' | 'stockpile' | `flag:${string}`
+  | 'food'
+  | 'power'
+  | 'medical'
+  | 'morale'
+  | 'budget'
+  | 'stockpile'
+  | `flag:${string}`
+  | `unit:${string}`
 
 export interface Effect {
   day: number
@@ -44,6 +52,7 @@ export interface Flags {
   refugeesAccepted: number
   cooperation: number
   fired: string[]
+  joinedUniques: string[]
 }
 
 export interface RngState {
