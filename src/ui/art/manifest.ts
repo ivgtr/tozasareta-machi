@@ -76,6 +76,9 @@ export const ART_SPECS: ArtSpec[] = [
 
   spec('scene', 'night', '夜', PALETTE.cyan, '孤立した町の夜'),
   spec('skyline', 'town', '町', PALETTE.amber, '町のスカイライン'),
+  spec('skyline', 'town_normal', '町', PALETTE.amber, '町のスカイライン（通常）'),
+  spec('skyline', 'town_dark', '町', PALETTE.dim, '町のスカイライン（停電）'),
+  spec('skyline', 'town_danger', '町', PALETTE.red, '町のスカイライン（危険）'),
 ]
 
 const LOOKUP = new Map(ART_SPECS.map((s) => [`${s.kind}:${s.id}`, s]))

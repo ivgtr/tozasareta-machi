@@ -69,6 +69,10 @@ export const BALANCE = {
     sacrificeCasualties: 4,
     selfGovernanceCoop: 18,
   },
+  skyline: {
+    darkPowerBelow: 30,
+    gloomyMoraleBelow: 40,
+  },
 } as const
 
 export const SAVE_VERSION = 3
