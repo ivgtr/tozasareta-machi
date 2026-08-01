@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Effect, GameState } from '../../game/types'
 import { UI_TIMING } from '../data/ui-timing'
+import { reducedMotion } from '../settings'
 
 export interface Playback {
   prev: GameState
@@ -8,15 +9,11 @@ export interface Playback {
   index: number
 }
 
-function prefersReducedMotion(): boolean {
-  return typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
 export function usePlayback() {
   const [pb, setPb] = useState<Playback | null>(null)
 
   const start = useCallback((prev: GameState, effects: Effect[]) => {
-    if (effects.length === 0 || prefersReducedMotion()) return
+    if (effects.length === 0 || reducedMotion()) return
     setPb({ prev, effects, index: 0 })
   }, [])
 

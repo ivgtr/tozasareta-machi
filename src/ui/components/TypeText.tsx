@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { reducedMotion } from '../settings'
 
 interface TypeTextProps {
   text: string
@@ -6,12 +7,8 @@ interface TypeTextProps {
   className?: string
 }
 
-function prefersReducedMotion(): boolean {
-  return typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
 export function TypeText({ text, speed = 28, className }: TypeTextProps) {
-  const reduced = prefersReducedMotion()
+  const reduced = reducedMotion()
   const [count, setCount] = useState(0)
   const textRef = useRef(text)
   const prevTextRef = useRef(text)

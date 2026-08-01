@@ -454,6 +454,19 @@
   color: var(--gold);
 }
 
+.ending-overlay__flavor {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: 1.9;
+  color: var(--ink);
+}
+
+.ending-overlay__actions {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+
 .ending-overlay__stats {
   display: flex;
   justify-content: center;

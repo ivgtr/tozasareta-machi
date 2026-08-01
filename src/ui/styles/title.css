@@ -1,0 +1,131 @@
+.title {
+  position: relative;
+  z-index: 1;
+  min-height: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 48px 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.title__header {
+  border-left: 6px solid var(--red);
+  padding-left: 18px;
+}
+
+.title__system {
+  margin: 0 0 10px;
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  color: var(--cyan);
+  animation: flicker 6s steps(1) infinite;
+}
+
+.title__name {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: clamp(44px, 8vw, 84px);
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  text-shadow:
+    4px 4px 0 rgba(0, 0, 0, 0.6),
+    0 0 24px rgba(255, 217, 74, 0.28);
+}
+
+.title__name-sub {
+  display: block;
+  font-size: clamp(24px, 4vw, 40px);
+  color: var(--gold);
+  letter-spacing: 0.3em;
+  margin-top: 6px;
+}
+
+.title__dispatch {
+  position: relative;
+  background: var(--night-700);
+  border: 3px solid var(--frame-hi);
+  box-shadow:
+    inset 0 0 0 3px var(--night-800),
+    8px 8px 0 rgba(0, 0, 0, 0.5);
+  padding: 22px 24px 20px;
+}
+
+.title__classification {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: var(--red);
+  border: 2px solid var(--red);
+  padding: 4px 7px;
+  transform: rotate(-2deg);
+  opacity: 0.9;
+}
+
+.title__briefing {
+  margin: 0 0 20px;
+  min-height: 300px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 2;
+  white-space: pre-wrap;
+  color: var(--ink);
+  letter-spacing: 0.04em;
+}
+
+.title__actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  border-top: 2px dashed var(--frame-lo);
+  padding-top: 18px;
+}
+
+.title__actions .pixel-button--primary {
+  font-size: 18px;
+  padding: 14px 26px;
+  animation: flicker 3.5s steps(1) infinite;
+}
+
+.title__motion {
+  margin-left: auto;
+  background: none;
+  border: 2px solid var(--frame-lo);
+  color: var(--ink-dim);
+  padding: 8px 14px;
+  font-size: var(--fs-small);
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+.title__motion:hover {
+  border-color: var(--frame-hi);
+  color: var(--ink);
+}
+
+.title__hint {
+  margin: 0;
+  font-size: var(--fs-small);
+  letter-spacing: 0.12em;
+  color: var(--ink-dim);
+}
+
+@media (max-width: 700px) {
+  .title {
+    padding: 32px 16px 24px;
+  }
+  .title__briefing {
+    min-height: 0;
+    font-size: 15px;
+  }
+}

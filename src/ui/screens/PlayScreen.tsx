@@ -82,7 +82,7 @@ function DayBoard({
   )
 }
 
-export function PlayScreen() {
+export function PlayScreen({ onExit }: { onExit: () => void }) {
   const { store, dispatch } = useStore()
   const state: GameState = store.state
   const { pb, start, skip } = usePlayback()
@@ -144,6 +144,7 @@ export function PlayScreen() {
         <EndingOverlay
           state={state}
           onRestart={() => dispatch({ type: 'newGame', seed: randomSeed() })}
+          onBackToTitle={onExit}
         />
       )}
     </div>
