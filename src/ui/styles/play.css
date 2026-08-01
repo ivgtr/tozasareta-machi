@@ -77,12 +77,23 @@
   gap: 10px;
 }
 
+.play__top,
+.play__grid,
+.play__footer {
+  position: relative;
+  z-index: 1;
+}
+
 .play__grid {
   display: grid;
-  grid-template-columns: 300px 1fr 340px;
+  grid-template-columns: 300px minmax(0, 1fr) 340px;
   gap: 18px;
   align-items: start;
   flex: 1;
+}
+
+.play__grid > * {
+  min-width: 0;
 }
 
 .statuswall__stocks {
