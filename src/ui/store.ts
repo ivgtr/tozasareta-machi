@@ -3,7 +3,7 @@ import type { DayPlan, EffectTarget, GameState } from '../game/types'
 import { createInitialState } from '../game/state'
 import { step } from '../game/engine'
 import { SAVE_VERSION } from '../game/data/balance'
-import { RANDOM_PORTRAIT_IDS, selectRandomPortrait } from '../game/data/units'
+import { INITIAL_UNITS, RANDOM_PORTRAIT_IDS, selectRandomPortrait } from '../game/data/units'
 
 export interface StoreState {
   state: GameState
@@ -118,25 +118,36 @@ const SaveDataSchema = z.object({
 const migrations: Record<number, (raw: unknown) => unknown> = {}
 
 const PORTRAIT_POOL = new Set<string>(RANDOM_PORTRAIT_IDS)
+const INITIAL_PROFILES = new Map(INITIAL_UNITS.map((unit) => [unit.id, unit]))
 
-function normalizePortraits(store: StoreState): StoreState {
+function normalizeUnits(store: StoreState): StoreState {
   const assigned = new Map<string, string>()
 
   const normalizeState = (state: GameState): GameState => {
     const used: string[] = []
     const units = state.units.map((unit) => {
-      if (PORTRAIT_POOL.has(unit.portrait)) {
-        used.push(unit.portrait)
-        return unit
+      const profile = INITIAL_PROFILES.get(unit.id)
+      const normalized = profile
+        ? {
+            ...unit,
+            name: profile.name,
+            alias: profile.alias,
+            flavor: profile.flavor,
+            portrait: profile.portrait,
+          }
+        : unit
+      if (PORTRAIT_POOL.has(normalized.portrait)) {
+        used.push(normalized.portrait)
+        return normalized
       }
-      if (!unit.id.startsWith('recruit_')) return unit
-      let portrait = assigned.get(unit.id)
+      if (!normalized.id.startsWith('recruit_')) return normalized
+      let portrait = assigned.get(normalized.id)
       if (!portrait) {
-        portrait = selectRandomPortrait(state.rng.seed, unit.id, used)
-        assigned.set(unit.id, portrait)
+        portrait = selectRandomPortrait(state.rng.seed, normalized.id, used)
+        assigned.set(normalized.id, portrait)
       }
       used.push(portrait)
-      return { ...unit, portrait }
+      return { ...normalized, portrait }
     })
     return { ...state, units }
   }
@@ -168,7 +179,7 @@ export function parseStore(json: string): StoreState | null {
     }
     const parsed = SaveDataSchema.safeParse(raw)
     if (!parsed.success || parsed.data.version !== SAVE_VERSION) return null
-    return normalizePortraits(parsed.data.store)
+    return normalizeUnits(parsed.data.store)
   } catch {
     return null
   }

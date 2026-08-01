@@ -44,13 +44,14 @@ describe('play', () => {
     expect(container.querySelector('.play__footer')).toBeNull()
     for (const t of ['発電所の修理', '道路復旧', '医療班増員', '炊き出し'])
       expect(screen.getByText(t)).toBeTruthy()
-    for (const u of ['嘉悦', '医師', '技術者', '農夫']) expect(screen.getByText(u)).toBeTruthy()
+    for (const u of ['真壁史子', '榊直人', '森レナ', '岩倉源造'])
+      expect(screen.getByText(u)).toBeTruthy()
   })
 
   it('ユニットを選択→任務クリックで配置され、未配置数が減る', () => {
     startGame()
     expect(screen.getByText('4人 未配置')).toBeTruthy()
-    fireEvent.click(screen.getByText('農夫'))
+    fireEvent.click(screen.getByText('岩倉源造'))
     fireEvent.click(screen.getByText('道路復旧'))
     expect(screen.getByText('3人 未配置')).toBeTruthy()
   })
@@ -85,10 +86,11 @@ describe('play', () => {
 
   it('ユニットの詳細モーダルで特性の説明が見える', () => {
     startGame()
-    const card = screen.getByText('農夫').closest('.unit-card')
+    const card = screen.getByText('岩倉源造').closest('.unit-card')
     expect(card).not.toBeNull()
     fireEvent.click(card!.querySelector('.unit-card__info')!)
     expect(screen.getByText(/負傷しない/)).toBeTruthy()
+    expect(screen.getByText(/元消防団長/)).toBeTruthy()
   })
 
   it('待機カードはコンパクトで得意適性バッジが表示される', () => {
@@ -100,13 +102,13 @@ describe('play', () => {
   it('備蓄不足で炊き出しが支払不能と表示され、配置が拒否される', () => {
     startGame()
     for (let d = 0; d < 3; d++) {
-      fireEvent.click(screen.getByText('農夫'))
+      fireEvent.click(screen.getByText('岩倉源造'))
       fireEvent.click(screen.getByText('炊き出し'))
       fireEvent.click(screen.getByText('作戦を開始する'))
       fireEvent.click(screen.getByText('このまま開始'))
     }
     expect(screen.getByText(/（不足）/)).toBeTruthy()
-    fireEvent.click(screen.getByText('農夫'))
+    fireEvent.click(screen.getByText('岩倉源造'))
     fireEvent.click(screen.getByText('炊き出し'))
     expect(screen.getByText('4人 未配置')).toBeTruthy()
   })

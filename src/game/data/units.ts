@@ -130,8 +130,10 @@ export function makeRandomName(rng: RngState, taken: string[]): { name: string; 
 export const INITIAL_UNITS: Unit[] = [
   {
     id: 'mayor',
-    name: '嘉悦',
-    alias: '町長',
+    name: '真壁史子',
+    alias: '二期目の町長',
+    flavor:
+      '町役場の福祉畑を歩み、住民の顔と暮らしを知る町長。診療所を守るため道路補強を先送りした判断を、胸の奥で悔いている。',
     portrait: 'mayor',
     apt: { labor: 4, tech: 4, medical: 4, charm: 8 },
     traits: ['leader'],
@@ -140,8 +142,10 @@ export const INITIAL_UNITS: Unit[] = [
   },
   {
     id: 'medic',
-    name: '俊庵',
-    alias: '医師',
+    name: '榊直人',
+    alias: '町の診療所医',
+    flavor:
+      '都市の病院から戻り、町で唯一の診療所を継いだ医師。限られた薬で救える命を選ばなければならない現実を、誰より理解している。',
     portrait: 'medic',
     apt: { labor: 3, tech: 5, medical: 9, charm: 5 },
     traits: [],
@@ -150,8 +154,10 @@ export const INITIAL_UNITS: Unit[] = [
   },
   {
     id: 'engineer',
-    name: 'ハインリヒ',
-    alias: '技術者',
+    name: '森レナ',
+    alias: '発電所の保守技師',
+    flavor:
+      '町出身の母とドイツ人技師の父を持ち、この町で育った保守技師。交換部品が届く直前に道が断たれ、古い発電機を知る唯一の手となった。',
     portrait: 'engineer',
     apt: { labor: 5, tech: 9, medical: 3, charm: 3 },
     traits: [],
@@ -160,8 +166,10 @@ export const INITIAL_UNITS: Unit[] = [
   },
   {
     id: 'farmer',
-    name: '山田五郎',
-    alias: '農夫',
+    name: '岩倉源造',
+    alias: '山畑の農家',
+    flavor:
+      '段々畑を守ってきた農家で、元消防団長。林道も水路も古い貯蔵庫も身体で覚え、災害となれば誰より先に道具を持って現れる。',
     portrait: 'farmer',
     apt: { labor: 8, tech: 3, medical: 4, charm: 4 },
     traits: ['sturdy'],

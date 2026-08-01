@@ -63,9 +63,10 @@ export const ART_SPECS: ArtSpec[] = [
   spec('event', 'clear_weather', '晴', PALETTE.cyan, '天候の回復'),
   spec('event', 'landslide_warning', '山', PALETTE.amber, '土砂災害警戒'),
 
-  spec('portrait', 'mayor', '長', PALETTE.gold, '町長'),
-  spec('portrait', 'medic', '医', PALETTE.green, '医師'),
-  spec('portrait', 'engineer', '工', PALETTE.cyan, '技術者'),
+  spec('portrait', 'mayor', '長', PALETTE.gold, '真壁史子'),
+  spec('portrait', 'medic', '医', PALETTE.green, '榊直人'),
+  spec('portrait', 'engineer', '工', PALETTE.cyan, '森レナ'),
+  spec('portrait', 'farmer', '農', PALETTE.amber, '岩倉源造'),
 
   spec('portrait', 'recruit_workwear_a', '作', PALETTE.amber, '汎用加入者・作業着A'),
   spec('portrait', 'recruit_workwear_b', '作', PALETTE.amber, '汎用加入者・作業着B'),

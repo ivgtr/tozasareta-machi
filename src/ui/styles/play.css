@@ -274,6 +274,16 @@
   color: var(--ink-dim);
 }
 
+.unit-details__flavor {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--night-800);
+  border-left: 3px solid var(--frame-lo);
+  font-size: var(--fs-small);
+  line-height: 1.8;
+  color: var(--ink);
+}
+
 .unit-card__body {
   display: flex;
   flex-direction: column;

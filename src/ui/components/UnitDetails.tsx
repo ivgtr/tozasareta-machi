@@ -40,6 +40,8 @@ export function UnitDetails({ unit, onClose }: UnitDetailsProps) {
           </div>
         </div>
 
+        {unit.flavor ? <p className="unit-details__flavor">{unit.flavor}</p> : null}
+
         <dl className="unit-details__apt">
           {APTS.map((a) => (
             <div key={a} className="unit-details__apt-row">

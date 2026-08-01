@@ -148,3 +148,29 @@ describe('portrait normalization', () => {
     expect(reparsed).toEqual(parsed)
   })
 })
+
+describe('initial unit profile normalization', () => {
+  it('旧セーブの初期ユニット名と経歴を更新し、成長値は維持する', () => {
+    const s = fresh()
+    const oldMayor = {
+      ...s.state.units.find((unit) => unit.id === 'mayor')!,
+      name: '嘉悦',
+      alias: '町長',
+      flavor: undefined,
+      xp: 3,
+    }
+    const state = {
+      ...s.state,
+      units: s.state.units.map((unit) => (unit.id === 'mayor' ? oldMayor : unit)),
+    }
+    const json = JSON.stringify({ version: state.version, store: { state, history: [state] } })
+    const parsed = parseStore(json)
+
+    const mayor = parsed!.state.units.find((unit) => unit.id === 'mayor')!
+    expect(mayor.name).toBe('真壁史子')
+    expect(mayor.alias).toBe('二期目の町長')
+    expect(mayor.flavor).toMatch(/道路補強/)
+    expect(mayor.xp).toBe(3)
+    expect(parsed!.history[0]!.units.find((unit) => unit.id === 'mayor')!.name).toBe('真壁史子')
+  })
+})
