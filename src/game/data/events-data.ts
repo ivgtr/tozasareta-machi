@@ -1,7 +1,7 @@
 import type { Effect, EffectTarget, EventDef, GameState, Unit } from '../types'
 import { BALANCE } from './balance'
 import { cloneUnit, makeRandomUnit, UNIQUE_UNITS } from './units'
-import { weightedPick } from '../rng'
+import { nextRandom, weightedPick } from '../rng'
 
 function baseFx(
   state: GameState,
@@ -11,6 +11,62 @@ function baseFx(
   reason: string,
 ): Effect {
   return { day: state.day, source: `event:${id}`, target, delta, reason }
+}
+
+function resolveExpedition(
+  state: GameState,
+  unitId: string,
+): { state: GameState; effects: Effect[] } {
+  const E = BALANCE.expedition
+  const idx = state.units.findIndex((u) => u.id === unitId)
+  if (idx < 0) return { state, effects: [] }
+  const unit = state.units[idx]
+  if (!unit) return { state, effects: [] }
+  const effects: Effect[] = []
+  let rng = state.rng
+
+  const aptMax = Math.max(unit.apt.labor, unit.apt.tech, unit.apt.medical, unit.apt.charm)
+  const skill = aptMax / 10
+
+  const [dv, r1] = nextRandom(rng)
+  rng = r1
+  const [iv, r2] = nextRandom(rng)
+  rng = r2
+
+  let units = state.units
+  if (dv < E.deathBase * (1.3 - skill)) {
+    units = units.filter((_, i) => i !== idx)
+    effects.push(baseFx(state, 'expedition', 'flag:casualties', 1, `${unit.name}が探索で命を落とした`))
+    effects.push(baseFx(state, 'expedition', 'morale', BALANCE.morale.hunger, '仲間を探索で失った'))
+    return { state: { ...state, units, rng }, effects }
+  }
+  if (iv < E.injuryBase * (1.3 - skill)) {
+    units = units.map((u, i) => (i === idx ? { ...u, condition: 'injured' as const } : u))
+    effects.push(baseFx(state, 'expedition', `unit:${unit.id}`, 0, `${unit.name}が探索で負傷した`))
+  }
+
+  const [rv, r3] = nextRandom(rng)
+  rng = r3
+  const gain = 0.5 + skill * 0.7
+  effects.push(
+    baseFx(
+      state,
+      'expedition',
+      'food',
+      Math.round(E.food * gain * (0.6 + rv * 0.8)),
+      `${unit.name}が食料を持ち帰った`,
+    ),
+  )
+  if (rv > 0.6)
+    effects.push(
+      baseFx(state, 'expedition', 'stockpile', Math.round(E.stockpile * gain), `${unit.name}が備蓄を持ち帰った`),
+    )
+  if (rv > 0.8)
+    effects.push(
+      baseFx(state, 'expedition', 'budget', Math.round(E.budget * gain), `${unit.name}が物資を売り予算を得た`),
+    )
+
+  return { state: { ...state, units, rng }, effects }
 }
 
 export const EVENTS: EventDef[] = [
@@ -375,5 +431,22 @@ export const EVENTS: EventDef[] = [
         apply: (c) => [baseFx(c.state, 'stockpile_crisis', 'morale', -5, '備蓄を温存し、不満が出た')],
       },
     ],
+  },
+  {
+    id: 'expedition',
+    name: '探索の機会',
+    kind: 'choice',
+    when: (c) => c.day >= BALANCE.expedition.dayFrom && c.state.units.length > 0,
+    weight: () => BALANCE.expedition.weight,
+    perUnit: (u) => {
+      const aptMax = Math.max(u.apt.labor, u.apt.tech, u.apt.medical, u.apt.charm)
+      return {
+        id: `send_${u.id}`,
+        label: `${u.name}を行かせる`,
+        desc: `最大適性 ${aptMax}・負傷や死亡の危険あり`,
+        mutate: (state) => resolveExpedition(state, u.id),
+      }
+    },
+    choices: [{ id: 'skip', label: '見送る', apply: () => [] }],
   },
 ]

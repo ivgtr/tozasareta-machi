@@ -130,6 +130,7 @@ export interface EventDef {
   apply?: (ctx: EvalContext) => Effect[]
   mutate?: (state: GameState) => { state: GameState; effects: Effect[] }
   choices?: ChoiceOption[]
+  perUnit?: (unit: Unit, ctx: EvalContext) => ChoiceOption
 }
 
 export type NumericFlag =

@@ -64,6 +64,13 @@ export function effectMult(unit: Unit): number {
   return m
 }
 
+export function moraleMult(morale: number): number {
+  const m = BALANCE.morale
+  if (morale >= m.prodHighAt) return 1
+  if (morale >= m.prodMidAt) return m.prodMidMult
+  return m.prodLowMult
+}
+
 function unitsOnTask(state: GameState, placement: Placement): Unit[] {
   const list: Unit[] = []
   for (const id of placement.unitIds) {
@@ -86,7 +93,7 @@ export function placementValue(state: GameState, placement: Placement): number {
     if (hasLeader && !u.traits.includes('leader')) a += BALANCE.trait.leaderBonus
     aptSum += a * effectMult(u)
   }
-  return Math.round(spec.base + aptSum * spec.coef)
+  return Math.round((spec.base + aptSum * spec.coef) * moraleMult(state.resources.morale))
 }
 
 export function resolvePlacement(state: GameState, placement: Placement): Effect[] {

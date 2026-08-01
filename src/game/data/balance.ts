@@ -21,9 +21,9 @@ export const BALANCE = {
     arrivalRandomCoef: 9,
   },
   effect: {
-    repair: { base: 2, coef: 1.5 },
-    road: { base: 0, coef: 1.6 },
-    medical: { base: 2, coef: 1.3 },
+    repair: { base: 2, coef: 1.2 },
+    road: { base: 0, coef: 1.3 },
+    medical: { base: 2, coef: 1.1 },
     soup: { base: 3, coef: 1.0 },
   },
   trait: {
@@ -59,6 +59,10 @@ export const BALANCE = {
     calmMedicalAt: 50,
     calmPowerAt: 50,
     desertionRecover: 3,
+    prodHighAt: 50,
+    prodMidAt: 25,
+    prodMidMult: 0.85,
+    prodLowMult: 0.7,
   },
   tasks: {
     repair_power: { budget: 20 },
@@ -67,6 +71,15 @@ export const BALANCE = {
   },
   event: {
     choiceChance: 0.6,
+  },
+  expedition: {
+    weight: 0.5,
+    dayFrom: 4,
+    deathBase: 0.05,
+    injuryBase: 0.2,
+    food: 13,
+    stockpile: 9,
+    budget: 9,
   },
   ending: {
     collapseMorale: 0,

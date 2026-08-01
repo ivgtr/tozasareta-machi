@@ -156,7 +156,7 @@ function resolveChoiceStep(prev: GameState, optionId: string): StepResult {
   if (!event) {
     return { state: { ...prev, phase: 'planning', pendingChoice: undefined }, effects: [] }
   }
-  const option = (event.choices ?? []).find((o) => o.id === optionId)
+  const option = choiceOptions(prev, event).find((o) => o.id === optionId)
   if (!option) return { state: prev, effects: [] }
 
   const res = applyChoiceOption(prev, event, option)
