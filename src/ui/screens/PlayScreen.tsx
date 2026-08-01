@@ -1,5 +1,5 @@
-import { useCallback, type ReactNode } from 'react'
-import type { DayPlan, Effect, GameState } from '../../game/types'
+import type { ReactNode } from 'react'
+import type { DayPlan, GameState } from '../../game/types'
 import { step, applyEffects } from '../../game/engine'
 import { BALANCE } from '../../game/data/balance'
 import { useStore } from '../store-context'
@@ -50,36 +50,21 @@ export function PlayScreen({ onExit }: { onExit: () => void }) {
   const { store, dispatch } = useStore()
   const state: GameState = store.state
 
-  const pauseOn = useCallback(
-    (e: Effect) => {
-      if (!e.target.startsWith('unit:')) return false
-      const id = e.target.slice('unit:'.length)
-      const u = state.units.find((x) => x.id === id)
-      return u?.alias !== undefined
-    },
-    [state],
-  )
-  const { pb, waiting, start, skip, confirm } = usePlayback(pauseOn)
+  const { pb, waiting, start, skip, confirm } = usePlayback()
   const busy = pb !== null
 
-  const view: GameState =
-    pb !== null
-      ? { ...applyEffects(pb.prev, pb.effects.slice(0, pb.index)), day: pb.prev.day }
-      : state
-  const feedReport = pb !== null ? pb.effects.slice(0, pb.index) : state.report
-  const currentEffect = pb !== null && pb.index > 0 ? (pb.effects[pb.index - 1] ?? null) : null
+  const reportEffects = pb
+    ? pb.beats.slice(0, pb.index + 1).flatMap((b) => b.effects)
+    : state.report
+  const view: GameState = pb ? { ...applyEffects(pb.prev, reportEffects), day: pb.prev.day } : state
+  const beat = pb ? (pb.beats[pb.index] ?? undefined) : undefined
 
   let overlay: ReactNode = null
-  if (currentEffect?.target.startsWith('unit:') === true) {
-    const uid = currentEffect.target.slice('unit:'.length)
-    const unit = state.units.find((u) => u.id === uid)
-    if (unit) overlay = <ArrivalOverlay unit={unit} waiting={waiting} onContinue={confirm} />
-  } else {
-    const eventId =
-      currentEffect?.source.startsWith('event:') === true
-        ? currentEffect.source.slice('event:'.length)
-        : null
-    overlay = <PlaybackOverlay eventId={eventId} />
+  if (beat?.kind === 'event') {
+    overlay = <PlaybackOverlay eventId={beat.id} effects={beat.effects} onContinue={confirm} />
+  } else if (beat?.kind === 'arrival') {
+    const unit = state.units.find((u) => u.id === beat.unitId)
+    if (unit) overlay = <ArrivalOverlay unit={unit} onContinue={confirm} />
   }
 
   const commit = (plan: DayPlan) => {
@@ -110,7 +95,7 @@ export function PlayScreen({ onExit }: { onExit: () => void }) {
         key={view.day}
         state={view}
         busy={busy}
-        report={feedReport}
+        report={reportEffects}
         animateReport={busy}
         onCommit={commit}
       />
