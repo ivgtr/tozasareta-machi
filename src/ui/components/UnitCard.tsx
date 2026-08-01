@@ -89,7 +89,7 @@ export function UnitCard({
     onPointerDown,
     tabIndex: 0,
     role: 'button' as const,
-    'aria-label': unit.name,
+    'aria-label': unit.alias ? `${unit.name}（${unit.alias}）` : unit.name,
     onKeyDown: (e: ReactKeyboardEvent) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault()
@@ -105,7 +105,10 @@ export function UnitCard({
     return (
       <div {...rootProps}>
         {portrait}
-        <span className="unit-card__compact-name">{unit.name}</span>
+        <div className="unit-card__id">
+          <span className="unit-card__compact-name">{unit.name}</span>
+          {unit.alias ? <span className="unit-card__alias">{unit.alias}</span> : null}
+        </div>
         {unit.condition === 'injured' ? <span className="unit-card__badge">負傷</span> : null}
         {infoBtn}
       </div>
@@ -120,6 +123,7 @@ export function UnitCard({
           {unit.name}
           {unit.condition === 'injured' ? <span className="unit-card__badge">負傷</span> : null}
         </div>
+        {unit.alias ? <div className="unit-card__alias">{unit.alias}</div> : null}
         <div className="unit-card__apt">
           <span style={{ color: APT_COLOR.labor }}>労{unit.apt.labor}</span>
           <span style={{ color: APT_COLOR.tech }}>技{unit.apt.tech}</span>

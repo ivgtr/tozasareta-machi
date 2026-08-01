@@ -64,6 +64,7 @@ const TraitSchema = z.enum([
 const UnitSchema = z.object({
   id: z.string(),
   name: z.string(),
+  alias: z.string().optional(),
   portrait: z.string(),
   apt: AptSchema,
   traits: z.array(TraitSchema),

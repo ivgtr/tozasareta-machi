@@ -64,7 +64,10 @@ export const EVENTS: EventDef[] = [
     when: (c) => c.day >= 5,
     weight: (c) => (c.state.units.length < BALANCE.unit.cap ? 1 : 0),
     mutate: (state) => {
-      const { unit, rng } = makeRandomUnit(state.rng)
+      const { unit, rng } = makeRandomUnit(
+        state.rng,
+        state.units.map((u) => u.name),
+      )
       return {
         state: { ...state, units: [...state.units, unit], rng },
         effects: [

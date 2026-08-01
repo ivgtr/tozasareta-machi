@@ -11,6 +11,7 @@ export type Condition = 'healthy' | 'injured'
 export interface Unit {
   id: string
   name: string
+  alias?: string
   portrait: string
   apt: Record<Aptitude, number>
   traits: TraitId[]

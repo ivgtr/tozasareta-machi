@@ -27,6 +27,7 @@ export function UnitDetails({ unit, onClose }: UnitDetailsProps) {
           <PixelArt kind="portrait" id={unit.portrait} glyph="人" />
           <div>
             <h3 className="unit-details__name">{unit.name}</h3>
+            {unit.alias ? <p className="unit-details__alias">二つ名: {unit.alias}</p> : null}
             <span
               className={
                 unit.condition === 'injured'

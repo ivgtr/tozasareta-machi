@@ -42,7 +42,7 @@ describe('events', () => {
     const before = s.units.length
     const res = eng.mutate!(s)
     expect(res.state.units.length).toBe(before + 1)
-    expect(res.state.units.some((u) => u.name === '取り残された技術者')).toBe(true)
+    expect(res.state.units.some((u) => u.name === '藤兵衛')).toBe(true)
   })
 
   it('once イベントは発火済みになると候補から外れる', () => {

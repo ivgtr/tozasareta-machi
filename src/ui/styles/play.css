@@ -225,14 +225,36 @@
   bottom: -4px;
 }
 
-.unit-card__compact-name {
+.unit-card__id {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.unit-card__compact-name {
   min-width: 0;
   font-size: 13px;
   letter-spacing: 0.05em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.unit-card__alias {
+  min-width: 0;
+  font-size: 10px;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.unit-details__alias {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--ink-dim);
 }
 
 .unit-card__body {

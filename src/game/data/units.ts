@@ -10,29 +10,128 @@ export const APTITUDE_LABEL: Record<Aptitude, string> = {
   charm: '人望',
 }
 
-const NAME_POOL = [
-  '源吉',
-  '美代',
-  '宗助',
-  'ハル',
-  '清',
-  'トミ',
-  '伊助',
-  'きく',
-  '留吉',
-  'さわ',
-  '勘太',
-  'まつ',
-  '新助',
-  'よね',
-  '作蔵',
-  'ちよ',
+const NAME_UPPER = [
+  'お',
+  '弥',
+  '権',
+  '徳',
+  '吉',
+  '七',
+  '彦',
+  '為',
+  '勝',
+  '鶴',
+  '松',
+  '岩',
+  '千',
+  '半',
+  'や',
 ]
+const NAME_LOWER = [
+  '吉',
+  '太郎',
+  '次郎',
+  '三郎',
+  '五郎',
+  '八',
+  '江',
+  '花',
+  '作',
+  '兵衛',
+  '助',
+  '蔵',
+  '乃',
+  '衛門',
+  '一',
+]
+const SURNAME = [
+  '山田',
+  '小林',
+  '斎藤',
+  '鈴木',
+  '高橋',
+  '田中',
+  '中村',
+  '森',
+  '林',
+  '石川',
+  '前田',
+  '松本',
+  '清水',
+  '木村',
+  '原',
+]
+const GIVEN = [
+  '太郎',
+  '次郎',
+  '花子',
+  '幸',
+  '実',
+  '誠',
+  '恵',
+  '明',
+  '勇',
+  '和子',
+  '健',
+  '正',
+  '清',
+  '豊',
+  '久',
+]
+const WESTERN = [
+  'ハンス',
+  'フランツ',
+  'ヨハン',
+  'マリア',
+  'アンナ',
+  'ヨーゼフ',
+  'クララ',
+  'ハインリヒ',
+  'ルーカス',
+  'エリーゼ',
+  'ヴィルヘルム',
+  'ゲルダ',
+  'オットー',
+  'ロザリー',
+  'マテオ',
+]
+
+function pick(rng: RngState, arr: string[]): [string, RngState] {
+  const [v, r] = nextRandom(rng)
+  return [arr[Math.floor(v * arr.length)] ?? '', r]
+}
+
+export function makeRandomName(rng: RngState, taken: string[]): { name: string; rng: RngState } {
+  let r = rng
+  let name = ''
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const [pv, r1] = nextRandom(r)
+    r = r1
+    if (pv < 0.5) {
+      const [u, r2] = pick(r, NAME_UPPER)
+      const [l, r3] = pick(r2, NAME_LOWER)
+      r = r3
+      name = u + l
+    } else if (pv < 0.8) {
+      const [s, r2] = pick(r, SURNAME)
+      const [g, r3] = pick(r2, GIVEN)
+      r = r3
+      name = s + g
+    } else {
+      const [w, r2] = pick(r, WESTERN)
+      r = r2
+      name = w
+    }
+    if (!taken.includes(name)) break
+  }
+  return { name: name || '旅人', rng: r }
+}
 
 export const INITIAL_UNITS: Unit[] = [
   {
     id: 'mayor',
     name: '嘉悦',
+    alias: '町長',
     portrait: 'mayor',
     apt: { labor: 4, tech: 4, medical: 4, charm: 8 },
     traits: ['leader'],
@@ -41,7 +140,8 @@ export const INITIAL_UNITS: Unit[] = [
   },
   {
     id: 'medic',
-    name: '医師',
+    name: '俊庵',
+    alias: '医師',
     portrait: 'medic',
     apt: { labor: 3, tech: 5, medical: 9, charm: 5 },
     traits: [],
@@ -50,7 +150,8 @@ export const INITIAL_UNITS: Unit[] = [
   },
   {
     id: 'engineer',
-    name: '技術者',
+    name: '惣兵衛',
+    alias: '技術者',
     portrait: 'engineer',
     apt: { labor: 5, tech: 9, medical: 3, charm: 3 },
     traits: [],
@@ -59,7 +160,8 @@ export const INITIAL_UNITS: Unit[] = [
   },
   {
     id: 'farmer',
-    name: '農夫',
+    name: '五郎',
+    alias: '農夫',
     portrait: 'farmer',
     apt: { labor: 8, tech: 3, medical: 4, charm: 4 },
     traits: ['sturdy'],
@@ -71,7 +173,8 @@ export const INITIAL_UNITS: Unit[] = [
 export const UNIQUE_UNITS: Unit[] = [
   {
     id: 'stranded_engineer',
-    name: '取り残された技術者',
+    name: '藤兵衛',
+    alias: '取り残された技術者',
     portrait: 'stranded_engineer',
     apt: { labor: 5, tech: 9, medical: 3, charm: 4 },
     traits: ['sturdy'],
@@ -80,7 +183,8 @@ export const UNIQUE_UNITS: Unit[] = [
   },
   {
     id: 'retired_medic',
-    name: '隠居した医師',
+    name: '春仙',
+    alias: '隠居した医師',
     portrait: 'retired_medic',
     apt: { labor: 3, tech: 4, medical: 9, charm: 6 },
     traits: ['leader'],
@@ -89,7 +193,8 @@ export const UNIQUE_UNITS: Unit[] = [
   },
   {
     id: 'young_volunteer',
-    name: '若いボランティア',
+    name: '新太郎',
+    alias: '若いボランティア',
     portrait: 'young_volunteer',
     apt: { labor: 8, tech: 4, medical: 4, charm: 5 },
     traits: ['hard_worker'],
@@ -102,11 +207,9 @@ export function cloneUnit(unit: Unit, id = unit.id): Unit {
   return { ...unit, id, apt: { ...unit.apt }, traits: [...unit.traits] }
 }
 
-export function makeRandomUnit(rng: RngState): { unit: Unit; rng: RngState } {
-  let r = rng
-  const [nv, r0] = nextRandom(r)
-  r = r0
-  const name = NAME_POOL[Math.floor(nv * NAME_POOL.length)] ?? '名無し'
+export function makeRandomUnit(rng: RngState, taken: string[]): { unit: Unit; rng: RngState } {
+  const { name, rng: r0 } = makeRandomName(rng, taken)
+  let r = r0
 
   const apts: Aptitude[] = ['labor', 'tech', 'medical', 'charm']
   const apt = {} as Record<Aptitude, number>
