@@ -150,7 +150,7 @@ export const INITIAL_UNITS: Unit[] = [
   },
   {
     id: 'engineer',
-    name: '惣兵衛',
+    name: 'ハインリヒ',
     alias: '技術者',
     portrait: 'engineer',
     apt: { labor: 5, tech: 9, medical: 3, charm: 3 },
@@ -160,7 +160,7 @@ export const INITIAL_UNITS: Unit[] = [
   },
   {
     id: 'farmer',
-    name: '五郎',
+    name: '山田五郎',
     alias: '農夫',
     portrait: 'farmer',
     apt: { labor: 8, tech: 3, medical: 4, charm: 4 },
@@ -173,7 +173,7 @@ export const INITIAL_UNITS: Unit[] = [
 export const UNIQUE_UNITS: Unit[] = [
   {
     id: 'stranded_engineer',
-    name: '藤兵衛',
+    name: 'フランツ',
     alias: '取り残された技術者',
     portrait: 'stranded_engineer',
     apt: { labor: 5, tech: 9, medical: 3, charm: 4 },
@@ -193,7 +193,7 @@ export const UNIQUE_UNITS: Unit[] = [
   },
   {
     id: 'young_volunteer',
-    name: '新太郎',
+    name: '鈴木新太郎',
     alias: '若いボランティア',
     portrait: 'young_volunteer',
     apt: { labor: 8, tech: 4, medical: 4, charm: 5 },
