@@ -24,6 +24,15 @@ export function PixelArt({ kind, id, size = 'md', glyph }: PixelArtProps) {
 function PlaceholderArt({ kind, id, size, glyph }: PixelArtProps) {
   const spec = artSpec(kind, id)
   const g = spec?.glyph ?? glyph
+  const style = (spec ? { '--ph-color': spec.color } : {}) as CSSProperties
+
+  if (kind === 'portrait') {
+    return (
+      <div className="ph-portrait" style={style} role="img" aria-label={spec?.label ?? id}>
+        <span className="ph-portrait__silhouette">{g ?? '人'}</span>
+      </div>
+    )
+  }
 
   if (!spec) {
     if (g) {
@@ -35,8 +44,6 @@ function PlaceholderArt({ kind, id, size, glyph }: PixelArtProps) {
     }
     return <div className={`ph ph--missing ph--${size}`}>?</div>
   }
-
-  const style = { '--ph-color': spec.color } as CSSProperties
 
   switch (kind) {
     case 'icon':
@@ -58,13 +65,6 @@ function PlaceholderArt({ kind, id, size, glyph }: PixelArtProps) {
           <figcaption className="ph-card__label">{spec.label}</figcaption>
           <span className="ph-card__stamp">PHOTO / 現像中</span>
         </figure>
-      )
-    case 'portrait':
-      return (
-        <div className="ph-portrait" style={style} role="img" aria-label={spec.label}>
-          <span className="ph-portrait__silhouette">{g ?? '人'}</span>
-          <span className="ph-portrait__role">{spec.glyph}</span>
-        </div>
       )
     case 'ending':
       return (
