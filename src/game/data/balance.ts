@@ -65,6 +65,9 @@ export const BALANCE = {
     reinforce_medical: { budget: 15 },
     soup_kitchen: { stockpile: 15 },
   },
+  event: {
+    choiceChance: 0.6,
+  },
   ending: {
     collapseMorale: 0,
     fullRecovery: { power: 70, medical: 70, maxCasualties: 1 },

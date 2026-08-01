@@ -1,8 +1,14 @@
-import type { Action, Effect, GameState, NumericFlag, StepResult } from './types'
+import type { Action, DayPlan, Effect, GameState, NumericFlag, Phase, StepResult } from './types'
 import { BALANCE } from './data/balance'
 import { resolvePlacement, sanitizePlan } from './actions'
 import { settle, type WorkEntry } from './settlement'
-import { runEvents } from './events'
+import {
+  applyAutoEvent,
+  applyChoiceOption,
+  choiceOptions,
+  determineDayEvents,
+  findEvent,
+} from './events'
 import { checkCollapse, evaluate } from './ending'
 
 const NUMERIC_FLAGS: NumericFlag[] = [
@@ -53,28 +59,9 @@ export function applyEffects(prev: GameState, effects: Effect[]): GameState {
   return { ...prev, resources: { food, power, medical, morale }, budget, stockpile, flags }
 }
 
-export function step(prev: GameState, action: Action): StepResult {
-  if (prev.phase === 'ended') return { state: prev, effects: [] }
-
-  const plan = sanitizePlan(prev, action.plan)
-  const effects: Effect[] = []
-  for (const p of plan.placements) effects.push(...resolvePlacement(prev, p))
-  let s = applyEffects(prev, effects)
-
-  const worked: WorkEntry[] = plan.placements.flatMap((p) =>
-    p.unitIds.map((unitId) => ({ unitId, task: p.task })),
-  )
-  const settled = settle(s, { ration: plan.ration, worked })
-  s = settled.state
-  effects.push(...settled.effects)
-
-  const ev = runEvents(s)
-  s = ev.state
-  effects.push(...ev.effects)
-  s = applyEffects(s, ev.effects)
-
+function finalizeDay(s: GameState, produced: Effect[]): StepResult {
   const day = s.day + 1
-  let phase = s.phase
+  let phase: Phase = 'planning'
   let ending = s.ending
   if (checkCollapse(s)) {
     phase = 'ended'
@@ -83,7 +70,104 @@ export function step(prev: GameState, action: Action): StepResult {
     phase = 'ended'
     ending = evaluate(s)
   }
+  const state: GameState = {
+    ...s,
+    day,
+    phase,
+    ending,
+    pendingEvents: undefined,
+    pendingChoice: undefined,
+  }
+  return { state, effects: produced }
+}
 
-  s = { ...s, day, phase, ending, report: effects }
-  return { state: s, effects }
+function appendReport(st: GameState, fx: Effect[]): GameState {
+  return { ...st, report: [...(st.report ?? []), ...fx] }
+}
+
+function processQueue(input: GameState): StepResult {
+  let s = input
+  const produced: Effect[] = []
+
+  while (s.pendingEvents && s.pendingEvents.length > 0) {
+    const eventId = s.pendingEvents[0]
+    const rest = s.pendingEvents.slice(1)
+    if (!eventId) {
+      s = { ...s, pendingEvents: rest }
+      continue
+    }
+    const event = findEvent(eventId)
+    if (!event) {
+      s = { ...s, pendingEvents: rest }
+      continue
+    }
+
+    if ((event.kind ?? 'auto') === 'auto') {
+      const res = applyAutoEvent(s, event)
+      produced.push(...res.effects)
+      s = appendReport({ ...res.state, pendingEvents: rest }, res.effects)
+      continue
+    }
+
+    const opts = choiceOptions(s, event)
+    if (opts.length === 0) {
+      let ns: GameState = { ...s, pendingEvents: rest }
+      if (event.once) ns = { ...ns, flags: { ...ns.flags, fired: [...ns.flags.fired, event.id] } }
+      s = ns
+      continue
+    }
+
+    s = {
+      ...s,
+      pendingEvents: rest,
+      pendingChoice: { eventId, optionIds: opts.map((o) => o.id) },
+      phase: 'choice',
+    }
+    return { state: s, effects: produced }
+  }
+
+  return finalizeDay(s, produced)
+}
+
+function commitDayStep(prev: GameState, plan: DayPlan): StepResult {
+  const produced: Effect[] = []
+  const sanitized = sanitizePlan(prev, plan)
+  for (const p of sanitized.placements) produced.push(...resolvePlacement(prev, p))
+  let s = applyEffects(prev, produced)
+
+  const worked: WorkEntry[] = sanitized.placements.flatMap((p) =>
+    p.unitIds.map((unitId) => ({ unitId, task: p.task })),
+  )
+  const settled = settle(s, { ration: sanitized.ration, worked })
+  s = settled.state
+  produced.push(...settled.effects)
+
+  const { eventIds, rng } = determineDayEvents(s)
+  s = { ...s, rng, pendingEvents: eventIds, pendingChoice: undefined, report: [...produced] }
+
+  const result = processQueue(s)
+  return { state: result.state, effects: [...produced, ...result.effects] }
+}
+
+function resolveChoiceStep(prev: GameState, optionId: string): StepResult {
+  if (prev.phase !== 'choice' || !prev.pendingChoice) return { state: prev, effects: [] }
+  const event = findEvent(prev.pendingChoice.eventId)
+  if (!event) {
+    return { state: { ...prev, phase: 'planning', pendingChoice: undefined }, effects: [] }
+  }
+  const option = (event.choices ?? []).find((o) => o.id === optionId)
+  if (!option) return { state: prev, effects: [] }
+
+  const res = applyChoiceOption(prev, event, option)
+  const produced = [...res.effects]
+  const s = appendReport({ ...res.state, pendingChoice: undefined }, res.effects)
+
+  const result = processQueue(s)
+  return { state: result.state, effects: [...produced, ...result.effects] }
+}
+
+export function step(prev: GameState, action: Action): StepResult {
+  if (prev.phase === 'ended') return { state: prev, effects: [] }
+  if (action.type === 'resolveChoice') return resolveChoiceStep(prev, action.optionId)
+  return commitDayStep(prev, action.plan)
 }

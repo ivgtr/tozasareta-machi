@@ -11,7 +11,10 @@ export interface StoreState {
 }
 
 export type StoreAction =
-  { type: 'newGame'; seed: number } | { type: 'commitDay'; plan: DayPlan } | { type: 'undo' }
+  | { type: 'newGame'; seed: number }
+  | { type: 'commitDay'; plan: DayPlan }
+  | { type: 'resolveChoice'; optionId: string }
+  | { type: 'undo' }
 
 export const HISTORY_LIMIT = 30
 const SAVE_KEY = 'tozasareta-machi:save'
@@ -29,6 +32,10 @@ export function storeReducer(store: StoreState, action: StoreAction): StoreState
       if (result.state === store.state) return store
       const history = [...store.history, store.state].slice(-HISTORY_LIMIT)
       return { state: result.state, history }
+    }
+    case 'resolveChoice': {
+      const result = step(store.state, { type: 'resolveChoice', optionId: action.optionId })
+      return { state: result.state, history: store.history }
     }
     case 'undo': {
       const last = store.history[store.history.length - 1]
@@ -96,10 +103,15 @@ const EffectSchema = z.object({
   reason: z.string(),
 })
 
+const PendingChoiceSchema = z.object({
+  eventId: z.string(),
+  optionIds: z.array(z.string()),
+})
+
 const GameStateSchema = z.object({
   version: z.number(),
   day: z.number(),
-  phase: z.enum(['planning', 'ended']),
+  phase: z.enum(['planning', 'choice', 'ended']),
   resources: ResourcesSchema,
   budget: z.number(),
   stockpile: z.number(),
@@ -108,6 +120,8 @@ const GameStateSchema = z.object({
   rng: RngSchema,
   report: z.array(EffectSchema),
   ending: z.enum(['full_recovery', 'managed_sacrifice', 'self_governance', 'collapse']).optional(),
+  pendingEvents: z.array(z.string()).optional(),
+  pendingChoice: PendingChoiceSchema.optional(),
 })
 
 const SaveDataSchema = z.object({

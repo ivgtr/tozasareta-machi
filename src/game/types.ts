@@ -61,9 +61,14 @@ export interface RngState {
   counter: number
 }
 
-export type Phase = 'planning' | 'ended'
+export type Phase = 'planning' | 'choice' | 'ended'
 
 export type Ending = 'full_recovery' | 'managed_sacrifice' | 'self_governance' | 'collapse'
+
+export interface PendingChoice {
+  eventId: string
+  optionIds: string[]
+}
 
 export interface GameState {
   version: number
@@ -77,6 +82,8 @@ export interface GameState {
   rng: RngState
   report: Effect[]
   ending?: Ending
+  pendingEvents?: string[]
+  pendingChoice?: PendingChoice
 }
 
 export interface Placement {
@@ -89,7 +96,9 @@ export interface DayPlan {
   ration: boolean
 }
 
-export type Action = { type: 'commitDay'; plan: DayPlan }
+export type Action =
+  | { type: 'commitDay'; plan: DayPlan }
+  | { type: 'resolveChoice'; optionId: string }
 
 export interface StepResult {
   state: GameState
@@ -102,14 +111,25 @@ export interface EvalContext {
   day: number
 }
 
+export interface ChoiceOption {
+  id: string
+  label: string
+  desc?: string
+  when?: (ctx: EvalContext) => boolean
+  apply?: (ctx: EvalContext) => Effect[]
+  mutate?: (state: GameState) => { state: GameState; effects: Effect[] }
+}
+
 export interface EventDef {
   id: string
   name: string
+  kind?: 'auto' | 'choice'
   once?: boolean
   when: (ctx: EvalContext) => boolean
   weight: (ctx: EvalContext) => number
   apply?: (ctx: EvalContext) => Effect[]
   mutate?: (state: GameState) => { state: GameState; effects: Effect[] }
+  choices?: ChoiceOption[]
 }
 
 export type NumericFlag =
