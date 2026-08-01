@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { resolveArtUrl } from '../art/assets'
 import '../styles/backdrop.css'
 
 interface Building {
@@ -76,8 +76,13 @@ const VIEW_H = 62
 const GROUND = 58
 
 export function Skyline({ power, morale, danger = false }: SkylineProps) {
-  const buildings = useMemo(() => makeSkyline(7), [])
-  const windows = useMemo(() => makeWindows(buildings), [buildings])
+  const townUrl = resolveArtUrl('skyline', 'town')
+  if (townUrl) {
+    return <img className="skyline skyline--image" src={townUrl} alt="" />
+  }
+
+  const buildings = makeSkyline(7)
+  const windows = makeWindows(buildings)
   const litBudget = Math.round((power / 100) * windows.length)
 
   const classes = ['skyline', danger ? 'skyline--danger' : '', morale < 40 ? 'skyline--gloomy' : '']

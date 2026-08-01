@@ -1,4 +1,4 @@
-export type ArtKind = 'icon' | 'event' | 'portrait' | 'ending' | 'briefing'
+export type ArtKind = 'icon' | 'event' | 'portrait' | 'ending' | 'briefing' | 'scene' | 'skyline'
 
 export interface ArtSpec {
   kind: ArtKind
@@ -74,6 +74,9 @@ export const ART_SPECS: ArtSpec[] = [
   spec('ending', 'collapse', '壊', PALETTE.red, '崩壊'),
 
   spec('briefing', 'ops_map', '図', PALETTE.amber, '作戦地図'),
+
+  spec('scene', 'night', '夜', PALETTE.cyan, '孤立した町の夜'),
+  spec('skyline', 'town', '町', PALETTE.amber, '町のスカイライン'),
 ]
 
 const LOOKUP = new Map(ART_SPECS.map((s) => [`${s.kind}:${s.id}`, s]))

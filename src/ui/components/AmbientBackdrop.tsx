@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { resolveArtUrl } from '../art/assets'
 import '../styles/backdrop.css'
 
 interface AmbientBackdropProps {
@@ -24,11 +25,18 @@ export function AmbientBackdrop({ morale, danger = false, rain = false }: Ambien
     [],
   )
   const gloom = Math.max(0, (60 - morale) / 60) * 0.5
+  const sceneUrl = resolveArtUrl('scene', 'night')
 
   return (
     <div className="backdrop" aria-hidden="true">
-      <div className="backdrop__sky" />
-      <div className="backdrop__clouds" />
+      {sceneUrl ? (
+        <img className="backdrop__scene" src={sceneUrl} alt="" />
+      ) : (
+        <>
+          <div className="backdrop__sky" />
+          <div className="backdrop__clouds" />
+        </>
+      )}
       {rain ? (
         <div className="backdrop__rain">
           {drops.map((d, i) => (

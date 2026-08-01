@@ -1,20 +1,7 @@
 import type { CSSProperties } from 'react'
 import { artSpec, type ArtKind } from './manifest'
+import { resolveArtUrl } from './assets'
 import './art.css'
-
-const ASSETS = import.meta.glob('../assets/**/*.png', {
-  eager: true,
-  query: '?url',
-  import: 'default',
-}) as Record<string, string>
-
-function resolveUrl(kind: ArtKind, id: string): string | undefined {
-  const suffix = `/${kind}/${id}.png`
-  for (const [path, url] of Object.entries(ASSETS)) {
-    if (path.endsWith(suffix)) return url
-  }
-  return undefined
-}
 
 type ArtSize = 'sm' | 'md' | 'lg'
 
@@ -26,7 +13,7 @@ interface PixelArtProps {
 
 export function PixelArt({ kind, id, size = 'md' }: PixelArtProps) {
   const spec = artSpec(kind, id)
-  const url = resolveUrl(kind, id)
+  const url = resolveArtUrl(kind, id)
   if (url) {
     return <img className={`pixel-art pixel-art--${size}`} src={url} alt={spec?.label ?? id} />
   }
@@ -74,5 +61,7 @@ function PlaceholderArt({ kind, id, size }: PixelArtProps) {
       )
     case 'briefing':
       return <div className="ph-briefing" style={style} role="img" aria-label={spec.label} />
+    default:
+      return null
   }
 }
