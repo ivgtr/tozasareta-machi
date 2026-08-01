@@ -42,6 +42,16 @@
   cursor: not-allowed;
 }
 
+.pixel-button:focus-visible,
+.roster__char:focus-visible,
+.taskslot__char:focus-visible,
+.ration-toggle:focus-visible,
+.pool:focus-visible,
+.title__motion:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
 .pixel-button--primary {
   background: var(--amber);
   color: var(--night-900);
@@ -110,13 +120,13 @@
 .worker-token {
   display: inline-grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   background: var(--night-600);
   color: var(--amber);
   border: 2px solid var(--frame-hi);
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45);
-  font-size: 18px;
+  font-size: 20px;
   user-select: none;
 }
 

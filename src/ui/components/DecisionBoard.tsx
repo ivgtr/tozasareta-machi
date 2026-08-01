@@ -249,6 +249,9 @@ export function DecisionBoard({
       <div
         className={['pool', drag?.over === 'pool' ? 'pool--over' : ''].filter(Boolean).join(' ')}
         data-slot="pool"
+        tabIndex={0}
+        role="group"
+        aria-label="作業員プール"
       >
         <span className="pool__label">作業員プール</span>
         <div className="pool__tokens">

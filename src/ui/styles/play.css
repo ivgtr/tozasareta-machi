@@ -219,11 +219,15 @@
     box-shadow 0.15s;
 }
 
-.taskslot:hover,
-.taskslot:focus-visible {
+.taskslot:hover {
   border-color: var(--frame-hi);
-  outline: none;
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.4);
+}
+
+.taskslot:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+  border-color: var(--frame-hi);
 }
 
 .taskslot--over {
@@ -541,15 +545,32 @@
 
 @media (max-width: 700px) {
   .play {
-    padding: 12px 12px 0;
+    padding: 12px 12px 80px;
   }
   .play__grid {
     grid-template-columns: 1fr;
+  }
+  .play__board {
+    order: 1;
+  }
+  .play__status {
+    order: 2;
+  }
+  .play__log {
+    order: 3;
   }
   .play__top-actions {
     margin-left: 0;
   }
   .play__footer {
     margin: 0 -12px;
+  }
+  .board__commit {
+    position: sticky;
+    bottom: 12px;
+    z-index: 5;
+  }
+  .play__alerts {
+    width: 100%;
   }
 }

@@ -22,7 +22,7 @@ export function ReportFeed({
   }
   const day = report[0]?.day ?? 1
   return (
-    <div className="report">
+    <div className="report" role="log" aria-live="polite">
       <p className="report__day">── 第{day}日 ──</p>
       <ul className="report__list">
         {report.map((e, i) => {
