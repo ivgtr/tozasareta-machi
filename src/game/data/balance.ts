@@ -21,9 +21,9 @@ export const BALANCE = {
     arrivalRandomCoef: 9,
   },
   effect: {
-    repair: { base: 2, coef: 1.05 },
-    road: { base: 0, coef: 1.05 },
-    medical: { base: 2, coef: 1.1 },
+    repair: { base: 2, coef: 1.0 },
+    road: { base: 0, coef: 1.0 },
+    medical: { base: 2, coef: 1.0 },
     soup: { base: 3, coef: 1.0 },
   },
   trait: {
