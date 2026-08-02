@@ -332,10 +332,23 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
             リセット
           </PixelButton>
         </div>
-        <div className="board__commitbar">
-          {remaining > 0 ? <span className="board__idle">{remaining}人 未配置</span> : null}
-          <PixelButton primary className="board__commit" onClick={commit} disabled={ended || busy}>
-            作戦を開始する
+        <div
+          className={['board__commitbar', remaining === 0 ? 'board__commitbar--ready' : '']
+            .filter(Boolean)
+            .join(' ')}
+        >
+          <span
+            className={[
+              'board__commit-status',
+              remaining === 0 ? 'board__commit-status--ready' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            {remaining > 0 ? `${remaining}人 待機` : '配置完了'}
+          </span>
+          <PixelButton className="board__commit" onClick={commit} disabled={ended || busy}>
+            本日の対応を確定
           </PixelButton>
         </div>
       </div>

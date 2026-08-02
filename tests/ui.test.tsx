@@ -123,7 +123,10 @@ describe('play', () => {
     expect(container.querySelectorAll('.unit-card .pixel-art')).toHaveLength(4)
     expect(container.querySelectorAll('.taskslot__units')).toHaveLength(0)
     expect(container.querySelector('.board__tools')).not.toBeNull()
-    expect(container.querySelector('.board__commitbar .board__commit')).not.toBeNull()
+    const commit = container.querySelector('.board__commitbar .board__commit')
+    expect(commit).not.toBeNull()
+    expect(commit!.classList.contains('pixel-button--primary')).toBe(false)
+    expect(screen.getByText('4人 待機')).toBeTruthy()
   })
 
   it('ゲームメニューからタイトルへ戻り、1日目を再開できる', () => {
@@ -167,11 +170,11 @@ describe('play', () => {
     startGame()
     fireEvent.click(screen.getByText('真壁史子'))
     fireEvent.click(screen.getByText('発電所の修理'))
-    expect(screen.getByText('3人 未配置')).toBeTruthy()
+    expect(screen.getByText('3人 待機')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'メニュー' }))
     fireEvent.click(screen.getByRole('button', { name: '最初から' }))
     expect(confirm).toHaveBeenCalledOnce()
-    expect(screen.getByText('4人 未配置')).toBeTruthy()
+    expect(screen.getByText('4人 待機')).toBeTruthy()
   })
 
   it('選択イベント中のセーブをタイトルから再開できる', () => {
@@ -193,29 +196,30 @@ describe('play', () => {
 
   it('ユニットを選択→任務クリックで配置され、未配置数が減る', () => {
     const { container } = startGame()
-    expect(screen.getByText('4人 未配置')).toBeTruthy()
+    expect(screen.getByText('4人 待機')).toBeTruthy()
     fireEvent.click(screen.getByText('岩倉源造'))
     fireEvent.click(screen.getByText('道路復旧'))
-    expect(screen.getByText('3人 未配置')).toBeTruthy()
+    expect(screen.getByText('3人 待機')).toBeTruthy()
     expect(container.querySelectorAll('.taskslot__units')).toHaveLength(1)
   })
 
   it('おまかせ配置で全員が配置される', () => {
     startGame()
     fireEvent.click(screen.getByText('おまかせ配置'))
-    expect(screen.queryByText(/人 未配置/)).toBeNull()
+    expect(screen.getByText('配置完了')).toBeTruthy()
+    expect(document.querySelector('.board__commitbar--ready')).not.toBeNull()
   })
 
   it('リセットで配置が解除される', () => {
     startGame()
     fireEvent.click(screen.getByText('おまかせ配置'))
     fireEvent.click(screen.getByText('リセット'))
-    expect(screen.getByText('4人 未配置')).toBeTruthy()
+    expect(screen.getByText('4人 待機')).toBeTruthy()
   })
 
   it('未配置がいると確認が入り、了承で日が進む', () => {
     const { container } = startGame()
-    fireEvent.click(screen.getByText('作戦を開始する'))
+    fireEvent.click(screen.getByText('本日の対応を確定'))
     expect(screen.getByText('4人の人員が未配置です')).toBeTruthy()
     fireEvent.click(screen.getByText('このまま開始'))
     expect(dayNum(container)).toBe('2')
@@ -224,7 +228,7 @@ describe('play', () => {
   it('全員配置なら確認なしで日が進む', () => {
     const { container } = startGame()
     fireEvent.click(screen.getByText('おまかせ配置'))
-    fireEvent.click(screen.getByText('作戦を開始する'))
+    fireEvent.click(screen.getByText('本日の対応を確定'))
     expect(dayNum(container)).toBe('2')
   })
 
@@ -232,11 +236,11 @@ describe('play', () => {
     const state = createInitialState(1)
     const { container, rerender } = render(<DecisionBoard state={state} busy onCommit={() => {}} />)
     expect(container.querySelector('.board--busy')).not.toBeNull()
-    for (const name of ['おまかせ配置', 'リセット', '作戦を開始する'])
+    for (const name of ['おまかせ配置', 'リセット', '本日の対応を確定'])
       expect(screen.getByRole('button', { name }).hasAttribute('disabled')).toBe(true)
 
     rerender(<DecisionBoard state={{ ...state, phase: 'ended' }} onCommit={() => {}} />)
-    for (const name of ['おまかせ配置', 'リセット', '作戦を開始する'])
+    for (const name of ['おまかせ配置', 'リセット', '本日の対応を確定'])
       expect(screen.getByRole('button', { name }).hasAttribute('disabled')).toBe(true)
   })
 
@@ -274,7 +278,7 @@ describe('play', () => {
     expect(remove).toBeTruthy()
     remove.focus()
     fireEvent.click(remove, { detail: 0 })
-    expect(screen.getByText('4人 未配置')).toBeTruthy()
+    expect(screen.getByText('4人 待機')).toBeTruthy()
   })
 
   it('任務は未選択と選択中の配置案内を切り替える', () => {
@@ -293,7 +297,7 @@ describe('play', () => {
       name: '配給方針：節約配給（食料温存・士気低下）',
     })
     expect(saving.getAttribute('aria-pressed')).toBe('true')
-    fireEvent.click(screen.getByRole('button', { name: '作戦を開始する' }), { detail: 0 })
+    fireEvent.click(screen.getByRole('button', { name: '本日の対応を確定' }), { detail: 0 })
     expect(screen.getByText('節約配給')).toBeTruthy()
   })
 
@@ -306,14 +310,14 @@ describe('play', () => {
     for (let d = 0; d < 3; d++) {
       fireEvent.click(screen.getByText('岩倉源造'))
       fireEvent.click(screen.getByText('炊き出し'))
-      fireEvent.click(screen.getByText('作戦を開始する'))
+      fireEvent.click(screen.getByText('本日の対応を確定'))
       fireEvent.click(screen.getByText('このまま開始'))
       dismissChoice()
     }
     expect(screen.getByText(/（不足）/)).toBeTruthy()
     fireEvent.click(screen.getByText('岩倉源造'))
     fireEvent.click(screen.getByText('炊き出し'))
-    expect(screen.getByText('4人 未配置')).toBeTruthy()
+    expect(screen.getByText('4人 待機')).toBeTruthy()
   })
 })
 
@@ -336,7 +340,7 @@ describe('modifier の UI 表示', () => {
     expect(screen.getAllByText('台風接近（あと2日） 配置不可')).toHaveLength(2)
     fireEvent.click(screen.getByText('岩倉源造'))
     fireEvent.click(screen.getByText('道路復旧'))
-    expect(screen.getByText('4人 未配置')).toBeTruthy()
+    expect(screen.getByText('4人 待機')).toBeTruthy()
   })
 
   it('modifier バッジが StatusWall にラベルと残り日数で表示される', () => {
