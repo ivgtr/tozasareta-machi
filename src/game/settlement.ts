@@ -4,6 +4,7 @@ import { APTITUDE_LABEL } from './data/units'
 import { TASK_APT } from './actions'
 import { clamp } from './state'
 import { nextRandom } from './rng'
+import { queryAdd, queryMult } from './modifiers'
 
 export interface WorkEntry {
   unitId: string
@@ -40,7 +41,8 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
   }
 
   const bonus = power >= B.budget.bonusAt ? B.budget.bonus : 0
-  const income = B.budget.income + bonus
+  const incomeMult = queryMult(prev.modifiers, 'income:budget')
+  const income = Math.round((B.budget.income + bonus) * incomeMult)
   budget += income
   eff('budget', income, bonus > 0 ? '電力が安定し、商業から予算を得た' : '町の活動から予算を得た')
 
@@ -55,7 +57,8 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
   }
 
   const presentCount = units.filter((u) => !isAway(u)).length
-  const consume = Math.round(presentCount * B.unit.foodPerUnit * (input.ration ? 0.5 : 1))
+  const consumeMult = queryMult(prev.modifiers, 'consume:food')
+  const consume = Math.round(presentCount * B.unit.foodPerUnit * (input.ration ? 0.5 : 1) * consumeMult)
   food -= consume
   eff('food', -consume, input.ration ? '配給を絞り、消費を抑えた' : '人々が食料を消費した')
   if (food < 0 && stockpile > 0) {
@@ -143,10 +146,11 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
     u.expedition = undefined
   }
 
-  power = clamp(power - B.power.decay, 0, 100)
-  eff('power', -B.power.decay, '発電設備が劣化した')
+  const powerDecay = Math.round(B.power.decay * queryMult(prev.modifiers, 'decay:power'))
+  power = clamp(power - powerDecay, 0, 100)
+  eff('power', -powerDecay, '発電設備が劣化した')
   const extra = power < B.medical.lowPowerAt ? B.medical.extraDecay : 0
-  const medDecay = B.medical.decay + extra
+  const medDecay = Math.round((B.medical.decay + extra) * queryMult(prev.modifiers, 'decay:medical'))
   medical = clamp(medical - medDecay, 0, 100)
   eff('medical', -medDecay, extra > 0 ? '停電で医療の効率が落ちた' : '医療資源が消費された')
 
@@ -166,7 +170,7 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
       .filter((u): u is NonNullable<typeof u> => u !== undefined && u.condition === 'healthy')
     for (const u of workedHealthy) {
       if (u.traits.includes('sturdy')) continue
-      let chance = B.unit.injuryChance
+      let chance = B.unit.injuryChance * queryMult(prev.modifiers, 'chance:injury')
       if (u.traits.includes('clumsy')) chance *= 2
       const [iv, r2] = nextRandom(rng)
       rng = r2
@@ -215,7 +219,7 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
   if (morale < B.unit.desertionMoraleBelow && presentForDesert.length > 0) {
     const [lv, r3] = nextRandom(rng)
     rng = r3
-    if (lv < B.unit.desertionChance) {
+    if (lv < B.unit.desertionChance * queryMult(prev.modifiers, 'chance:desertion')) {
       const [di, r4] = nextRandom(rng)
       rng = r4
       const idx = Math.floor(di * presentForDesert.length)
@@ -230,6 +234,21 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
     const loss = Math.min(budget, B.morale.riotBudgetLoss)
     budget -= loss
     if (loss > 0) eff('budget', -loss, '住民の不満が爆発し、作業が滞った')
+  }
+
+  const drainStockpile = queryAdd(prev.modifiers, 'drain:stockpile')
+  if (drainStockpile !== 0) {
+    const before = stockpile
+    stockpile = Math.max(0, stockpile + drainStockpile)
+    const actual = stockpile - before
+    if (actual !== 0) eff('stockpile', actual, '害虫により備蓄が損なわれた')
+  }
+  const drainFood = queryAdd(prev.modifiers, 'drain:food')
+  if (drainFood !== 0) {
+    const before = food
+    food = Math.max(0, food + drainFood)
+    const actual = food - before
+    if (actual !== 0) eff('food', actual, '害虫により食料が損なわれた')
   }
 
   return {

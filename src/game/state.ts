@@ -31,6 +31,7 @@ export function createInitialState(seed: number): GameState {
     },
     rng: { seed, counter: 0 },
     report: [],
+    modifiers: [],
   }
 }
 

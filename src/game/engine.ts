@@ -10,6 +10,7 @@ import {
   findEvent,
 } from './events'
 import { checkCollapse, evaluate } from './ending'
+import { tickModifiers } from './modifiers'
 
 const NUMERIC_FLAGS: NumericFlag[] = [
   'daysWithoutMedical',
@@ -75,6 +76,7 @@ function finalizeDay(s: GameState, produced: Effect[]): StepResult {
     day,
     phase,
     ending,
+    modifiers: tickModifiers(s.modifiers, day),
     pendingEvents: undefined,
     pendingChoice: undefined,
   }

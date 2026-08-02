@@ -101,6 +101,18 @@ export const BALANCE = {
     darkPowerBelow: 30,
     gloomyMoraleBelow: 40,
   },
+  modifier: {
+    manna: { days: 3 },
+    sunny_stretch: { days: 3, mult: 1.5 },
+    traveling_engineer: { days: 2, mult: 1.5 },
+    volunteer_surge: { days: 2, mult: 1.3 },
+    typhoon: { days: 2 },
+    generator_overheat: { lockDays: 1 },
+    cold_snap: { days: 3, mult: 1.5 },
+    rat_infestation: { days: 3, drain: -10 },
+    insomnia: { days: 2, mult: 0.7 },
+    aftershock: { lockDays: 1 },
+  },
 } as const
 
-export const SAVE_VERSION = 4
+export const SAVE_VERSION = 5

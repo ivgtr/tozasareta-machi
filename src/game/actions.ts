@@ -1,5 +1,6 @@
 import type { Aptitude, DayPlan, Effect, GameState, Placement, TaskId, Unit } from './types'
 import { BALANCE } from './data/balance'
+import { isTaskDisabled, queryMult } from './modifiers'
 
 export const PHYSICAL_TASKS: TaskId[] = [
   'repair_power',
@@ -93,7 +94,12 @@ export function placementValue(state: GameState, placement: Placement): number {
     if (hasLeader && !u.traits.includes('leader')) a += BALANCE.trait.leaderBonus
     aptSum += a * effectMult(u)
   }
-  return Math.round((spec.base + aptSum * spec.coef) * moraleMult(state.resources.morale))
+  return Math.round(
+    (spec.base + aptSum * spec.coef) *
+      moraleMult(state.resources.morale) *
+      queryMult(state.modifiers, `produce:${placement.task}`) *
+      queryMult(state.modifiers, 'produce:all'),
+  )
 }
 
 export function resolvePlacement(state: GameState, placement: Placement): Effect[] {
@@ -136,6 +142,7 @@ export function sanitizePlan(state: GameState, plan: DayPlan): DayPlan {
   let budget = state.budget
   let stockpile = state.stockpile
   for (const p of plan.placements) {
+    if (isTaskDisabled(state.modifiers, p.task)) continue
     const unitIds: string[] = []
     for (const id of p.unitIds) {
       if (used.has(id)) continue
@@ -202,6 +209,7 @@ export function autoAssign(state: GameState): DayPlan {
     let bestTask: TaskId | null = null
     let bestVal = 0
     for (const t of PHYSICAL_TASKS) {
+      if (isTaskDisabled(state.modifiers, t)) continue
       const cost = taskCost(t)
       const wouldExceed = budget - cost.budget < 0 || stockpile - cost.stockpile < 0
       const alreadyPaid = buckets[t].length > 0

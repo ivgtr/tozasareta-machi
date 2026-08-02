@@ -71,6 +71,19 @@ export interface PendingChoice {
   optionIds: string[]
 }
 
+export interface ModifierEffect {
+  target: string
+  op: 'mult' | 'add' | 'set'
+  value: number
+}
+
+export interface Modifier {
+  id: string
+  daysLeft: number
+  startDay: number
+  effects: ModifierEffect[]
+}
+
 export interface GameState {
   version: number
   day: number
@@ -82,6 +95,7 @@ export interface GameState {
   flags: Flags
   rng: RngState
   report: Effect[]
+  modifiers: Modifier[]
   ending?: Ending
   pendingEvents?: string[]
   pendingChoice?: PendingChoice

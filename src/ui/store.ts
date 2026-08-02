@@ -109,6 +109,19 @@ const PendingChoiceSchema = z.object({
   optionIds: z.array(z.string()),
 })
 
+const ModifierEffectSchema = z.object({
+  target: z.string(),
+  op: z.enum(['mult', 'add', 'set']),
+  value: z.number(),
+})
+
+const ModifierSchema = z.object({
+  id: z.string(),
+  daysLeft: z.number(),
+  startDay: z.number(),
+  effects: z.array(ModifierEffectSchema),
+})
+
 const GameStateSchema = z.object({
   version: z.number(),
   day: z.number(),
@@ -120,6 +133,7 @@ const GameStateSchema = z.object({
   flags: FlagsSchema,
   rng: RngSchema,
   report: z.array(EffectSchema),
+  modifiers: z.array(ModifierSchema),
   ending: z.enum(['full_recovery', 'managed_sacrifice', 'self_governance', 'collapse']).optional(),
   pendingEvents: z.array(z.string()).optional(),
   pendingChoice: PendingChoiceSchema.optional(),
