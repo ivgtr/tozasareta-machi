@@ -104,9 +104,10 @@ export function PlayScreen({ onExit }: { onExit: () => void }) {
         canUndo={store.history.length > 0 && !busy}
         onUndo={undo}
         onRestart={restart}
+        onBackToTitle={onExit}
       />
       <DayBoard
-        key={view.day}
+        key={`${view.rng.seed}:${view.day}`}
         state={view}
         busy={busy}
         report={reportEffects}

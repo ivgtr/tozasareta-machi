@@ -9,9 +9,24 @@ import { TitleScreen } from '../src/ui/screens/TitleScreen'
 import { createInitialState } from '../src/game/state'
 import { choiceOptions, findEvent } from '../src/game/events'
 import type { GameState, Modifier } from '../src/game/types'
+import { serializeStore } from '../src/ui/store'
+
+function memoryStorage(): Storage {
+  const values = new Map<string, string>()
+  return {
+    get length() {
+      return values.size
+    },
+    clear: () => values.clear(),
+    getItem: (key) => values.get(key) ?? null,
+    key: (index) => [...values.keys()][index] ?? null,
+    removeItem: (key) => values.delete(key),
+    setItem: (key, value) => values.set(key, value),
+  }
+}
 
 beforeEach(() => {
-  if (typeof window !== 'undefined') window.localStorage?.clear()
+  vi.stubGlobal('localStorage', memoryStorage())
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: query.includes('reduce'),
     media: query,
@@ -87,6 +102,71 @@ describe('play', () => {
     for (const u of ['真壁史子', '榊直人', '森レナ', '岩倉源造'])
       expect(screen.getByText(u)).toBeTruthy()
     expect(container.querySelectorAll('.unit-card .pixel-art')).toHaveLength(4)
+  })
+
+  it('ゲームメニューからタイトルへ戻り、1日目を再開できる', () => {
+    startGame()
+    expect(screen.queryByText('最初から')).toBeNull()
+    const menuButton = screen.getByRole('button', { name: 'メニュー' })
+    fireEvent.click(menuButton)
+    expect(screen.getByRole('dialog', { name: 'ゲームメニュー' })).toBeTruthy()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'ゲームに戻る' }))
+    fireEvent.click(screen.getByRole('button', { name: 'タイトルに戻る' }))
+    expect(screen.getByText('▶ 続きから')).toBeTruthy()
+    fireEvent.click(screen.getByText('▶ 続きから'))
+    expect(screen.getByText('本日の対応')).toBeTruthy()
+  })
+
+  it('ゲームメニューはEscapeで閉じ、メニューボタンへフォーカスを戻す', () => {
+    startGame()
+    const menuButton = screen.getByRole('button', { name: 'メニュー' })
+    fireEvent.click(menuButton)
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'ゲームメニュー' })).toBeNull()
+    expect(document.activeElement).toBe(menuButton)
+  })
+
+  it('ゲームメニュー内にフォーカスを留め、背景クリックで閉じる', () => {
+    const { container } = startGame()
+    fireEvent.click(screen.getByRole('button', { name: 'メニュー' }))
+    const back = screen.getByRole('button', { name: 'ゲームに戻る' })
+    const restart = screen.getByRole('button', { name: '最初から' })
+    back.focus()
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: true })
+    expect(document.activeElement).toBe(restart)
+    fireEvent.keyDown(window, { key: 'Tab' })
+    expect(document.activeElement).toBe(back)
+    fireEvent.click(container.querySelector('.game-menu-overlay')!)
+    expect(screen.queryByRole('dialog', { name: 'ゲームメニュー' })).toBeNull()
+  })
+
+  it('ゲームメニューから確認後に最初からやり直せる', () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    startGame()
+    fireEvent.click(screen.getByText('真壁史子'))
+    fireEvent.click(screen.getByText('発電所の修理'))
+    expect(screen.getByText('3人 未配置')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'メニュー' }))
+    fireEvent.click(screen.getByRole('button', { name: '最初から' }))
+    expect(confirm).toHaveBeenCalledOnce()
+    expect(screen.getByText('4人 未配置')).toBeTruthy()
+  })
+
+  it('選択イベント中のセーブをタイトルから再開できる', () => {
+    cleanup()
+    const base = createInitialState(1)
+    const event = findEvent('expedition')!
+    const options = choiceOptions({ ...base, day: 6 }, event)
+    const state: GameState = {
+      ...base,
+      day: 6,
+      phase: 'choice',
+      pendingChoice: { eventId: event.id, optionIds: options.map((option) => option.id) },
+    }
+    localStorage.setItem('tozasareta-machi:save', serializeStore({ state, history: [] }))
+    render(<App />)
+    fireEvent.click(screen.getByText('▶ 続きから'))
+    expect(screen.getByText('判断を求められている')).toBeTruthy()
   })
 
   it('ユニットを選択→任務クリックで配置され、未配置数が減る', () => {
