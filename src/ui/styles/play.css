@@ -305,6 +305,16 @@
   padding: 0 4px;
 }
 
+.unit-card__badge--away {
+  color: var(--cyan);
+  border-color: var(--cyan);
+}
+
+.unit-card--away {
+  opacity: 0.7;
+  cursor: default;
+}
+
 .unit-card__apt {
   display: flex;
   gap: 8px;
@@ -658,6 +668,13 @@
   font-size: var(--fs-small);
   color: var(--ink-dim);
   align-self: center;
+}
+
+.board__expedition {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--night-700);
+  border: 2px solid var(--frame-lo);
 }
 
 .board__actions {

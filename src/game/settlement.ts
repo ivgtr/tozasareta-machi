@@ -51,7 +51,9 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
       addMorale(B.trait.troublemakerMorale, `${u.name}が揉め事を起こした`)
   }
 
-  const consume = Math.round(units.length * B.unit.foodPerUnit * (input.ration ? 0.5 : 1))
+  const isAway = (u: { expedition?: number }) => u.expedition !== undefined
+  const presentCount = units.filter((u) => !isAway(u)).length
+  const consume = Math.round(presentCount * B.unit.foodPerUnit * (input.ration ? 0.5 : 1))
   food -= consume
   eff('food', -consume, input.ration ? '配給を絞り、消費を抑えた' : '人々が食料を消費した')
   if (food < 0 && stockpile > 0) {
@@ -62,18 +64,81 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
   }
   if (food < 0) {
     food = 0
-    if (units.length > 0) {
+    const present = units.filter((u) => !isAway(u))
+    if (present.length > 0) {
       const [di, r1] = nextRandom(rng)
       rng = r1
-      const idx = Math.floor(di * units.length)
-      const dead = units[idx]
-      units = units.filter((_, i) => i !== idx)
+      const idx = Math.floor(di * present.length)
+      const dead = present[idx]
+      units = units.filter((u) => u.id !== dead?.id)
       flags.casualties += 1
       eff('flag:casualties', 1, `食料が尽き、${dead?.name ?? '仲間'}が亡くなった`)
       addMorale(B.morale.hunger, '仲間を飢えで失った')
     } else {
       addMorale(B.morale.hunger, '食料が尽きた')
     }
+  }
+
+  for (const u of [...units]) {
+    if (u.expedition === undefined) continue
+    const E = B.expedition
+    const daysAway = day - u.expedition
+    if (daysAway < E.minDays) continue
+    const [retRoll, rr] = nextRandom(rng)
+    rng = rr
+    const returnChance = Math.min(
+      E.returnBase + (daysAway - E.minDays) * E.returnPerDay,
+      E.returnCap,
+    )
+    if (retRoll >= returnChance) continue
+
+    const aptMax = Math.max(u.apt.labor, u.apt.tech, u.apt.medical, u.apt.charm)
+    const t = Math.max(0, Math.min(1, (aptMax / 10 - 0.2) / 0.8))
+    const greatChance = E.greatAtMin + t * (E.greatAtMax - E.greatAtMin)
+    const successChance = E.successAtMin + t * (E.successAtMax - E.successAtMin)
+    const dangerChance = E.dangerAtMin + t * (E.dangerAtMax - E.dangerAtMin)
+
+    const [roll, ra] = nextRandom(rng)
+    rng = ra
+    const dailyYield = aptMax * E.rewardCoef
+    const daysMult = 1 + Math.max(0, daysAway - E.minDays) * E.returnBonusPerDay
+
+    if (roll < greatChance) {
+      const [vr, rb] = nextRandom(rng)
+      rng = rb
+      const variance = 0.7 + vr * 0.6
+      const foodGain = Math.round(dailyYield * E.greatDays * daysMult * variance)
+      const stockGain = Math.round(dailyYield * 2 * daysMult * variance)
+      const budgetGain = Math.round(dailyYield * 1.5 * daysMult * variance)
+      food += foodGain
+      stockpile += stockGain
+      budget += budgetGain
+      eff('food', foodGain, `${u.name}が探索で大成功——食料を持ち帰った`)
+      eff('stockpile', stockGain, `${u.name}が備蓄を持ち帰った`)
+      eff('budget', budgetGain, `${u.name}が物資を売り予算を得た`)
+    } else if (roll < greatChance + successChance) {
+      const [vr, rb] = nextRandom(rng)
+      rng = rb
+      const variance = 0.7 + vr * 0.6
+      const foodGain = Math.round(dailyYield * daysMult * variance)
+      food += foodGain
+      eff('food', foodGain, `${u.name}が探索から食料を持ち帰った`)
+    } else if (roll < greatChance + successChance + dangerChance) {
+      const [dr, rc] = nextRandom(rng)
+      rng = rc
+      if (dr < E.deathShare) {
+        units = units.filter((x) => x.id !== u.id)
+        flags.casualties += 1
+        eff('flag:casualties', 1, `${u.name}が探索で命を落とした`)
+        addMorale(B.morale.hunger, '仲間を探索で失った')
+        continue
+      }
+      u.condition = 'injured'
+      eff('flag:injury', 0, `${u.name}が探索で負傷した（効果半減）`)
+    } else {
+      eff('food', 0, `${u.name}が探索したが収穫なく戻った`)
+    }
+    u.expedition = undefined
   }
 
   power = clamp(power - B.power.decay, 0, 100)
@@ -143,15 +208,16 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
     eff('flag:cooperation', 1, '住民同士の協力が深まった')
   }
 
-  if (morale < B.unit.desertionMoraleBelow && units.length > 0) {
+  const presentForDesert = units.filter((u) => !isAway(u))
+  if (morale < B.unit.desertionMoraleBelow && presentForDesert.length > 0) {
     const [lv, r3] = nextRandom(rng)
     rng = r3
     if (lv < B.unit.desertionChance) {
       const [di, r4] = nextRandom(rng)
       rng = r4
-      const idx = Math.floor(di * units.length)
-      const left = units[idx]
-      units = units.filter((_, i) => i !== idx)
+      const idx = Math.floor(di * presentForDesert.length)
+      const left = presentForDesert[idx]
+      units = units.filter((u) => u.id !== left?.id)
       eff('flag:desert', 0, `${left?.name ?? '仲間'}が町を去った`)
       addMorale(B.morale.desertionRecover, '残った者たちで気持ちを引き締めた')
     }

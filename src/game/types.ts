@@ -19,6 +19,7 @@ export interface Unit {
   traits: TraitId[]
   condition: Condition
   xp: number
+  expedition?: number
 }
 
 export type EffectTarget =

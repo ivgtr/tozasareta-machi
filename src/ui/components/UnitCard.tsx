@@ -25,6 +25,7 @@ interface UnitCardProps {
   unit: Unit
   selected?: boolean
   compact?: boolean
+  away?: string
   onClick?: () => void
   onDetails: () => void
   onPointerDown?: (e: ReactPointerEvent) => void
@@ -34,6 +35,7 @@ export function UnitCard({
   unit,
   selected = false,
   compact = false,
+  away,
   onClick,
   onDetails,
   onPointerDown,
@@ -43,6 +45,7 @@ export function UnitCard({
     'unit-card',
     compact ? 'unit-card--compact' : '',
     selected ? 'unit-card--selected' : '',
+    away ? 'unit-card--away' : '',
     unit.condition === 'injured' ? 'unit-card--injured' : '',
   ]
     .filter(Boolean)
@@ -80,26 +83,29 @@ export function UnitCard({
     </button>
   )
 
-  const rootProps = {
-    className: classes,
-    onClick: (e: ReactMouseEvent) => {
-      e.stopPropagation()
-      onClick?.()
-    },
-    onPointerDown,
-    tabIndex: 0,
-    role: 'button' as const,
-    'aria-label': unit.alias ? `${unit.name}（${unit.alias}）` : unit.name,
-    onKeyDown: (e: ReactKeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault()
-        onClick?.()
-      } else if (e.key === 'i' || e.key === 'I') {
-        e.preventDefault()
-        onDetails()
+  const ariaLabel = unit.alias ? `${unit.name}（${unit.alias}）` : unit.name
+  const rootProps = away
+    ? { className: classes, 'aria-label': `${ariaLabel}・${away}` }
+    : {
+        className: classes,
+        onClick: (e: ReactMouseEvent) => {
+          e.stopPropagation()
+          onClick?.()
+        },
+        onPointerDown,
+        tabIndex: 0,
+        role: 'button' as const,
+        'aria-label': ariaLabel,
+        onKeyDown: (e: ReactKeyboardEvent) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onClick?.()
+          } else if (e.key === 'i' || e.key === 'I') {
+            e.preventDefault()
+            onDetails()
+          }
+        },
       }
-    },
-  }
 
   if (compact) {
     return (
@@ -109,6 +115,7 @@ export function UnitCard({
           <span className="unit-card__compact-name">{unit.name}</span>
           <span className="unit-card__alias">{unit.alias ?? '—'}</span>
         </div>
+        {away ? <span className="unit-card__badge unit-card__badge--away">{away}</span> : null}
         {unit.condition === 'injured' ? <span className="unit-card__badge">負傷</span> : null}
         {infoBtn}
       </div>

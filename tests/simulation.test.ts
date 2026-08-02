@@ -96,13 +96,13 @@ const skilledChoice: ChoiceStrategy = (s, rng) => {
   const sendOpts = ids.filter((id) => id.startsWith('send_'))
   if (sendOpts.length > 0) {
     let bestId = sendOpts[0] ?? ''
-    let bestApt = -1
+    let lowestApt = Infinity
     for (const id of sendOpts) {
       const u = s.units.find((x) => x.id === id.slice('send_'.length))
       if (u) {
         const apt = Math.max(u.apt.labor, u.apt.tech, u.apt.medical, u.apt.charm)
-        if (apt > bestApt) {
-          bestApt = apt
+        if (apt < lowestApt) {
+          lowestApt = apt
           bestId = id
         }
       }

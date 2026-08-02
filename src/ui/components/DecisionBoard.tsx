@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { DayPlan, GameState, TaskId } from '../../game/types'
-import { autoAssign, resolvePlacement, taskCost } from '../../game/actions'
+import { autoAssign, isOnExpedition, resolvePlacement, taskCost } from '../../game/actions'
 import { PixelArt } from '../art/PixelArt'
 import { PixelButton } from './PixelButton'
 import { UnitCard } from './UnitCard'
@@ -48,7 +48,8 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
   const ended = state.phase === 'ended'
 
   const assignedIds = new Set(PHYSICAL_TASKS.flatMap((t) => placements[t] ?? []))
-  const unassigned = state.units.filter((u) => !assignedIds.has(u.id))
+  const onExpedition = state.units.filter((u) => isOnExpedition(u))
+  const unassigned = state.units.filter((u) => !assignedIds.has(u.id) && !isOnExpedition(u))
   const remaining = unassigned.length
 
   const spent = PHYSICAL_TASKS.reduce(
@@ -272,6 +273,23 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
           ) : null}
         </div>
       </div>
+
+      {onExpedition.length > 0 ? (
+        <div className="board__expedition">
+          <span className="board__roster-label">探索中（{onExpedition.length}）</span>
+          <div className="board__roster-units">
+            {onExpedition.map((u) => (
+              <UnitCard
+                key={u.id}
+                unit={u}
+                compact
+                away={`探索中・${state.day - (u.expedition ?? state.day)}日目`}
+                onDetails={() => setDetailsUnitId(u.id)}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="board__actions">
         <PixelButton onClick={autoFill} disabled={ended || busy}>

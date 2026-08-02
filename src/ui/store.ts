@@ -79,6 +79,7 @@ const UnitSchema = z.object({
   traits: z.array(TraitSchema),
   condition: z.enum(['healthy', 'injured']),
   xp: z.number(),
+  expedition: z.number().optional(),
 })
 
 const FlagsSchema = z.object({

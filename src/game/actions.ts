@@ -181,6 +181,10 @@ function maxApt(u: Unit): number {
   return Math.max(u.apt.labor, u.apt.tech, u.apt.medical, u.apt.charm)
 }
 
+export function isOnExpedition(u: Unit): boolean {
+  return u.expedition !== undefined
+}
+
 export function autoAssign(state: GameState): DayPlan {
   const buckets: Record<TaskId, string[]> = {
     repair_power: [],
@@ -191,7 +195,9 @@ export function autoAssign(state: GameState): DayPlan {
   }
   let budget = state.budget
   let stockpile = state.stockpile
-  const sorted = [...state.units].sort((a, b) => maxApt(b) - maxApt(a))
+  const sorted = [...state.units]
+    .filter((u) => !isOnExpedition(u))
+    .sort((a, b) => maxApt(b) - maxApt(a))
   for (const u of sorted) {
     let bestTask: TaskId | null = null
     let bestVal = 0
