@@ -33,8 +33,17 @@ const dayNum = (container: HTMLElement) => container.querySelector('.play__day-n
 
 describe('title', () => {
   it('ブリーフィングが表示され、セーブなしでは続きからが出ない', () => {
-    render(<App />)
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }))
+    const { container } = render(<App />)
     expect(screen.getByText(/緊急派遣要請/)).toBeTruthy()
+    expect(container.querySelector('.type-text__reserve')).not.toBeNull()
     expect(screen.queryByText('続きから')).toBeNull()
   })
 })

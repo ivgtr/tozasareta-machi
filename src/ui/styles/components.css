@@ -117,6 +117,19 @@
   color: var(--cyan);
 }
 
+.type-text--reserved {
+  display: grid;
+}
+
+.type-text__reserve,
+.type-text__visible {
+  grid-area: 1 / 1;
+}
+
+.type-text__reserve {
+  visibility: hidden;
+}
+
 .worker-token {
   display: inline-grid;
   place-items: center;
