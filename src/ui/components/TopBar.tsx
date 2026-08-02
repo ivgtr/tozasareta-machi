@@ -1,5 +1,6 @@
 import type { GameState } from '../../game/types'
 import { BALANCE } from '../../game/data/balance'
+import { isOnExpedition } from '../../game/actions'
 import { PixelArt } from '../art/PixelArt'
 import { PixelButton } from './PixelButton'
 
@@ -19,7 +20,8 @@ interface Alert {
 function deriveAlerts(state: GameState): Alert[] {
   const alerts: Alert[] = []
   const r = state.resources
-  const consume = state.units.length * BALANCE.unit.foodPerUnit
+  const present = state.units.filter((u) => !isOnExpedition(u))
+  const consume = present.length * BALANCE.unit.foodPerUnit
   if (r.food < consume * BALANCE.morale.lowFoodDays)
     alerts.push({ icon: 'alert_warning', text: '食料の残りが少ない', tone: 'warning' })
   if (r.medical < BALANCE.medical.neglectAt)

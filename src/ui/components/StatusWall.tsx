@@ -1,5 +1,6 @@
 import type { GameState } from '../../game/types'
 import { BALANCE } from '../../game/data/balance'
+import { isOnExpedition } from '../../game/actions'
 import { moraleLabel } from '../../game/state'
 import { Gauge } from './Gauge'
 import { PALETTE } from '../art/manifest'
@@ -17,7 +18,9 @@ function capacityWord(value: number): string {
 
 export function StatusWall({ state }: StatusWallProps) {
   const r = state.resources
-  const consume = state.units.length * BALANCE.unit.foodPerUnit
+  const present = state.units.filter((u) => !isOnExpedition(u))
+  const away = state.units.length - present.length
+  const consume = present.length * BALANCE.unit.foodPerUnit
   const foodDays = consume > 0 ? Math.floor(r.food / consume) : 99
   const income =
     BALANCE.budget.income + (r.power >= BALANCE.budget.bonusAt ? BALANCE.budget.bonus : 0)
@@ -65,7 +68,10 @@ export function StatusWall({ state }: StatusWallProps) {
         </div>
         <div>
           <dt>人員</dt>
-          <dd>{state.units.length}</dd>
+          <dd>
+            {present.length}
+            {away > 0 ? `（他${away}探索中）` : ''}
+          </dd>
         </div>
       </dl>
       <p className="statuswall__forecast">
