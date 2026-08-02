@@ -132,7 +132,15 @@ export function Skyline({ power, morale, danger = false }: SkylineProps) {
       <circle cx={MAST_X} cy={GROUND - 31} r="1.6" className="skyline__beacon" />
       {houses.map((h, i) => (
         <g key={`h${i}`}>
-          <rect x={h.x} y={h.wallTop} width={h.w} height={h.wallH} fill="#131740" stroke="#252c6e" strokeWidth="1" />
+          <rect
+            x={h.x}
+            y={h.wallTop}
+            width={h.w}
+            height={h.wallH}
+            fill="#131740"
+            stroke="#252c6e"
+            strokeWidth="1"
+          />
           <polygon
             points={`${h.x - 2},${h.wallTop} ${h.x + h.w + 2},${h.wallTop} ${h.x + h.w / 2},${h.wallTop - h.roofH}`}
             fill="#1a2050"

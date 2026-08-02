@@ -58,7 +58,9 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
 
   const presentCount = units.filter((u) => !isAway(u)).length
   const consumeMult = queryMult(prev.modifiers, 'consume:food')
-  const consume = Math.round(presentCount * B.unit.foodPerUnit * (input.ration ? 0.5 : 1) * consumeMult)
+  const consume = Math.round(
+    presentCount * B.unit.foodPerUnit * (input.ration ? 0.5 : 1) * consumeMult,
+  )
   food -= consume
   eff('food', -consume, input.ration ? '配給を絞り、消費を抑えた' : '人々が食料を消費した')
   if (food < 0 && stockpile > 0) {
@@ -150,7 +152,9 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
   power = clamp(power - powerDecay, 0, 100)
   eff('power', -powerDecay, '発電設備が劣化した')
   const extra = power < B.medical.lowPowerAt ? B.medical.extraDecay : 0
-  const medDecay = Math.round((B.medical.decay + extra) * queryMult(prev.modifiers, 'decay:medical'))
+  const medDecay = Math.round(
+    (B.medical.decay + extra) * queryMult(prev.modifiers, 'decay:medical'),
+  )
   medical = clamp(medical - medDecay, 0, 100)
   eff('medical', -medDecay, extra > 0 ? '停電で医療の効率が落ちた' : '医療資源が消費された')
 

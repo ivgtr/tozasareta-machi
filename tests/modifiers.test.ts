@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { addModifier, isTaskDisabled, queryAdd, queryMult, tickModifiers } from '../src/game/modifiers'
+import {
+  addModifier,
+  isTaskDisabled,
+  queryAdd,
+  queryMult,
+  tickModifiers,
+} from '../src/game/modifiers'
 import { createInitialState } from '../src/game/state'
 import { settle } from '../src/game/settlement'
 import { autoAssign, placementValue, sanitizePlan } from '../src/game/actions'
@@ -7,7 +13,12 @@ import { step } from '../src/game/engine'
 import { BALANCE } from '../src/game/data/balance'
 import type { DayPlan, GameState, Modifier } from '../src/game/types'
 
-const mod = (id: string, daysLeft: number, startDay: number, effects: Modifier['effects']): Modifier => ({
+const mod = (
+  id: string,
+  daysLeft: number,
+  startDay: number,
+  effects: Modifier['effects'],
+): Modifier => ({
   id,
   daysLeft,
   startDay,

@@ -74,9 +74,7 @@ export function applyAutoEvent(prev: GameState, event: EventDef): RunEventsResul
 export function choiceOptions(state: GameState, event: EventDef): ChoiceOption[] {
   const ctx = makeCtx(state)
   const perUnit = event.perUnit
-    ? state.units
-        .map((u) => event.perUnit!(u, ctx))
-        .filter((o) => !o.when || o.when(ctx))
+    ? state.units.map((u) => event.perUnit!(u, ctx)).filter((o) => !o.when || o.when(ctx))
     : []
   const statics = (event.choices ?? []).filter((o) => !o.when || o.when(ctx))
   return [...perUnit, ...statics]

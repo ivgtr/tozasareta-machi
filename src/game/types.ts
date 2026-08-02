@@ -112,8 +112,7 @@ export interface DayPlan {
 }
 
 export type Action =
-  | { type: 'commitDay'; plan: DayPlan }
-  | { type: 'resolveChoice'; optionId: string }
+  { type: 'commitDay'; plan: DayPlan } | { type: 'resolveChoice'; optionId: string }
 
 export interface StepResult {
   state: GameState

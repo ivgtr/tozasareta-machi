@@ -11,7 +11,15 @@ interface GaugeProps {
   icon?: string
 }
 
-export function Gauge({ label, value, max = 100, color, segments = 10, stateWord, icon }: GaugeProps) {
+export function Gauge({
+  label,
+  value,
+  max = 100,
+  color,
+  segments = 10,
+  stateWord,
+  icon,
+}: GaugeProps) {
   const ratio = Math.max(0, Math.min(1, value / max))
   const lit = Math.round(ratio * segments)
   const low = ratio < 0.25

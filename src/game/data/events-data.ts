@@ -395,7 +395,9 @@ export const EVENTS: EventDef[] = [
       })
       return {
         state: { ...state, modifiers },
-        effects: [baseFx(state, 'volunteer_surge', 'morale', 2, 'ボランティアが殺到し、活気づいた')],
+        effects: [
+          baseFx(state, 'volunteer_surge', 'morale', 2, 'ボランティアが殺到し、活気づいた'),
+        ],
       }
     },
   },
@@ -489,8 +491,12 @@ export const EVENTS: EventDef[] = [
         const idx = Math.floor(roll * present.length)
         const target = present[idx]
         if (target && target.condition === 'healthy' && !target.traits.includes('sturdy')) {
-          units = units.map((u) => (u.id === target.id ? { ...u, condition: 'injured' as const } : u))
-          injuryFx.push(baseFx(state, 'landslide_actual', 'flag:injury', 0, `${target.name}が地滑りで負傷した`))
+          units = units.map((u) =>
+            u.id === target.id ? { ...u, condition: 'injured' as const } : u,
+          )
+          injuryFx.push(
+            baseFx(state, 'landslide_actual', 'flag:injury', 0, `${target.name}が地滑りで負傷した`),
+          )
         }
       }
       return {
@@ -507,9 +513,7 @@ export const EVENTS: EventDef[] = [
     name: '食料の腐敗',
     when: (c) => c.day >= 7 && c.state.resources.food >= 30,
     weight: () => 0.25,
-    apply: (c) => [
-      baseFx(c.state, 'food_spoilage', 'food', -25, '保存状態が悪く、食料が腐敗した'),
-    ],
+    apply: (c) => [baseFx(c.state, 'food_spoilage', 'food', -25, '保存状態が悪く、食料が腐敗した')],
   },
   {
     id: 'cold_snap',
@@ -535,9 +539,7 @@ export const EVENTS: EventDef[] = [
     name: 'デマの拡散',
     when: (c) => c.day >= 6 && c.state.resources.morale >= 30,
     weight: () => 0.2,
-    apply: (c) => [
-      baseFx(c.state, 'rumor', 'morale', -12, '根拠のない噂が広まり、不安が爆発した'),
-    ],
+    apply: (c) => [baseFx(c.state, 'rumor', 'morale', -12, '根拠のない噂が広まり、不安が爆発した')],
   },
   {
     id: 'rat_infestation',
@@ -606,7 +608,9 @@ export const EVENTS: EventDef[] = [
     when: (c) => c.day >= 12 && c.state.resources.medical < 25,
     weight: () => 0.35,
     mutate: (state) => {
-      const present = state.units.filter((u) => u.expedition === undefined && u.condition === 'healthy')
+      const present = state.units.filter(
+        (u) => u.expedition === undefined && u.condition === 'healthy',
+      )
       let units = state.units
       let rng = state.rng
       const injuryFx: Effect[] = []
@@ -616,8 +620,12 @@ export const EVENTS: EventDef[] = [
         const idx = Math.floor(roll * present.length)
         const target = present[idx]
         if (target) {
-          units = units.map((u) => (u.id === target.id ? { ...u, condition: 'injured' as const } : u))
-          injuryFx.push(baseFx(state, 'second_wave', 'flag:injury', 0, `${target.name}が感染症で倒れた`))
+          units = units.map((u) =>
+            u.id === target.id ? { ...u, condition: 'injured' as const } : u,
+          )
+          injuryFx.push(
+            baseFx(state, 'second_wave', 'flag:injury', 0, `${target.name}が感染症で倒れた`),
+          )
         }
       }
       return {
@@ -728,7 +736,9 @@ export const EVENTS: EventDef[] = [
         id: 'reserve',
         label: '温存する',
         desc: '士気-5',
-        apply: (c) => [baseFx(c.state, 'stockpile_crisis', 'morale', -5, '備蓄を温存し、不満が出た')],
+        apply: (c) => [
+          baseFx(c.state, 'stockpile_crisis', 'morale', -5, '備蓄を温存し、不満が出た'),
+        ],
       },
     ],
   },
