@@ -136,4 +136,10 @@
   .title__briefing {
     font-size: 15px;
   }
+  .title__game-actions {
+    flex-direction: column;
+  }
+  .title__game-action {
+    width: 100%;
+  }
 }
