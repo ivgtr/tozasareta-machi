@@ -19,7 +19,6 @@ function capacityWord(value: number): string {
 export function StatusWall({ state }: StatusWallProps) {
   const r = state.resources
   const present = state.units.filter((u) => !isOnExpedition(u))
-  const away = state.units.length - present.length
   const consume = present.length * BALANCE.unit.foodPerUnit
   const foodDays = consume > 0 ? Math.floor(r.food / consume) : 99
   const income =
@@ -68,14 +67,16 @@ export function StatusWall({ state }: StatusWallProps) {
         </div>
         <div>
           <dt>人員</dt>
-          <dd>{present.length}</dd>
+          <dd>
+            {present.length}
+            {present.length < state.units.length ? `/${state.units.length}` : ''}
+          </dd>
         </div>
       </dl>
       <p className="statuswall__forecast">
         日々の清算: 食料 −{consume} / 予算 +{income}
         {r.power < BALANCE.budget.bonusAt ? '（電力回復で増収）' : ''}
       </p>
-      {away > 0 ? <p className="statuswall__away">他{away}名 探索中（食料消費なし）</p> : null}
     </div>
   )
 }
