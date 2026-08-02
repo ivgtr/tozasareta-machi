@@ -62,9 +62,10 @@ export function TitleScreen({ onNewGame, onResume, canResume }: TitleScreenProps
           <button
             type="button"
             className="title__motion"
+            aria-pressed={settings.animations}
             onClick={() => updateSettings({ animations: !settings.animations })}
           >
-            演出: {settings.animations ? 'ON' : 'OFF'}
+            文字送り・演出: {settings.animations ? 'ON' : 'OFF'}
           </button>
         </div>
       </div>

@@ -59,7 +59,17 @@ describe('title', () => {
     expect(container.querySelectorAll('.title__game-action')).toHaveLength(2)
     const gameActions = container.querySelector('.title__game-actions')
     expect(gameActions).not.toBeNull()
-    expect(gameActions!.contains(screen.getByText(/演出:/))).toBe(false)
+    expect(gameActions!.contains(screen.getByText(/文字送り・演出:/))).toBe(false)
+  })
+
+  it('文字送りと演出の設定状態をボタンで明示する', () => {
+    render(<TitleScreen onNewGame={() => {}} onResume={() => {}} canResume={false} />)
+    const enabled = screen.getByRole('button', { name: '文字送り・演出: ON' })
+    expect(enabled.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(enabled)
+    const disabled = screen.getByRole('button', { name: '文字送り・演出: OFF' })
+    expect(disabled.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(disabled)
   })
 })
 
