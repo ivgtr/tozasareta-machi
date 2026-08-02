@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import type { DayPlan, GameState, TaskId } from '../../game/types'
+import type { DayPlan, GameState, Modifier, TaskId } from '../../game/types'
 import { autoAssign, isOnExpedition, resolvePlacement, taskCost } from '../../game/actions'
+import { isTaskDisabled } from '../../game/modifiers'
 import { PixelArt } from '../art/PixelArt'
+import { artSpec } from '../art/manifest'
 import { PixelButton } from './PixelButton'
 import { UnitCard } from './UnitCard'
 import { UnitDetails } from './UnitDetails'
@@ -29,6 +31,18 @@ const TARGET_LABEL: Record<string, string> = {
   morale: '士気',
   budget: '予算',
   stockpile: '備蓄',
+}
+
+function disabledReason(mods: Modifier[], task: TaskId): string | null {
+  for (const m of mods) {
+    for (const e of m.effects) {
+      if (e.target === `produce:${task}` && e.op === 'set' && e.value === 0) {
+        const label = artSpec('event', m.id)?.label ?? m.id
+        return `${label}（あと${m.daysLeft}日）`
+      }
+    }
+  }
+  return null
 }
 
 type Placements = Partial<Record<TaskId, string[]>>
@@ -88,6 +102,7 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
   }
 
   const moveUnitTo = (id: string, task: TaskId): boolean => {
+    if (isTaskDisabled(state.modifiers, task)) return false
     const next: Placements = {}
     for (const t of PHYSICAL_TASKS) next[t] = (placements[t] ?? []).filter((u) => u !== id)
     next[task] = [...(next[task] ?? []), id]
@@ -177,16 +192,19 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
               (e) => `${TARGET_LABEL[e.target] ?? e.target} ${e.delta >= 0 ? '+' : ''}${e.delta}`,
             )
             .join(' · ')
+          const cost = taskCost(task)
+          const isAffordable = affordable(task)
+          const disabled = isTaskDisabled(state.modifiers, task)
+          const disabledNote = disabled ? disabledReason(state.modifiers, task) : null
           const slotClasses = [
             'taskslot',
             drag?.over === task ? 'taskslot--over' : '',
             selectedUnit ? 'taskslot--placeable' : '',
             !affordable(task) ? 'taskslot--unaffordable' : '',
+            disabled ? 'taskslot--disabled' : '',
           ]
             .filter(Boolean)
             .join(' ')
-          const cost = taskCost(task)
-          const isAffordable = affordable(task)
           const costText =
             cost.budget > 0
               ? `予算 ${cost.budget}`
@@ -202,6 +220,7 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
               tabIndex={0}
               role="group"
               aria-label={taskLabel(task)}
+              aria-disabled={disabled}
               onClick={() => placeSelected(task)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -223,7 +242,15 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
                     {isAffordable ? '' : '（不足）'}
                   </div>
                 </div>
-                <div className="taskslot__fx">{unitIds.length > 0 ? fxText : '人員を配置 →'}</div>
+                <div className="taskslot__fx">
+                  {disabledNote ? (
+                    <span className="taskslot__disabled-note">{disabledNote} 配置不可</span>
+                  ) : unitIds.length > 0 ? (
+                    fxText
+                  ) : (
+                    '人員を配置 →'
+                  )}
+                </div>
               </div>
               <div className="taskslot__units">
                 {units.map((u) => (

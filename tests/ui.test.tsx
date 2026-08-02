@@ -3,10 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { App } from '../src/ui/App'
 import { ChoiceOverlay } from '../src/ui/components/ChoiceOverlay'
+import { DecisionBoard } from '../src/ui/components/DecisionBoard'
+import { StatusWall } from '../src/ui/components/StatusWall'
 import { TitleScreen } from '../src/ui/screens/TitleScreen'
 import { createInitialState } from '../src/game/state'
 import { choiceOptions, findEvent } from '../src/game/events'
-import type { GameState } from '../src/game/types'
+import type { GameState, Modifier } from '../src/game/types'
 
 beforeEach(() => {
   if (typeof window !== 'undefined') window.localStorage?.clear()
@@ -155,6 +157,43 @@ describe('play', () => {
     fireEvent.click(screen.getByText('岩倉源造'))
     fireEvent.click(screen.getByText('炊き出し'))
     expect(screen.getByText('4人 未配置')).toBeTruthy()
+  })
+})
+
+describe('modifier の UI 表示', () => {
+  const typhoon: Modifier = {
+    id: 'typhoon',
+    daysLeft: 2,
+    startDay: 8,
+    effects: [
+      { target: 'produce:repair_power', op: 'set', value: 0 },
+      { target: 'produce:restore_road', op: 'set', value: 0 },
+    ],
+  }
+
+  it('台風中は屋外任務が disabled 表示になり、配置が拒否される', () => {
+    const s: GameState = { ...createInitialState(1), day: 9, modifiers: [typhoon] }
+    const { container } = render(<DecisionBoard state={s} onCommit={() => {}} />)
+    const disabledSlots = container.querySelectorAll('.taskslot--disabled')
+    expect(disabledSlots).toHaveLength(2)
+    expect(screen.getAllByText('台風接近（あと2日） 配置不可')).toHaveLength(2)
+    fireEvent.click(screen.getByText('岩倉源造'))
+    fireEvent.click(screen.getByText('道路復旧'))
+    expect(screen.getByText('4人 未配置')).toBeTruthy()
+  })
+
+  it('modifier バッジが StatusWall にラベルと残り日数で表示される', () => {
+    const s: GameState = { ...createInitialState(1), day: 9, modifiers: [typhoon] }
+    const { container } = render(<StatusWall state={s} />)
+    expect(container.querySelector('.modbadge')).not.toBeNull()
+    expect(screen.getByText('台風接近')).toBeTruthy()
+    expect(screen.getByText('あと2日')).toBeTruthy()
+  })
+
+  it('modifier がなければバッジは表示されない', () => {
+    const s: GameState = createInitialState(1)
+    const { container } = render(<StatusWall state={s} />)
+    expect(container.querySelector('.modbadge')).toBeNull()
   })
 })
 

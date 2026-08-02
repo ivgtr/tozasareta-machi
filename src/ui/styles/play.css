@@ -135,6 +135,42 @@
   color: var(--cyan);
 }
 
+.statuswall__mods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.modbadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--night-800);
+  border: 2px solid var(--mod-color, var(--frame-lo));
+  font-size: var(--fs-small);
+}
+
+.modbadge__glyph {
+  font-family: var(--font-pixel);
+  font-size: 14px;
+  color: var(--mod-color, var(--ink));
+}
+
+.modbadge__label {
+  color: var(--ink);
+  letter-spacing: 0.06em;
+}
+
+.modbadge__days {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  color: var(--mod-color, var(--ink-dim));
+}
+
 .statuswall__sub {
   margin: 16px 0 8px;
   padding-bottom: 4px;
@@ -574,6 +610,20 @@
 
 .taskslot--unaffordable .taskslot__name {
   color: var(--ink-dim);
+}
+
+.taskslot--disabled {
+  opacity: 0.5;
+  border-style: dashed;
+}
+
+.taskslot--disabled .taskslot__name {
+  color: var(--ink-dim);
+  text-decoration: line-through;
+}
+
+.taskslot__disabled-note {
+  color: var(--red);
 }
 
 .taskslot__cost--lack {

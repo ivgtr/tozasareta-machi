@@ -1,9 +1,10 @@
+import type { CSSProperties } from 'react'
 import type { GameState } from '../../game/types'
 import { BALANCE } from '../../game/data/balance'
 import { isOnExpedition } from '../../game/actions'
 import { moraleLabel } from '../../game/state'
 import { Gauge } from './Gauge'
-import { PALETTE } from '../art/manifest'
+import { PALETTE, artSpec } from '../art/manifest'
 
 interface StatusWallProps {
   state: GameState
@@ -55,6 +56,25 @@ export function StatusWall({ state }: StatusWallProps) {
         color={PALETTE.gold}
         stateWord={moraleLabel(r.morale)}
       />
+
+      {state.modifiers.length > 0 ? (
+        <ul className="statuswall__mods">
+          {state.modifiers.map((m) => {
+            const spec = artSpec('event', m.id)
+            return (
+              <li
+                key={m.id}
+                className="modbadge"
+                style={{ '--mod-color': spec?.color ?? PALETTE.dim } as CSSProperties}
+              >
+                <span className="modbadge__glyph">{spec?.glyph ?? '状'}</span>
+                <span className="modbadge__label">{spec?.label ?? m.id}</span>
+                <span className="modbadge__days">あと{m.daysLeft}日</span>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
 
       <dl className="statuswall__stocks">
         <div>
