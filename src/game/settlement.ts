@@ -44,14 +44,16 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
   budget += income
   eff('budget', income, bonus > 0 ? '電力が安定し、商業から予算を得た' : '町の活動から予算を得た')
 
+  const isAway = (u: { expedition?: number }) => u.expedition !== undefined
+
   for (const u of units) {
+    if (isAway(u)) continue
     if (u.traits.includes('popular'))
       addMorale(B.trait.popularMorale, `${u.name}の存在が人心を和ませた`)
     if (u.traits.includes('troublemaker'))
       addMorale(B.trait.troublemakerMorale, `${u.name}が揉め事を起こした`)
   }
 
-  const isAway = (u: { expedition?: number }) => u.expedition !== undefined
   const presentCount = units.filter((u) => !isAway(u)).length
   const consume = Math.round(presentCount * B.unit.foodPerUnit * (input.ration ? 0.5 : 1))
   food -= consume
@@ -150,6 +152,7 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
 
   if (medical >= B.unit.healMedicalAt) {
     for (const u of units) {
+      if (isAway(u)) continue
       if (u.condition === 'injured') {
         u.condition = 'healthy'
         eff('flag:heal', 0, `${u.name}の怪我が治った`)
@@ -192,12 +195,12 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
   flags.daysFoodCut = input.ration ? flags.daysFoodCut + 1 : 0
 
   if (input.ration) addMorale(B.morale.ration, '配給を絞ったため、不満が高まった')
-  if (food < units.length * B.unit.foodPerUnit * B.morale.lowFoodDays)
+  if (food < presentCount * B.unit.foodPerUnit * B.morale.lowFoodDays)
     addMorale(B.morale.lowFood, '食料の残りが少なく、不安が広がった')
   if (medical < B.medical.neglectAt) addMorale(B.morale.lowMedical, '医療体制への不安が広がった')
   if (power < 30) addMorale(B.morale.lowPower, '暗闇への不満が広がった')
   if (
-    food >= units.length * B.unit.foodPerUnit * B.morale.lowFoodDays &&
+    food >= presentCount * B.unit.foodPerUnit * B.morale.lowFoodDays &&
     medical >= B.morale.calmMedicalAt &&
     power >= B.morale.calmPowerAt
   )
