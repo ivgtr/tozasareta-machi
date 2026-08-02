@@ -2,7 +2,7 @@
 
 ゲーム画面の実操作確認で見つかった、意思決定に必要な情報と主要操作の距離、モバイル表示、配置操作の曖昧さを解消する。
 
-**状態: P1–P4完了 / P5実装待ち**
+**状態: 2026-08-02 P1–P5完了**
 
 ## 0. 方針
 
@@ -157,7 +157,7 @@ P2とP4ではPlaywrightで次も確認する。
 5. `fix: keep daily commit action reachable`
 6. `docs: complete game UI improvement TODO`
 
-## 8. 完了記録
+## 8. P1–P4 完了記録
 
 - Vitest 123件、typecheck、lint、buildがすべて成功
 - 390×844: 横幅390px / scroll幅390px、本部記録と町の様子はともに366px、スクロール後のCompactStatus上端は0px
@@ -169,17 +169,17 @@ P2とP4ではPlaywrightで次も確認する。
 
 ### TODO
 
-- [ ] 確定操作を「本日の対応を確定」へ変更する
-- [ ] 確定ボタンの黄色全面塗りと大きな影を廃止する
-- [ ] 未配置時は「{n}人 待機」、全員配置時は「配置完了」を表示する
-- [ ] デスクトップは補助操作、状態、確定操作を1段にまとめる
-- [ ] デスクトップの確定ボタンを右寄せ・幅200〜240px・高さ約44pxにする
-- [ ] SPのCommitBarは下部固定を維持し、viewportの左右下端へ密着させる
-- [ ] SPのCommitBarは全周枠を廃止し、上罫線だけにする
-- [ ] SPの固定`bottom: 12px`を廃止し、safe-area分のみ下部を確保する
-- [ ] SPのCommitBar高を56〜64px程度に抑える
-- [ ] hover/focus、busy、ended、未配置確認ダイアログの挙動を維持する
-- [ ] 1440×1000と390×844で実寸確認する
+- [x] 確定操作を「本日の対応を確定」へ変更する
+- [x] 確定ボタンの黄色全面塗りと大きな影を廃止する
+- [x] 未配置時は「{n}人 待機」、全員配置時は「配置完了」を表示する
+- [x] デスクトップは補助操作、状態、確定操作を1段にまとめる
+- [x] デスクトップの確定ボタンを右寄せ・幅200〜240px・高さ約44pxにする
+- [x] SPのCommitBarは下部固定を維持し、viewportの左右下端へ密着させる
+- [x] SPのCommitBarは全周枠を廃止し、上罫線だけにする
+- [x] SPの固定`bottom: 12px`を廃止し、safe-area分のみ下部を確保する
+- [x] SPのCommitBar高を56〜64px程度に抑える
+- [x] hover/focus、busy、ended、未配置確認ダイアログの挙動を維持する
+- [x] 1440×1000と390×844で実寸確認する
 
 ### 変更しないもの
 
@@ -202,3 +202,11 @@ P2とP4ではPlaywrightで次も確認する。
 1. `docs: define quieter daily commit controls`
 2. `fix: soften daily commit controls`
 3. `docs: complete daily commit control refinement`
+
+### 完了記録
+
+- 1440×1000: 確定ボタン216×44px、補助操作・状態・確定操作が1段に収まり、横方向overflowなし
+- 390×844: CommitBarは`left: 0 / right: 390 / bottom: 844`、高さ56px、ボタン下端844px
+- SPのCommitBarは上枠2px、左右下枠0px、確定ボタンの影なし
+- 固定ドックと人員カードの重なりなし、未配置確認ダイアログの挙動を維持
+- Vitest 123件、typecheck、lint、build、変更対象ファイルのformatがすべて成功
