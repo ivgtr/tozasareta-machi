@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { App } from '../src/ui/App'
 import { ChoiceOverlay } from '../src/ui/components/ChoiceOverlay'
+import { TitleScreen } from '../src/ui/screens/TitleScreen'
 import { createInitialState } from '../src/game/state'
 import { choiceOptions, findEvent } from '../src/game/events'
 import type { GameState } from '../src/game/types'
@@ -45,6 +46,14 @@ describe('title', () => {
     expect(screen.getByText(/緊急派遣要請/)).toBeTruthy()
     expect(container.querySelector('.type-text__reserve')).not.toBeNull()
     expect(screen.queryByText('続きから')).toBeNull()
+  })
+
+  it('セーブがあれば続きからを主操作として同じ寸法の開始ボタンを表示する', () => {
+    const { container } = render(<TitleScreen onNewGame={() => {}} onResume={() => {}} canResume />)
+    expect(screen.getByText('▶ 続きから')).toBeTruthy()
+    expect(screen.getByText('最初から')).toBeTruthy()
+    expect(screen.queryByText('▶ 指揮所へ')).toBeNull()
+    expect(container.querySelectorAll('.title__game-action')).toHaveLength(2)
   })
 })
 
