@@ -188,16 +188,18 @@ describe('actions との統合', () => {
 describe('engine との統合', () => {
   const idle: DayPlan = { placements: [], ration: false }
 
-  it('modifier は finalizeDay でデクリメントされる', () => {
+  it('modifier は startDay 当日はデクリメントされず、翌日から減る', () => {
     const s: GameState = {
       ...createInitialState(5),
       modifiers: [mod('test', 2, 1, [{ target: 'consume:food', op: 'set', value: 0 }])],
     }
     const { state } = step(s, { type: 'commitDay', plan: idle })
     expect(state.modifiers).toHaveLength(1)
-    expect(state.modifiers[0]!.daysLeft).toBe(1)
+    expect(state.modifiers[0]!.daysLeft).toBe(2)
     const { state: s2 } = step(state, { type: 'commitDay', plan: idle })
-    expect(s2.modifiers).toHaveLength(0)
+    expect(s2.modifiers[0]!.daysLeft).toBe(1)
+    const { state: s3 } = step(s2, { type: 'commitDay', plan: idle })
+    expect(s3.modifiers).toHaveLength(0)
   })
 
   it('modifier 込みで決定性が保たれる', () => {

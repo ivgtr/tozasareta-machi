@@ -76,7 +76,7 @@ function finalizeDay(s: GameState, produced: Effect[]): StepResult {
     day,
     phase,
     ending,
-    modifiers: tickModifiers(s.modifiers, day),
+    modifiers: tickModifiers(s.modifiers, s.day),
     pendingEvents: undefined,
     pendingChoice: undefined,
   }
