@@ -45,6 +45,9 @@ describe('title', () => {
     const { container } = render(<App />)
     expect(screen.getByText(/緊急派遣要請/)).toBeTruthy()
     expect(container.querySelector('.type-text__reserve')).not.toBeNull()
+    const briefing = screen.getByRole('button', { name: '文章を全文表示' })
+    fireEvent.click(briefing)
+    expect(container.querySelector('.type-text__visible')?.textContent).toMatch(/生かし続けよ/)
     expect(screen.queryByText('続きから')).toBeNull()
   })
 

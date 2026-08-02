@@ -130,6 +130,15 @@
   visibility: hidden;
 }
 
+.type-text--skippable {
+  cursor: pointer;
+}
+
+.type-text--skippable:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+}
+
 .worker-token {
   display: inline-grid;
   place-items: center;

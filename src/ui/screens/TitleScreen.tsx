@@ -40,7 +40,7 @@ export function TitleScreen({ onNewGame, onResume, canResume }: TitleScreenProps
       <div className="title__dispatch">
         <p className="title__classification">極秘 ／ 優先度・甲</p>
         <pre className="title__briefing">
-          <TypeText text={BRIEFING} speed={16} reserveSpace />
+          <TypeText text={BRIEFING} speed={16} reserveSpace skippable />
         </pre>
         <div className="title__actions">
           <div className="title__game-actions">
