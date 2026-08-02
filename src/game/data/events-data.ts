@@ -27,7 +27,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'generator_failure',
     name: '発電機の故障',
-    when: (c) => c.state.resources.power > 20,
+    when: (c) => c.state.resources.power > 50,
     weight: (c) => 0.4 + (c.state.resources.power > 70 ? 0.2 : 0),
     apply: (c) => [
       baseFx(c.state, 'generator_failure', 'power', -32, '発電機が故障し、電力が大きく落ちた'),
@@ -194,16 +194,7 @@ export const EVENTS: EventDef[] = [
       baseFx(c.state, 'protest', 'morale', -5, '抗議集会が開かれた'),
     ],
   },
-  {
-    id: 'blackout',
-    name: '大規模停電',
-    when: (c) => c.state.resources.power < 40,
-    weight: () => 0.4,
-    apply: (c) => [
-      baseFx(c.state, 'blackout', 'power', -15, '大規模な停電が起きた'),
-      baseFx(c.state, 'blackout', 'morale', -4, '停電で不安が広がった'),
-    ],
-  },
+
   {
     id: 'water_shortage',
     name: '水の不足',
@@ -254,16 +245,7 @@ export const EVENTS: EventDef[] = [
       baseFx(c.state, 'elder_death', 'morale', -8, '高齢者が亡くなり、町に喪の空気が漂った'),
     ],
   },
-  {
-    id: 'trader',
-    name: '行商人の来訪',
-    when: (c) => c.day >= 6,
-    weight: () => 0.3,
-    apply: (c) => [
-      baseFx(c.state, 'trader', 'budget', 25, '行商人との取引で予算を得た'),
-      baseFx(c.state, 'trader', 'morale', 2, '行商人が外の知らせを伝えてくれた'),
-    ],
-  },
+
   {
     id: 'wildlife',
     name: '野生動物の出没',
