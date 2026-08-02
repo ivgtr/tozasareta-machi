@@ -2,6 +2,8 @@
 
 ゲーム画面の実操作確認で見つかった、意思決定に必要な情報と主要操作の距離、モバイル表示、配置操作の曖昧さを解消する。
 
+**状態: 2026-08-02 完了**
+
 ## 0. 方針
 
 - ゲームコア、バランス、セーブ形式は変更しない
@@ -154,3 +156,11 @@ P2とP4ではPlaywrightで次も確認する。
 4. `refactor: clarify unit assignment controls`
 5. `fix: keep daily commit action reachable`
 6. `docs: complete game UI improvement TODO`
+
+## 8. 完了記録
+
+- Vitest 123件、typecheck、lint、buildがすべて成功
+- 390×844: 横幅390px / scroll幅390px、本部記録と町の様子はともに366px、スクロール後のCompactStatus上端は0px
+- 1440×1000: 初期状態の文書高1000px、作戦開始ボタン下端917.5pxで表示領域内
+- 390×844: CommitBar下端832px、確認ダイアログとのz-indexは50/105、2日目も横方向overflowなし
+- Playwrightで初期状態、自動配置後、2日目、選択/配置/解除/詳細/配給のキーボード操作を確認
