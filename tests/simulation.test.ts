@@ -83,6 +83,15 @@ function assertInvariants(s: GameState) {
 type PlanStrategy = (state: GameState, rng: RngState) => { plan: DayPlan; rng: RngState }
 type ChoiceStrategy = (state: GameState, rng: RngState) => { optionId: string; rng: RngState }
 
+interface SimStats {
+  eventCounts: Record<string, number>
+  modifierDays: Record<string, number>
+}
+
+function newStats(): SimStats {
+  return { eventCounts: {}, modifierDays: {} }
+}
+
 const randomChoice: ChoiceStrategy = (s, rng) => {
   const ids = s.pendingChoice?.optionIds ?? []
   if (ids.length === 0) return { optionId: '', rng }
@@ -116,6 +125,7 @@ function simulate(
   games: number,
   makePlan: PlanStrategy,
   chooseOption: ChoiceStrategy,
+  stats?: SimStats,
 ): { survived: number; endings: Record<Ending, number> } {
   const endings: Record<Ending, number> = {
     full_recovery: 0,
@@ -129,13 +139,21 @@ function simulate(
     let guard = 0
     while (s.phase !== 'ended' && guard++ < 100) {
       if (s.phase === 'planning') {
+        if (stats) {
+          for (const m of s.modifiers)
+            stats.modifierDays[m.id] = (stats.modifierDays[m.id] ?? 0) + 1
+        }
         const { plan, rng: next } = makePlan(s, rng)
         rng = next
-        s = step(s, { type: 'commitDay', plan }).state
+        const result = step(s, { type: 'commitDay', plan })
+        if (stats) collectEventFires(result.effects, stats)
+        s = result.state
       } else if (s.phase === 'choice') {
         const { optionId, rng: next } = chooseOption(s, rng)
         rng = next
-        s = step(s, { type: 'resolveChoice', optionId }).state
+        const result = step(s, { type: 'resolveChoice', optionId })
+        if (stats) collectEventFires(result.effects, stats)
+        s = result.state
       } else {
         break
       }
@@ -148,24 +166,47 @@ function simulate(
   return { survived: games - endings.collapse, endings }
 }
 
+function collectEventFires(effects: { source: string }[], stats: SimStats) {
+  const fired = new Set<string>()
+  for (const e of effects) {
+    if (e.source.startsWith('event:')) fired.add(e.source.slice('event:'.length))
+  }
+  for (const id of fired) stats.eventCounts[id] = (stats.eventCounts[id] ?? 0) + 1
+}
+
+function logStats(label: string, games: number, stats: SimStats) {
+  const evts = Object.entries(stats.eventCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([id, n]) => `${id}:${n}(${(n / games).toFixed(1)})`)
+  console.log(`[sim:${label}] event fires /game:`, evts.join(' '))
+  const mods = Object.entries(stats.modifierDays)
+    .sort((a, b) => b[1] - a[1])
+    .map(([id, d]) => `${id}:${d}d(${(d / games).toFixed(1)})`)
+  console.log(`[sim:${label}] modifier active-days /game:`, mods.join(' '))
+}
+
 const skilledPlan: PlanStrategy = (s, rng) => ({ plan: autoAssign(s), rng })
 
 describe('simulation', () => {
   it('無作為プレイで不変条件が保たれ、必ず終了する', () => {
     const GAMES = 40
-    const { survived, endings } = simulate(GAMES, randomPlan, randomChoice)
+    const stats = newStats()
+    const { survived, endings } = simulate(GAMES, randomPlan, randomChoice, stats)
     console.log(
       `[sim:random] ${GAMES} games / survived ${survived} (${Math.round((survived / GAMES) * 100)}%)`,
       endings,
     )
+    logStats('random', GAMES, stats)
   })
 
   it('おまかせ配置（熟練）で不変条件が保たれ、必ず終了する', () => {
     const GAMES = 60
-    const { survived, endings } = simulate(GAMES, skilledPlan, skilledChoice)
+    const stats = newStats()
+    const { survived, endings } = simulate(GAMES, skilledPlan, skilledChoice, stats)
     console.log(
       `[sim:skilled] ${GAMES} games / survived ${survived} (${Math.round((survived / GAMES) * 100)}%)`,
       endings,
     )
+    logStats('skilled', GAMES, stats)
   })
 })
