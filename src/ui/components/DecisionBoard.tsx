@@ -62,6 +62,8 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
   const ended = state.phase === 'ended'
 
   const assignedIds = new Set(PHYSICAL_TASKS.flatMap((t) => placements[t] ?? []))
+  const selected = selectedUnit ? state.units.find((u) => u.id === selectedUnit) : undefined
+  const rationLabel = ration ? '節約配給（食料温存・士気低下）' : '通常配給'
   const onExpedition = state.units.filter((u) => isOnExpedition(u))
   const unassigned = state.units.filter((u) => !assignedIds.has(u.id) && !isOnExpedition(u))
   const remaining = unassigned.length
@@ -174,7 +176,7 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
     const parts = plan.placements.map(
       (p) => `${PHYSICAL_TASKS.includes(p.task) ? taskLabel(p.task) : p.task} ×${p.unitIds.length}`,
     )
-    if (plan.ration) parts.push('配給を絞る')
+    if (plan.ration) parts.push('節約配給')
     return parts.join(' ／ ')
   }
 
@@ -196,6 +198,9 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
           const isAffordable = affordable(task)
           const disabled = isTaskDisabled(state.modifiers, task)
           const disabledNote = disabled ? disabledReason(state.modifiers, task) : null
+          const placementGuide = selected
+            ? `${selected.name}をここに配置 →`
+            : '待機中の人員を先に選択'
           const slotClasses = [
             'taskslot',
             drag?.over === task ? 'taskslot--over' : '',
@@ -217,54 +222,52 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
               className={slotClasses}
               style={{ borderLeftColor: TASK_ACCENT[task] }}
               data-slot={task}
-              tabIndex={0}
-              role="group"
-              aria-label={taskLabel(task)}
-              aria-disabled={disabled}
-              onClick={() => placeSelected(task)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  placeSelected(task)
-                }
-              }}
             >
-              <div className="taskslot__head">
-                <PixelArt kind="icon" id={task} size="sm" />
-                <div className="taskslot__meta">
-                  <div className="taskslot__name">{taskLabel(task)}</div>
-                  <div
-                    className={
-                      isAffordable ? 'taskslot__cost' : 'taskslot__cost taskslot__cost--lack'
-                    }
-                  >
-                    {costText}
-                    {isAffordable ? '' : '（不足）'}
+              <button
+                type="button"
+                className="taskslot__target"
+                aria-label={`${taskLabel(task)}：${disabledNote ? '配置不可' : unitIds.length > 0 ? fxText : placementGuide}`}
+                aria-disabled={disabled || !isAffordable}
+                onClick={() => placeSelected(task)}
+              >
+                <div className="taskslot__head">
+                  <PixelArt kind="icon" id={task} size="sm" />
+                  <div className="taskslot__meta">
+                    <div className="taskslot__name">{taskLabel(task)}</div>
+                    <div
+                      className={
+                        isAffordable ? 'taskslot__cost' : 'taskslot__cost taskslot__cost--lack'
+                      }
+                    >
+                      {costText}
+                      {isAffordable ? '' : '（不足）'}
+                    </div>
+                  </div>
+                  <div className="taskslot__fx">
+                    {disabledNote ? (
+                      <span className="taskslot__disabled-note">{disabledNote} 配置不可</span>
+                    ) : unitIds.length > 0 ? (
+                      fxText
+                    ) : (
+                      placementGuide
+                    )}
                   </div>
                 </div>
-                <div className="taskslot__fx">
-                  {disabledNote ? (
-                    <span className="taskslot__disabled-note">{disabledNote} 配置不可</span>
-                  ) : unitIds.length > 0 ? (
-                    fxText
-                  ) : (
-                    '人員を配置 →'
-                  )}
-                </div>
-              </div>
+              </button>
               <div className="taskslot__units">
                 {units.map((u) => (
                   <UnitCard
                     key={u.id}
                     unit={u}
                     compact
+                    actionLabel={`${u.name}の配置を解除`}
                     onDetails={() => setDetailsUnitId(u.id)}
                     onClick={() => removeUnit(u.id)}
                     onPointerDown={startDrag(`unit:${u.id}`)}
                   />
                 ))}
                 {units.length === 0 ? (
-                  <span className="taskslot__empty">選択中の人員をクリックで配置</span>
+                  <span className="taskslot__empty">ドラッグでも配置できます</span>
                 ) : null}
               </div>
             </li>
@@ -275,10 +278,12 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
       <button
         type="button"
         className={['ration-toggle', ration ? 'ration-toggle--on' : ''].filter(Boolean).join(' ')}
+        aria-label={`配給方針：${rationLabel}`}
+        aria-pressed={ration}
         onClick={() => setRation((r) => !r)}
       >
         <PixelArt kind="icon" id="ration" size="sm" />
-        <span>配給を絞る（食料温存・士気減）: {ration ? '実施中' : 'OFF'}</span>
+        <span>配給方針：{rationLabel}</span>
       </button>
 
       <div className="board__roster" data-slot="roster">
@@ -290,6 +295,7 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
               unit={u}
               compact
               selected={selectedUnit === u.id}
+              actionLabel={`${u.name}を選択`}
               onClick={() => selectUnit(u.id)}
               onDetails={() => setDetailsUnitId(u.id)}
               onPointerDown={startDrag(`unit:${u.id}`)}
@@ -370,7 +376,7 @@ function taskLabel(task: TaskId): string {
     restore_road: '道路復旧',
     reinforce_medical: '医療班増員',
     soup_kitchen: '炊き出し',
-    ration: '配給を絞る',
+    ration: '節約配給',
   }
   return labels[task]
 }

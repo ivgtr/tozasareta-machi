@@ -239,6 +239,48 @@ describe('play', () => {
     expect(container.querySelector('.unit-card__apt-badge')).not.toBeNull()
   })
 
+  it('カードの選択と詳細を兄弟ボタンに分け、配置解除まで操作名で示す', () => {
+    const { container } = startGame()
+    const select = screen.getByRole('button', { name: '岩倉源造を選択' })
+    const details = screen.getByRole('button', { name: '岩倉源造の詳細' })
+    expect(select.parentElement).toBe(details.parentElement)
+    expect(container.querySelector('.unit-card button button')).toBeNull()
+    expect(select.getAttribute('aria-pressed')).toBe('false')
+    select.focus()
+    fireEvent.click(select, { detail: 0 })
+    expect(select.getAttribute('aria-pressed')).toBe('true')
+
+    const target = screen.getByRole('button', { name: /道路復旧：岩倉源造をここに配置/ })
+    expect(target.tagName).toBe('BUTTON')
+    target.focus()
+    fireEvent.click(target, { detail: 0 })
+    const remove = screen.getByRole('button', { name: '岩倉源造の配置を解除' })
+    expect(remove).toBeTruthy()
+    remove.focus()
+    fireEvent.click(remove, { detail: 0 })
+    expect(screen.getByText('4人 未配置')).toBeTruthy()
+  })
+
+  it('任務は未選択と選択中の配置案内を切り替える', () => {
+    startGame()
+    expect(screen.getAllByText('待機中の人員を先に選択')).toHaveLength(4)
+    fireEvent.click(screen.getByRole('button', { name: '森レナを選択' }), { detail: 0 })
+    expect(screen.getAllByText('森レナをここに配置 →')).toHaveLength(4)
+  })
+
+  it('通常配給と節約配給を状態として示し、作戦概要にも反映する', () => {
+    startGame()
+    const normal = screen.getByRole('button', { name: '配給方針：通常配給' })
+    expect(normal.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(normal, { detail: 0 })
+    const saving = screen.getByRole('button', {
+      name: '配給方針：節約配給（食料温存・士気低下）',
+    })
+    expect(saving.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: '作戦を開始する' }), { detail: 0 })
+    expect(screen.getByText('節約配給')).toBeTruthy()
+  })
+
   it('備蓄不足で炊き出しが支払不能と表示され、配置が拒否される', () => {
     const { container } = startGame()
     const dismissChoice = () => {

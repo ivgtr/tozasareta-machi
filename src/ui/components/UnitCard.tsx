@@ -1,8 +1,4 @@
-import type {
-  KeyboardEvent as ReactKeyboardEvent,
-  MouseEvent as ReactMouseEvent,
-  PointerEvent as ReactPointerEvent,
-} from 'react'
+import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { Aptitude, Unit } from '../../game/types'
 import { TRAITS } from '../../game/traits'
 import { APTITUDE_LABEL } from '../../game/data/units'
@@ -26,6 +22,7 @@ interface UnitCardProps {
   selected?: boolean
   compact?: boolean
   away?: string
+  actionLabel?: string
   onClick?: () => void
   onDetails: () => void
   onPointerDown?: (e: ReactPointerEvent) => void
@@ -33,9 +30,10 @@ interface UnitCardProps {
 
 export function UnitCard({
   unit,
-  selected = false,
+  selected,
   compact = false,
   away,
+  actionLabel,
   onClick,
   onDetails,
   onPointerDown,
@@ -84,61 +82,33 @@ export function UnitCard({
   )
 
   const ariaLabel = unit.alias ? `${unit.name}（${unit.alias}）` : unit.name
-  const rootProps = away
-    ? { className: classes, 'aria-label': `${ariaLabel}・${away}` }
-    : {
-        className: classes,
-        onClick: (e: ReactMouseEvent) => {
-          e.stopPropagation()
-          onClick?.()
-        },
-        onPointerDown,
-        tabIndex: 0,
-        role: 'button' as const,
-        'aria-label': ariaLabel,
-        onKeyDown: (e: ReactKeyboardEvent) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            onClick?.()
-          } else if (e.key === 'i' || e.key === 'I') {
-            e.preventDefault()
-            onDetails()
-          }
-        },
-      }
-
-  if (compact) {
-    return (
-      <div {...rootProps}>
-        {portrait}
-        <div className="unit-card__id">
-          <span className="unit-card__compact-name">{unit.name}</span>
-          <span className="unit-card__alias">{unit.alias ?? '—'}</span>
-        </div>
-        {away ? <span className="unit-card__badge unit-card__badge--away">{away}</span> : null}
-        {unit.condition === 'injured' ? <span className="unit-card__badge">負傷</span> : null}
-        {infoBtn}
-      </div>
-    )
-  }
-
-  return (
-    <div {...rootProps}>
+  const content = compact ? (
+    <>
       {portrait}
-      <div className="unit-card__body">
-        <div className="unit-card__name">
+      <span className="unit-card__id">
+        <span className="unit-card__compact-name">{unit.name}</span>
+        <span className="unit-card__alias">{unit.alias ?? '—'}</span>
+      </span>
+      {away ? <span className="unit-card__badge unit-card__badge--away">{away}</span> : null}
+      {unit.condition === 'injured' ? <span className="unit-card__badge">負傷</span> : null}
+    </>
+  ) : (
+    <>
+      {portrait}
+      <span className="unit-card__body">
+        <span className="unit-card__name">
           {unit.name}
           {unit.condition === 'injured' ? <span className="unit-card__badge">負傷</span> : null}
-        </div>
-        {unit.alias ? <div className="unit-card__alias">{unit.alias}</div> : null}
-        <div className="unit-card__apt">
+        </span>
+        {unit.alias ? <span className="unit-card__alias">{unit.alias}</span> : null}
+        <span className="unit-card__apt">
           <span style={{ color: APT_COLOR.labor }}>労{unit.apt.labor}</span>
           <span style={{ color: APT_COLOR.tech }}>技{unit.apt.tech}</span>
           <span style={{ color: APT_COLOR.medical }}>医{unit.apt.medical}</span>
           <span style={{ color: APT_COLOR.charm }}>魅{unit.apt.charm}</span>
-        </div>
+        </span>
         {unit.traits.length > 0 ? (
-          <div className="unit-card__traits">
+          <span className="unit-card__traits">
             {unit.traits.map((t) => (
               <span
                 key={t}
@@ -149,9 +119,35 @@ export function UnitCard({
                 {TRAITS[t].name}
               </span>
             ))}
-          </div>
+          </span>
         ) : null}
-      </div>
+      </span>
+    </>
+  )
+
+  return (
+    <div
+      className={classes}
+      role={away ? 'group' : undefined}
+      aria-label={away ? `${ariaLabel}・${away}` : undefined}
+    >
+      {away ? (
+        <div className="unit-card__action unit-card__action--static">{content}</div>
+      ) : (
+        <button
+          type="button"
+          className="unit-card__action"
+          aria-label={actionLabel ?? ariaLabel}
+          aria-pressed={selected === undefined ? undefined : selected}
+          onClick={(event) => {
+            event.stopPropagation()
+            onClick?.()
+          }}
+          onPointerDown={onPointerDown}
+        >
+          {content}
+        </button>
+      )}
       {infoBtn}
     </div>
   )

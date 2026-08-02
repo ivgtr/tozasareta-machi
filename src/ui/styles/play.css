@@ -230,12 +230,9 @@
 .unit-card {
   display: flex;
   align-items: center;
-  gap: 8px;
   min-width: 158px;
-  padding: 6px 8px;
   background: var(--night-600);
   border: 2px solid var(--frame-lo);
-  cursor: grab;
   user-select: none;
   transition:
     border-color 0.15s,
@@ -247,9 +244,29 @@
   transform: translateY(-2px);
 }
 
-.unit-card:focus-visible {
+.unit-card__action:focus-visible,
+.unit-card__info:focus-visible {
   outline: 3px solid var(--gold);
   outline-offset: 2px;
+}
+
+.unit-card__action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 6px 4px 6px 8px;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: grab;
+}
+
+.unit-card__action--static {
+  cursor: default;
 }
 
 .unit-card--selected {
@@ -299,8 +316,10 @@
 .unit-card--compact {
   width: 158px;
   min-width: 0;
-  padding: 5px 8px;
-  gap: 8px;
+}
+
+.unit-card--compact .unit-card__action {
+  padding: 5px 4px 5px 8px;
 }
 
 .unit-card--compact .unit-card__portrait .ph-portrait {
@@ -427,6 +446,7 @@
   flex-shrink: 0;
   width: 24px;
   height: 24px;
+  margin-right: 8px;
   background: none;
   border: 1px solid var(--frame-lo);
   color: var(--ink-dim);
@@ -635,10 +655,20 @@
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.4);
 }
 
-.taskslot:focus-visible {
+.taskslot__target:focus-visible {
   outline: 3px solid var(--gold);
   outline-offset: 2px;
-  border-color: var(--frame-hi);
+}
+
+.taskslot__target {
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .taskslot--over {
