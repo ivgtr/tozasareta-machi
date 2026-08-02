@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { App } from '../src/ui/App'
 import { ChoiceOverlay } from '../src/ui/components/ChoiceOverlay'
+import { CompactStatus } from '../src/ui/components/CompactStatus'
 import { DecisionBoard } from '../src/ui/components/DecisionBoard'
 import { StatusWall } from '../src/ui/components/StatusWall'
 import { TitleScreen } from '../src/ui/screens/TitleScreen'
@@ -91,6 +92,24 @@ describe('title', () => {
 })
 
 describe('play', () => {
+  it('コンパクト状況HUDに判断用の6資源を表示する', () => {
+    const state: GameState = {
+      ...createInitialState(1),
+      resources: { food: 91, power: 82, medical: 73, morale: 64 },
+      budget: 55,
+      stockpile: 46,
+    }
+    const { container } = render(<CompactStatus state={state} />)
+    const hud = screen.getByRole('region', { name: '資源状況' })
+    expect(hud.querySelectorAll('.compact-status__item')).toHaveLength(6)
+    expect(container.textContent).toContain('食料91')
+    expect(container.textContent).toContain('電力82')
+    expect(container.textContent).toContain('医療73')
+    expect(container.textContent).toContain('士気64')
+    expect(container.textContent).toContain('予算55')
+    expect(container.textContent).toContain('備蓄46')
+  })
+
   it('3ゾーンと町の様子・4任務・初期4ユニットが描画される', () => {
     const { container } = startGame()
     for (const t of ['町の状況', '本日の対応', '本部記録', '町の様子'])

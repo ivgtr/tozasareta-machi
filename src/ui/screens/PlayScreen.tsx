@@ -8,6 +8,7 @@ import { usePlayback } from '../hooks/usePlayback'
 import { AmbientBackdrop } from '../components/AmbientBackdrop'
 import { Skyline } from '../components/Skyline'
 import { TopBar } from '../components/TopBar'
+import { CompactStatus } from '../components/CompactStatus'
 import { StatusWall } from '../components/StatusWall'
 import { DecisionBoard } from '../components/DecisionBoard'
 import { ReportFeed } from '../components/ReportFeed'
@@ -106,6 +107,7 @@ export function PlayScreen({ onExit }: { onExit: () => void }) {
         onRestart={restart}
         onBackToTitle={onExit}
       />
+      <CompactStatus state={view} />
       <DayBoard
         key={`${view.rng.seed}:${view.day}`}
         state={view}
