@@ -83,11 +83,17 @@
 
 .title__actions {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 14px;
-  flex-wrap: wrap;
   border-top: 2px dashed var(--frame-lo);
   padding-top: 18px;
+}
+
+.title__game-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
 }
 
 .title__game-action {
@@ -101,7 +107,7 @@
 }
 
 .title__motion {
-  margin-left: auto;
+  align-self: flex-end;
   background: none;
   border: 2px solid var(--frame-lo);
   color: var(--ink-dim);

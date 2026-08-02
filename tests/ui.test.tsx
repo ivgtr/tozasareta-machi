@@ -54,6 +54,9 @@ describe('title', () => {
     expect(screen.getByText('最初から')).toBeTruthy()
     expect(screen.queryByText('▶ 指揮所へ')).toBeNull()
     expect(container.querySelectorAll('.title__game-action')).toHaveLength(2)
+    const gameActions = container.querySelector('.title__game-actions')
+    expect(gameActions).not.toBeNull()
+    expect(gameActions!.contains(screen.getByText(/演出:/))).toBe(false)
   })
 })
 

@@ -43,20 +43,22 @@ export function TitleScreen({ onNewGame, onResume, canResume }: TitleScreenProps
           <TypeText text={BRIEFING} speed={16} reserveSpace />
         </pre>
         <div className="title__actions">
-          {canResume ? (
-            <>
-              <PixelButton primary className="title__game-action" onClick={onResume}>
-                ▶ 続きから
+          <div className="title__game-actions">
+            {canResume ? (
+              <>
+                <PixelButton primary className="title__game-action" onClick={onResume}>
+                  ▶ 続きから
+                </PixelButton>
+                <PixelButton className="title__game-action" onClick={onNewGame}>
+                  最初から
+                </PixelButton>
+              </>
+            ) : (
+              <PixelButton primary className="title__game-action" onClick={onNewGame}>
+                ▶ 指揮所へ
               </PixelButton>
-              <PixelButton className="title__game-action" onClick={onNewGame}>
-                最初から
-              </PixelButton>
-            </>
-          ) : (
-            <PixelButton primary className="title__game-action" onClick={onNewGame}>
-              ▶ 指揮所へ
-            </PixelButton>
-          )}
+            )}
+          </div>
           <button
             type="button"
             className="title__motion"
