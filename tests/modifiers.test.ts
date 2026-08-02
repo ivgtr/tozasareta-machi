@@ -69,13 +69,13 @@ describe('tickModifiers', () => {
     const mods = [mod('a', 2, 5, [{ target: 'consume:food', op: 'set', value: 0 }])]
     const result = tickModifiers(mods, 5)
     expect(result).toHaveLength(1)
-    expect(result[0].daysLeft).toBe(2)
+    expect(result[0]!.daysLeft).toBe(2)
   })
 
   it('startDay の翌日からデクリメントする', () => {
     const mods = [mod('a', 2, 5, [{ target: 'consume:food', op: 'set', value: 0 }])]
     const d6 = tickModifiers(mods, 6)
-    expect(d6[0].daysLeft).toBe(1)
+    expect(d6[0]!.daysLeft).toBe(1)
     const d7 = tickModifiers(d6, 7)
     expect(d7).toHaveLength(0)
   })
@@ -92,8 +92,8 @@ describe('addModifier', () => {
     const renewed = mod('a', 3, 5, [{ target: 'consume:food', op: 'set', value: 0 }])
     const result = addModifier([old], renewed)
     expect(result).toHaveLength(1)
-    expect(result[0].daysLeft).toBe(3)
-    expect(result[0].startDay).toBe(5)
+    expect(result[0]!.daysLeft).toBe(3)
+    expect(result[0]!.startDay).toBe(5)
   })
 })
 
@@ -195,7 +195,7 @@ describe('engine との統合', () => {
     }
     const { state } = step(s, { type: 'commitDay', plan: idle })
     expect(state.modifiers).toHaveLength(1)
-    expect(state.modifiers[0].daysLeft).toBe(1)
+    expect(state.modifiers[0]!.daysLeft).toBe(1)
     const { state: s2 } = step(state, { type: 'commitDay', plan: idle })
     expect(s2.modifiers).toHaveLength(0)
   })
