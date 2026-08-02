@@ -254,22 +254,21 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
                   </div>
                 </div>
               </button>
-              <div className="taskslot__units">
-                {units.map((u) => (
-                  <UnitCard
-                    key={u.id}
-                    unit={u}
-                    compact
-                    actionLabel={`${u.name}の配置を解除`}
-                    onDetails={() => setDetailsUnitId(u.id)}
-                    onClick={() => removeUnit(u.id)}
-                    onPointerDown={startDrag(`unit:${u.id}`)}
-                  />
-                ))}
-                {units.length === 0 ? (
-                  <span className="taskslot__empty">ドラッグでも配置できます</span>
-                ) : null}
-              </div>
+              {units.length > 0 ? (
+                <div className="taskslot__units">
+                  {units.map((u) => (
+                    <UnitCard
+                      key={u.id}
+                      unit={u}
+                      compact
+                      actionLabel={`${u.name}の配置を解除`}
+                      onDetails={() => setDetailsUnitId(u.id)}
+                      onClick={() => removeUnit(u.id)}
+                      onPointerDown={startDrag(`unit:${u.id}`)}
+                    />
+                  ))}
+                </div>
+              ) : null}
             </li>
           )
         })}
@@ -325,16 +324,20 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
       ) : null}
 
       <div className="board__actions">
-        <PixelButton onClick={autoFill} disabled={ended || busy}>
-          おまかせ配置
-        </PixelButton>
-        <PixelButton onClick={reset} disabled={ended || busy}>
-          リセット
-        </PixelButton>
-        <PixelButton primary onClick={commit} disabled={ended || busy}>
-          作戦を開始する
-        </PixelButton>
-        {remaining > 0 ? <span className="board__idle">{remaining}人 未配置</span> : null}
+        <div className="board__tools">
+          <PixelButton onClick={autoFill} disabled={ended || busy}>
+            おまかせ配置
+          </PixelButton>
+          <PixelButton onClick={reset} disabled={ended || busy}>
+            リセット
+          </PixelButton>
+        </div>
+        <div className="board__commitbar">
+          {remaining > 0 ? <span className="board__idle">{remaining}人 未配置</span> : null}
+          <PixelButton primary className="board__commit" onClick={commit} disabled={ended || busy}>
+            作戦を開始する
+          </PixelButton>
+        </div>
       </div>
 
       {drag ? (

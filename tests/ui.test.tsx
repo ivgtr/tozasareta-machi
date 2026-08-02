@@ -121,6 +121,9 @@ describe('play', () => {
     for (const u of ['真壁史子', '榊直人', '森レナ', '岩倉源造'])
       expect(screen.getByText(u)).toBeTruthy()
     expect(container.querySelectorAll('.unit-card .pixel-art')).toHaveLength(4)
+    expect(container.querySelectorAll('.taskslot__units')).toHaveLength(0)
+    expect(container.querySelector('.board__tools')).not.toBeNull()
+    expect(container.querySelector('.board__commitbar .board__commit')).not.toBeNull()
   })
 
   it('ゲームメニューからタイトルへ戻り、1日目を再開できる', () => {
@@ -189,11 +192,12 @@ describe('play', () => {
   })
 
   it('ユニットを選択→任務クリックで配置され、未配置数が減る', () => {
-    startGame()
+    const { container } = startGame()
     expect(screen.getByText('4人 未配置')).toBeTruthy()
     fireEvent.click(screen.getByText('岩倉源造'))
     fireEvent.click(screen.getByText('道路復旧'))
     expect(screen.getByText('3人 未配置')).toBeTruthy()
+    expect(container.querySelectorAll('.taskslot__units')).toHaveLength(1)
   })
 
   it('おまかせ配置で全員が配置される', () => {
@@ -222,6 +226,18 @@ describe('play', () => {
     fireEvent.click(screen.getByText('おまかせ配置'))
     fireEvent.click(screen.getByText('作戦を開始する'))
     expect(dayNum(container)).toBe('2')
+  })
+
+  it('再生中と終了後は配置補助・確定操作を無効化する', () => {
+    const state = createInitialState(1)
+    const { container, rerender } = render(<DecisionBoard state={state} busy onCommit={() => {}} />)
+    expect(container.querySelector('.board--busy')).not.toBeNull()
+    for (const name of ['おまかせ配置', 'リセット', '作戦を開始する'])
+      expect(screen.getByRole('button', { name }).hasAttribute('disabled')).toBe(true)
+
+    rerender(<DecisionBoard state={{ ...state, phase: 'ended' }} onCommit={() => {}} />)
+    for (const name of ['おまかせ配置', 'リセット', '作戦を開始する'])
+      expect(screen.getByRole('button', { name }).hasAttribute('disabled')).toBe(true)
   })
 
   it('ユニットの詳細モーダルで特性の説明が見える', () => {

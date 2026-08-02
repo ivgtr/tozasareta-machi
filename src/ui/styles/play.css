@@ -745,12 +745,6 @@
   min-height: 62px;
 }
 
-.taskslot__empty {
-  align-self: center;
-  font-size: var(--fs-small);
-  color: var(--ink-dim);
-}
-
 .ration-toggle {
   display: flex;
   align-items: center;
@@ -806,13 +800,27 @@
 
 .board__actions {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 10px;
-  flex-wrap: wrap;
   margin-top: 14px;
 }
 
-.board__actions .board__commit {
+.board__tools {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.board__commitbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  background: var(--night-700);
+  border: 2px solid var(--frame-lo);
+}
+
+.board__commit {
   flex: 1;
   padding: 14px;
   font-size: 18px;
@@ -1040,7 +1048,7 @@
 
 @media (max-width: 700px) {
   .play {
-    padding: 12px 12px 80px;
+    padding: 12px 12px calc(112px + env(safe-area-inset-bottom, 0px));
   }
   .play__grid {
     grid-template-columns: 1fr;
@@ -1062,10 +1070,14 @@
   .play__top-actions {
     margin-left: 0;
   }
-  .board__commit {
-    position: sticky;
-    bottom: 12px;
-    z-index: 5;
+  .board__commitbar {
+    position: fixed;
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    z-index: 50;
+    border-color: var(--frame-hi);
+    box-shadow: 0 -4px 0 rgba(0, 0, 0, 0.4);
   }
   .play__alerts {
     width: 100%;
