@@ -3,7 +3,7 @@ export const BALANCE = {
   unit: {
     start: 4,
     cap: 10,
-    foodPerUnit: 4,
+    foodPerUnit: 5,
     growthThreshold: 5,
     injuryChance: 0.25,
     injuryMedicalBelow: 30,
