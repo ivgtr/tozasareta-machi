@@ -14,16 +14,23 @@ const APT_COLOR: Record<Aptitude, string> = {
 
 interface ArrivalOverlayProps {
   unit: Unit
+  kicker?: string
+  actionLabel?: string
   onContinue: () => void
 }
 
-export function ArrivalOverlay({ unit, onContinue }: ArrivalOverlayProps) {
+export function ArrivalOverlay({
+  unit,
+  kicker = '新たな仲間が辿り着いた',
+  actionLabel,
+  onContinue,
+}: ArrivalOverlayProps) {
   const unique = unit.unique === true
 
   return (
     <div className="spotlight" role="dialog" aria-modal="true">
       <div className={unique ? 'spotlight__card spotlight__card--gold' : 'spotlight__card'}>
-        <p className="spotlight__kicker">新たな仲間が辿り着いた</p>
+        <p className="spotlight__kicker">{kicker}</p>
         <div
           className={unique ? 'spotlight__portrait' : 'spotlight__portrait spotlight__portrait--sm'}
         >
@@ -80,7 +87,7 @@ export function ArrivalOverlay({ unit, onContinue }: ArrivalOverlayProps) {
         )}
 
         <PixelButton primary onClick={onContinue}>
-          {unique ? '迎え入れる' : '続ける'}
+          {actionLabel ?? (unique ? '迎え入れる' : '続ける')}
         </PixelButton>
       </div>
     </div>

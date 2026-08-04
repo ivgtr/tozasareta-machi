@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { DayPlan, GameState } from '../../game/types'
 import { step, applyEffects } from '../../game/engine'
+import { EXPEDITION_RETURN_SOURCE } from '../../game/settlement'
 import { BALANCE } from '../../game/data/balance'
 import { useStore } from '../store-context'
 import { randomSeed } from '../store'
@@ -73,7 +74,17 @@ export function PlayScreen({ onExit }: { onExit: () => void }) {
     overlay = <PlaybackOverlay eventId={beat.id} effects={beat.effects} onContinue={confirm} />
   } else if (beat?.kind === 'arrival') {
     const unit = state.units.find((u) => u.id === beat.unitId)
-    if (unit) overlay = <ArrivalOverlay unit={unit} onContinue={confirm} />
+    if (unit) {
+      const returning = beat.effects.some((e) => e.source === EXPEDITION_RETURN_SOURCE)
+      overlay = (
+        <ArrivalOverlay
+          unit={unit}
+          kicker={returning ? '探索から帰還した' : undefined}
+          actionLabel={returning ? '続ける' : undefined}
+          onContinue={confirm}
+        />
+      )
+    }
   }
 
   const commit = (plan: DayPlan) => {

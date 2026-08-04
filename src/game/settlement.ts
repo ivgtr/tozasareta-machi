@@ -6,6 +6,8 @@ import { clamp } from './state'
 import { nextRandom } from './rng'
 import { queryAdd, queryMult } from './modifiers'
 
+export const EXPEDITION_RETURN_SOURCE = 'event:expedition_return'
+
 export interface WorkEntry {
   unitId: string
   task: TaskId
@@ -32,8 +34,8 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
   const flags = { ...prev.flags, fired: [...prev.flags.fired] }
   let rng = prev.rng
 
-  const eff = (target: EffectTarget, delta: number, reason: string) =>
-    effects.push({ day, source: 'settlement', target, delta, reason })
+  const eff = (target: EffectTarget, delta: number, reason: string, source = 'settlement') =>
+    effects.push({ day, source, target, delta, reason })
   const addMorale = (delta: number, reason: string) => {
     const before = morale
     morale = clamp(morale + delta, 0, 100)
@@ -121,6 +123,7 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
     const dailyYield = aptMax * E.rewardCoef
     const daysMult = 1 + Math.max(0, daysAway - E.minDays) * E.returnBonusPerDay
 
+    const SRC = EXPEDITION_RETURN_SOURCE
     if (roll < greatChance) {
       const [vr, rb] = nextRandom(rng)
       rng = rb
@@ -131,30 +134,34 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
       food += foodGain
       stockpile += stockGain
       budget += budgetGain
-      eff('food', foodGain, `${u.name}が探索で大成功——食料を持ち帰った`)
-      eff('stockpile', stockGain, `${u.name}が備蓄を持ち帰った`)
-      eff('budget', budgetGain, `${u.name}が物資を売り予算を得た`)
+      eff(`unit:${u.id}`, 0, `${u.name}が探索から帰還した`, SRC)
+      eff('food', foodGain, `${u.name}が探索で大成功——食料を持ち帰った`, SRC)
+      eff('stockpile', stockGain, `${u.name}が備蓄を持ち帰った`, SRC)
+      eff('budget', budgetGain, `${u.name}が物資を売り予算を得た`, SRC)
     } else if (roll < greatChance + successChance) {
       const [vr, rb] = nextRandom(rng)
       rng = rb
       const variance = 0.7 + vr * 0.6
       const foodGain = Math.round(dailyYield * daysMult * variance)
       food += foodGain
-      eff('food', foodGain, `${u.name}が探索から食料を持ち帰った`)
+      eff(`unit:${u.id}`, 0, `${u.name}が探索から帰還した`, SRC)
+      eff('food', foodGain, `${u.name}が探索から食料を持ち帰った`, SRC)
     } else if (roll < greatChance + successChance + dangerChance) {
       const [dr, rc] = nextRandom(rng)
       rng = rc
       if (dr < E.deathShare) {
         units = units.filter((x) => x.id !== u.id)
         flags.casualties += 1
-        eff('flag:casualties', 1, `${u.name}が探索で命を落とした`)
+        eff('flag:casualties', 1, `${u.name}が探索で命を落とした`, SRC)
         addMorale(B.morale.hunger, '仲間を探索で失った')
         continue
       }
       u.condition = 'injured'
-      eff('flag:injury', 0, `${u.name}が探索で負傷した（効果半減）`)
+      eff(`unit:${u.id}`, 0, `${u.name}が探索から帰還した`, SRC)
+      eff('flag:injury', 0, `${u.name}が探索で負傷した（効果半減）`, SRC)
     } else {
-      eff('food', 0, `${u.name}が探索したが収穫なく戻った`)
+      eff(`unit:${u.id}`, 0, `${u.name}が探索から帰還した`, SRC)
+      eff('food', 0, `${u.name}が探索したが収穫なく戻った`, SRC)
     }
     u.expedition = undefined
   }

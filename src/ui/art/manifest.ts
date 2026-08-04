@@ -91,6 +91,7 @@ export const ART_SPECS: ArtSpec[] = [
   spec('event', 'power_crisis', '電', PALETTE.red, '電力の逼迫'),
   spec('event', 'stockpile_crisis', '備', PALETTE.gold, '備蓄の扱い'),
   spec('event', 'expedition', '探', PALETTE.green, '探索の機会'),
+  spec('event', 'expedition_return', '帰', PALETTE.green, '探索からの帰還'),
 
   spec('portrait', 'mayor', '長', PALETTE.gold, '真壁史子'),
   spec('portrait', 'medic', '医', PALETTE.green, '榊直人'),

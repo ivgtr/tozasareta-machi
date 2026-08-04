@@ -686,6 +686,22 @@ export const EVENTS: EventDef[] = [
         ],
       },
       {
+        id: 'buy_stockpile',
+        label: '備蓄を買う',
+        desc: `予算${BALANCE.procure.budget} → 備蓄+${BALANCE.procure.stockpile}`,
+        when: (c) => c.state.budget >= BALANCE.procure.budget,
+        apply: (c) => [
+          baseFx(c.state, 'trade_offer', 'budget', -BALANCE.procure.budget, '備蓄の代金を払った'),
+          baseFx(
+            c.state,
+            'trade_offer',
+            'stockpile',
+            BALANCE.procure.stockpile,
+            '備蓄を買い入れた',
+          ),
+        ],
+      },
+      {
         id: 'decline',
         label: '断る',
         apply: (c) => [baseFx(c.state, 'trade_offer', 'morale', 0, '交易を断った')],

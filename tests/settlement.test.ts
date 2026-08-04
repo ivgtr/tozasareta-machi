@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/game/state'
-import { settle, type WorkEntry } from '../src/game/settlement'
+import { EXPEDITION_RETURN_SOURCE, settle, type WorkEntry } from '../src/game/settlement'
 import { BALANCE } from '../src/game/data/balance'
 import type { GameState } from '../src/game/types'
 
@@ -138,6 +138,28 @@ describe('settlement', () => {
     }
     const after = s.units.find((u) => u.id === 'farmer')!.apt.labor
     expect(after).toBe(before + 1)
+  })
+
+  it('探索帰還の effect はスポットライト用の source と unit ターゲットを持つ', () => {
+    for (let i = 0; i < 50; i++) {
+      const b = base()
+      const s: GameState = {
+        ...b,
+        resources: { ...b.resources, food: 1000 },
+        rng: { seed: 400 + i, counter: 0 },
+        units: b.units.map((u) =>
+          u.id === 'farmer' ? { ...u, expedition: b.day - BALANCE.expedition.minDays } : u,
+        ),
+      }
+      const { state, effects } = settle(s, { ration: false, procure: false, worked: [] })
+      const ret = effects.filter((e) => e.source === EXPEDITION_RETURN_SOURCE)
+      if (ret.length === 0) continue
+      const alive = state.units.some((u) => u.id === 'farmer')
+      if (alive) expect(ret.some((e) => e.target === 'unit:farmer')).toBe(true)
+      else expect(ret.some((e) => e.target.startsWith('unit:'))).toBe(false)
+      return
+    }
+    throw new Error('帰還が一度も起きなかった')
   })
 
   it('士気が低いといずれ離脱が起きる', () => {

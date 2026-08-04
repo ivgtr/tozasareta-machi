@@ -53,6 +53,33 @@ describe('buildBeats', () => {
       expect(second.effects).toHaveLength(2)
     }
   })
+
+  it('unit ターゲットを持つ探索帰還は arrival ビートになる', () => {
+    const fx: Effect[] = [
+      {
+        day: 5,
+        source: 'event:expedition_return',
+        target: 'unit:farmer',
+        delta: 0,
+        reason: '探索から帰還した',
+      },
+      {
+        day: 5,
+        source: 'event:expedition_return',
+        target: 'food',
+        delta: 12,
+        reason: '食料を持ち帰った',
+      },
+    ]
+    const beats = buildBeats(fx)
+    expect(beats).toHaveLength(1)
+    const beat = beats[0]
+    expect(beat?.kind).toBe('arrival')
+    if (beat?.kind === 'arrival') {
+      expect(beat.unitId).toBe('farmer')
+      expect(beat.effects).toHaveLength(2)
+    }
+  })
 })
 
 describe('usePlayback', () => {

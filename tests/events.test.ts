@@ -73,6 +73,24 @@ describe('events', () => {
     expect(opts.some((o) => o.id === 'skip')).toBe(true)
   })
 
+  it('trade_offer の buy_stockpile は予算を払って備蓄を増やす', () => {
+    const trade = EVENTS.find((e) => e.id === 'trade_offer')!
+    const s: GameState = { ...base(), day: 6, budget: BALANCE.procure.budget }
+    const buy = choiceOptions(s, trade).find((o) => o.id === 'buy_stockpile')
+    expect(buy).toBeDefined()
+    const fx = buy!.apply!({ state: s, flags: s.flags, day: s.day })
+    const sumOf = (target: string) =>
+      fx.filter((e) => e.target === target).reduce((acc, e) => acc + e.delta, 0)
+    expect(sumOf('budget')).toBe(-BALANCE.procure.budget)
+    expect(sumOf('stockpile')).toBe(BALANCE.procure.stockpile)
+  })
+
+  it('予算が足りなければ buy_stockpile は候補に出ない', () => {
+    const trade = EVENTS.find((e) => e.id === 'trade_offer')!
+    const poor: GameState = { ...base(), day: 6, budget: BALANCE.procure.budget - 1 }
+    expect(choiceOptions(poor, trade).some((o) => o.id === 'buy_stockpile')).toBe(false)
+  })
+
   it('備蓄が探索コスト未満なら探索イベントは発火しない', () => {
     const expedition = EVENTS.find((e) => e.id === 'expedition')!
     const poor: GameState = {
