@@ -72,4 +72,16 @@ describe('events', () => {
     expect(sendOpts).toHaveLength(s.units.length)
     expect(opts.some((o) => o.id === 'skip')).toBe(true)
   })
+
+  it('備蓄が探索コスト未満なら探索イベントは発火しない', () => {
+    const expedition = EVENTS.find((e) => e.id === 'expedition')!
+    const poor: GameState = {
+      ...base(),
+      day: 6,
+      stockpile: BALANCE.expedition.cost - 1,
+    }
+    expect(expedition.when({ state: poor, flags: poor.flags, day: poor.day })).toBe(false)
+    const ok: GameState = { ...poor, stockpile: BALANCE.expedition.cost }
+    expect(expedition.when({ state: ok, flags: ok.flags, day: ok.day })).toBe(true)
+  })
 })

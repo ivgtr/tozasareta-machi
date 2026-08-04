@@ -109,6 +109,7 @@ export interface Placement {
 export interface DayPlan {
   placements: Placement[]
   ration: boolean
+  procure: boolean
 }
 
 export type Action =

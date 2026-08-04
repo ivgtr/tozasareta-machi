@@ -13,6 +13,7 @@ export interface WorkEntry {
 
 export interface SettleInput {
   ration: boolean
+  procure: boolean
   worked: WorkEntry[]
 }
 
@@ -46,6 +47,13 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
   budget += income
   eff('budget', income, bonus > 0 ? '電力が安定し、商業から予算を得た' : '町の活動から予算を得た')
 
+  if (input.procure && budget >= B.procure.budget) {
+    budget -= B.procure.budget
+    stockpile += B.procure.stockpile
+    eff('budget', -B.procure.budget, '備蓄の調達に予算を使った')
+    eff('stockpile', B.procure.stockpile, '備蓄を調達した')
+  }
+
   const isAway = (u: { expedition?: number }) => u.expedition !== undefined
 
   for (const u of units) {
@@ -63,6 +71,9 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
   )
   food -= consume
   eff('food', -consume, input.ration ? '配給を絞り、消費を抑えた' : '人々が食料を消費した')
+  const foodDecay = Math.round(B.food.decay * queryMult(prev.modifiers, 'decay:food'))
+  food -= foodDecay
+  eff('food', -foodDecay, '食料が劣化した')
   if (food < 0 && stockpile > 0) {
     const take = Math.min(stockpile, -food)
     stockpile -= take
@@ -202,6 +213,7 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
   flags.daysWithoutMedical = medical < B.medical.neglectAt ? flags.daysWithoutMedical + 1 : 0
   flags.daysFoodCut = input.ration ? flags.daysFoodCut + 1 : 0
 
+  addMorale(-B.morale.decay, '孤立生活のストレスが蓄積した')
   if (input.ration) addMorale(B.morale.ration, '配給を絞ったため、不満が高まった')
   if (food < presentCount * B.unit.foodPerUnit * B.morale.lowFoodDays)
     addMorale(B.morale.lowFood, '食料の残りが少なく、不安が広がった')

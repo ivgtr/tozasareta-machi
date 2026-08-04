@@ -9,6 +9,7 @@ import { StatusWall } from '../src/ui/components/StatusWall'
 import { TitleScreen } from '../src/ui/screens/TitleScreen'
 import { createInitialState } from '../src/game/state'
 import { choiceOptions, findEvent } from '../src/game/events'
+import { BALANCE } from '../src/game/data/balance'
 import type { GameState, Modifier } from '../src/game/types'
 import { serializeStore } from '../src/ui/store'
 
@@ -301,20 +302,15 @@ describe('play', () => {
     expect(screen.getByText('節約配給')).toBeTruthy()
   })
 
-  it('備蓄不足で炊き出しが支払不能と表示され、配置が拒否される', () => {
-    const { container } = startGame()
-    const dismissChoice = () => {
-      const opt = container.querySelector<HTMLElement>('.choice-overlay__option')
-      if (opt) fireEvent.click(opt)
+  it('予算不足で炊き出しが支払不能と表示され、配置が拒否される', () => {
+    const s: GameState = {
+      ...createInitialState(1),
+      budget: BALANCE.tasks.soup_kitchen.budget - 1,
     }
-    for (let d = 0; d < 3; d++) {
-      fireEvent.click(screen.getByText('岩倉源造'))
-      fireEvent.click(screen.getByText('炊き出し'))
-      fireEvent.click(screen.getByText('本日の対応を確定'))
-      fireEvent.click(screen.getByText('このまま開始'))
-      dismissChoice()
-    }
-    expect(screen.getByText(/（不足）/)).toBeTruthy()
+    const { container } = render(<DecisionBoard state={s} onCommit={() => {}} />)
+    const slot = container.querySelector('[data-slot="soup_kitchen"]')
+    expect(slot).not.toBeNull()
+    expect(slot!.textContent).toContain('（不足）')
     fireEvent.click(screen.getByText('岩倉源造'))
     fireEvent.click(screen.getByText('炊き出し'))
     expect(screen.getByText('4人 待機')).toBeTruthy()

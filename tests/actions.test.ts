@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/game/state'
 import { autoAssign, preview, resolvePlacement, sanitizePlan } from '../src/game/actions'
+import { BALANCE } from '../src/game/data/balance'
 import type { GameState } from '../src/game/types'
 
 const base = (): GameState => createInitialState(1)
@@ -84,6 +85,7 @@ describe('sanitizePlan', () => {
         { task: 'restore_road', unitIds: ['engineer'] },
       ],
       ration: false,
+      procure: false,
     })
     const count = plan.placements.reduce((s, p) => s + p.unitIds.length, 0)
     expect(count).toBe(1)
@@ -94,16 +96,43 @@ describe('sanitizePlan', () => {
     const plan = sanitizePlan(poor, {
       placements: [{ task: 'repair_power', unitIds: ['engineer'] }],
       ration: false,
+      procure: false,
     })
     expect(plan.placements).toHaveLength(0)
+  })
+
+  it('予算が足りなければ procure は取り下げられる', () => {
+    const poor: GameState = { ...base(), budget: BALANCE.procure.budget - 1 }
+    const plan = sanitizePlan(poor, { placements: [], ration: false, procure: true })
+    expect(plan.procure).toBe(false)
+  })
+
+  it('任務コストを支払った残りで procure の可否が決まる', () => {
+    const s: GameState = {
+      ...base(),
+      budget: BALANCE.tasks.repair_power.budget + BALANCE.procure.budget - 1,
+    }
+    const plan = sanitizePlan(s, {
+      placements: [{ task: 'repair_power', unitIds: ['engineer'] }],
+      ration: false,
+      procure: true,
+    })
+    expect(plan.placements).toHaveLength(1)
+    expect(plan.procure).toBe(false)
   })
 })
 
 describe('preview', () => {
   it('配給を絞ると食料温存と士気減の見込みを返す', () => {
-    const fx = preview(base(), { placements: [], ration: true })
+    const fx = preview(base(), { placements: [], ration: true, procure: false })
     expect(sum(fx, 'food')).toBeGreaterThan(0)
     expect(sum(fx, 'morale')).toBeLessThan(0)
+  })
+
+  it('procure は予算減と備蓄増の見込みを返す', () => {
+    const fx = preview(base(), { placements: [], ration: false, procure: true })
+    expect(sum(fx, 'budget')).toBe(-BALANCE.procure.budget)
+    expect(sum(fx, 'stockpile')).toBe(BALANCE.procure.stockpile)
   })
 })
 

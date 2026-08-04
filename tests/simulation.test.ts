@@ -50,7 +50,7 @@ function randomPlan(state: GameState, rng: RngState): { plan: DayPlan; rng: RngS
     task: t,
     unitIds: buckets[t],
   }))
-  return { plan: { placements, ration: rv < 0.15 }, rng: r }
+  return { plan: { placements, ration: rv < 0.15, procure: false }, rng: r }
 }
 
 function assertInvariants(s: GameState) {

@@ -52,8 +52,10 @@ export function taskCost(task: TaskId): { budget: number; stockpile: number } {
         ? t.repair_power.budget
         : task === 'reinforce_medical'
           ? t.reinforce_medical.budget
-          : 0,
-    stockpile: task === 'soup_kitchen' ? t.soup_kitchen.stockpile : 0,
+          : task === 'soup_kitchen'
+            ? t.soup_kitchen.budget
+            : 0,
+    stockpile: 0,
   }
 }
 
@@ -157,7 +159,8 @@ export function sanitizePlan(state: GameState, plan: DayPlan): DayPlan {
     stockpile -= cost.stockpile
     placements.push({ task: p.task, unitIds })
   }
-  return { placements, ration: plan.ration }
+  const procure = plan.procure && budget >= BALANCE.procure.budget
+  return { placements, ration: plan.ration, procure }
 }
 
 export function preview(state: GameState, plan: DayPlan): Effect[] {
@@ -179,6 +182,22 @@ export function preview(state: GameState, plan: DayPlan): Effect[] {
       target: 'morale',
       delta: BALANCE.morale.ration,
       reason: '配給を絞れば不満が出る見込み',
+    })
+  }
+  if (clean.procure) {
+    effects.push({
+      day: state.day,
+      source: 'task:procure',
+      target: 'budget',
+      delta: -BALANCE.procure.budget,
+      reason: '備蓄の調達に予算を使う見込み',
+    })
+    effects.push({
+      day: state.day,
+      source: 'task:procure',
+      target: 'stockpile',
+      delta: BALANCE.procure.stockpile,
+      reason: '備蓄を調達する見込み',
     })
   }
   return effects
@@ -235,5 +254,5 @@ export function autoAssign(state: GameState): DayPlan {
     task: t,
     unitIds: buckets[t],
   }))
-  return { placements, ration: false }
+  return { placements, ration: false, procure: false }
 }

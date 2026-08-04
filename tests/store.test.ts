@@ -16,6 +16,7 @@ const fresh = (): StoreState =>
 const roadPlan: DayPlan = {
   placements: [{ task: 'restore_road', unitIds: ['farmer'] }],
   ration: false,
+  procure: false,
 }
 
 describe('storeReducer', () => {

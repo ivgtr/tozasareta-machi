@@ -141,7 +141,7 @@ function commitDayStep(prev: GameState, plan: DayPlan): StepResult {
   const worked: WorkEntry[] = sanitized.placements.flatMap((p) =>
     p.unitIds.map((unitId) => ({ unitId, task: p.task })),
   )
-  const settled = settle(s, { ration: sanitized.ration, worked })
+  const settled = settle(s, { ration: sanitized.ration, procure: sanitized.procure, worked })
   s = settled.state
   produced.push(...settled.effects)
 

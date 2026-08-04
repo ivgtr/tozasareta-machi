@@ -146,6 +146,7 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
       unitIds: placements[t] ?? [],
     })),
     ration,
+    procure: false,
   })
 
   const commit = () => {

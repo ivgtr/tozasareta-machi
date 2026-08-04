@@ -34,7 +34,7 @@ export const BALANCE = {
     popularMorale: 1,
     troublemakerMorale: -1,
   },
-  food: { start: 100 },
+  food: { start: 100, decay: 5 },
   budget: { start: 100, income: 30, bonus: 15, bonusAt: 50 },
   power: { start: 60, decay: 10 },
   medical: {
@@ -46,6 +46,7 @@ export const BALANCE = {
   },
   morale: {
     start: 60,
+    decay: 2,
     hunger: -13,
     lowFood: -4,
     lowFoodDays: 3,
@@ -67,8 +68,9 @@ export const BALANCE = {
   tasks: {
     repair_power: { budget: 20 },
     reinforce_medical: { budget: 15 },
-    soup_kitchen: { stockpile: 15 },
+    soup_kitchen: { budget: 15 },
   },
+  procure: { budget: 15, stockpile: 12 },
   event: {
     choiceChance: 0.6,
   },

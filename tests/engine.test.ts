@@ -5,7 +5,7 @@ import { autoAssign, preview } from '../src/game/actions'
 import { BALANCE } from '../src/game/data/balance'
 import type { DayPlan, GameState } from '../src/game/types'
 
-const idle: DayPlan = { placements: [], ration: false }
+const idle: DayPlan = { placements: [], ration: false, procure: false }
 
 function play(seed: number, planFor: (s: GameState) => DayPlan): GameState {
   let s = createInitialState(seed)
@@ -66,6 +66,7 @@ describe('engine', () => {
         { task: 'restore_road', unitIds: ['farmer'] },
       ],
       ration: true,
+      procure: false,
     }
     const pv = preview(s0, plan).filter((e) => e.source !== 'task:ration')
     const applied = step(s0, { type: 'commitDay', plan }).effects.filter(

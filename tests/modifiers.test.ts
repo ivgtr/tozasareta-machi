@@ -111,13 +111,13 @@ describe('addModifier', () => {
 describe('settlement との統合', () => {
   const base = (): GameState => createInitialState(2)
 
-  it('consume:food set 0 で食料消費がなくなる', () => {
+  it('consume:food set 0 で食料消費がなくなる（減衰は残る）', () => {
     const s: GameState = {
       ...base(),
       modifiers: [mod('manna', 3, 1, [{ target: 'consume:food', op: 'set', value: 0 }])],
     }
-    const { state } = settle(s, { ration: false, worked: [] })
-    expect(state.resources.food).toBe(s.resources.food)
+    const { state } = settle(s, { ration: false, procure: false, worked: [] })
+    expect(state.resources.food).toBe(s.resources.food - BALANCE.food.decay)
   })
 
   it('decay:power mult 1.5 で電力減衰が増える', () => {
@@ -125,7 +125,7 @@ describe('settlement との統合', () => {
       ...base(),
       modifiers: [mod('cold', 3, 1, [{ target: 'decay:power', op: 'mult', value: 1.5 }])],
     }
-    const { state } = settle(s, { ration: false, worked: [] })
+    const { state } = settle(s, { ration: false, procure: false, worked: [] })
     const expected = s.resources.power - Math.round(BALANCE.power.decay * 1.5)
     expect(state.resources.power).toBe(Math.max(0, expected))
   })
@@ -135,7 +135,7 @@ describe('settlement との統合', () => {
       ...base(),
       modifiers: [mod('rats', 3, 1, [{ target: 'drain:stockpile', op: 'add', value: -10 }])],
     }
-    const { state } = settle(s, { ration: false, worked: [] })
+    const { state } = settle(s, { ration: false, procure: false, worked: [] })
     expect(state.stockpile).toBe(s.stockpile - 10)
   })
 
@@ -144,7 +144,7 @@ describe('settlement との統合', () => {
       ...base(),
       modifiers: [mod('half', 2, 1, [{ target: 'income:budget', op: 'mult', value: 0.5 }])],
     }
-    const { state } = settle(s, { ration: false, worked: [] })
+    const { state } = settle(s, { ration: false, procure: false, worked: [] })
     const bonus = s.resources.power >= BALANCE.budget.bonusAt ? BALANCE.budget.bonus : 0
     const expected = s.budget + Math.round((BALANCE.budget.income + bonus) * 0.5)
     expect(state.budget).toBe(expected)
@@ -163,6 +163,7 @@ describe('actions との統合', () => {
         { task: 'restore_road', unitIds: ['farmer'] },
       ],
       ration: false,
+      procure: false,
     }
     const clean = sanitizePlan(s, plan)
     expect(clean.placements.map((p) => p.task)).toEqual(['restore_road'])
@@ -197,7 +198,7 @@ describe('actions との統合', () => {
 })
 
 describe('engine との統合', () => {
-  const idle: DayPlan = { placements: [], ration: false }
+  const idle: DayPlan = { placements: [], ration: false, procure: false }
 
   it('modifier は startDay 当日はデクリメントされず、翌日から減る', () => {
     const s: GameState = {

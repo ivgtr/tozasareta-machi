@@ -749,6 +749,7 @@ export const EVENTS: EventDef[] = [
     kind: 'choice',
     when: (c) =>
       c.day >= BALANCE.expedition.dayFrom &&
+      c.state.stockpile >= BALANCE.expedition.cost &&
       c.state.units.length > 0 &&
       c.state.units.every((u) => u.expedition === undefined),
     weight: () => BALANCE.expedition.weight,
