@@ -35,6 +35,7 @@ export const ART_SPECS: ArtSpec[] = [
   spec('icon', 'reinforce_medical', '救', PALETTE.green, '医療班増員'),
   spec('icon', 'soup_kitchen', '炊', PALETTE.gold, '炊き出し'),
   spec('icon', 'ration', '配', PALETTE.amber, '配給を絞る'),
+  spec('icon', 'procure', '調', PALETTE.gold, '備蓄を調達'),
   spec('icon', 'mayor', '長', PALETTE.gold, '町長'),
   spec('icon', 'medic', '医', PALETTE.green, '医師'),
   spec('icon', 'engineer', '工', PALETTE.cyan, '技術者'),

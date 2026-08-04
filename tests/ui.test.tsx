@@ -302,6 +302,33 @@ describe('play', () => {
     expect(screen.getByText('節約配給')).toBeTruthy()
   })
 
+  it('備蓄を調達トグルが DayPlan.procure に反映される', () => {
+    let committed: import('../src/game/types').DayPlan | null = null
+    render(
+      <DecisionBoard
+        state={createInitialState(1)}
+        onCommit={(plan) => {
+          committed = plan
+        }}
+      />,
+    )
+    const toggle = screen.getByRole('button', { name: /備蓄を調達/ })
+    expect(toggle.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(toggle, { detail: 0 })
+    expect(toggle.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(screen.getByText('本日の対応を確定'), { detail: 0 })
+    fireEvent.click(screen.getByText('このまま開始'), { detail: 0 })
+    expect(committed).not.toBeNull()
+    expect(committed!.procure).toBe(true)
+  })
+
+  it('予算不足で備蓄を調達トグルに不足表示が出る', () => {
+    const s: GameState = { ...createInitialState(1), budget: BALANCE.procure.budget - 1 }
+    render(<DecisionBoard state={s} onCommit={() => {}} />)
+    const toggle = screen.getByRole('button', { name: /備蓄を調達/ })
+    expect(toggle.textContent).toContain('（不足）')
+  })
+
   it('予算不足で炊き出しが支払不能と表示され、配置が拒否される', () => {
     const s: GameState = {
       ...createInitialState(1),

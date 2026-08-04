@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { DayPlan, GameState, Modifier, TaskId } from '../../game/types'
 import { autoAssign, isOnExpedition, resolvePlacement, taskCost } from '../../game/actions'
 import { isTaskDisabled } from '../../game/modifiers'
+import { BALANCE } from '../../game/data/balance'
 import { PixelArt } from '../art/PixelArt'
 import { artSpec } from '../art/manifest'
 import { PixelButton } from './PixelButton'
@@ -56,6 +57,7 @@ interface DecisionBoardProps {
 export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardProps) {
   const [placements, setPlacements] = useState<Placements>({})
   const [ration, setRation] = useState(false)
+  const [procure, setProcure] = useState(false)
   const [selectedUnit, setSelectedUnit] = useState<string | null>(null)
   const [detailsUnitId, setDetailsUnitId] = useState<string | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -131,12 +133,14 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
     for (const p of plan.placements) next[p.task] = p.unitIds
     setPlacements(next)
     setRation(false)
+    setProcure(false)
     setSelectedUnit(null)
   }
 
   const reset = () => {
     setPlacements({})
     setRation(false)
+    setProcure(false)
     setSelectedUnit(null)
   }
 
@@ -146,7 +150,7 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
       unitIds: placements[t] ?? [],
     })),
     ration,
-    procure: false,
+    procure,
   })
 
   const commit = () => {
@@ -171,13 +175,16 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
     ? (state.units.find((u) => u.id === detailsUnitId) ?? null)
     : null
 
+  const procureAffordable = state.budget - spent.budget >= BALANCE.procure.budget
+
   const planSummary = () => {
     const plan = buildPlan()
-    if (plan.placements.length === 0 && !plan.ration) return '（割り当てなし）'
+    if (plan.placements.length === 0 && !plan.ration && !plan.procure) return '（割り当てなし）'
     const parts = plan.placements.map(
       (p) => `${PHYSICAL_TASKS.includes(p.task) ? taskLabel(p.task) : p.task} ×${p.unitIds.length}`,
     )
     if (plan.ration) parts.push('節約配給')
+    if (plan.procure) parts.push('備蓄を調達')
     return parts.join(' ／ ')
   }
 
@@ -275,16 +282,34 @@ export function DecisionBoard({ state, busy = false, onCommit }: DecisionBoardPr
         })}
       </ul>
 
-      <button
-        type="button"
-        className={['ration-toggle', ration ? 'ration-toggle--on' : ''].filter(Boolean).join(' ')}
-        aria-label={`配給方針：${rationLabel}`}
-        aria-pressed={ration}
-        onClick={() => setRation((r) => !r)}
-      >
-        <PixelArt kind="icon" id="ration" size="sm" />
-        <span>配給方針：{rationLabel}</span>
-      </button>
+      <div className="board__daily">
+        <button
+          type="button"
+          className={['ration-toggle', ration ? 'ration-toggle--on' : ''].filter(Boolean).join(' ')}
+          aria-label={`配給方針：${rationLabel}`}
+          aria-pressed={ration}
+          onClick={() => setRation((r) => !r)}
+        >
+          <PixelArt kind="icon" id="ration" size="sm" />
+          <span>配給方針：{rationLabel}</span>
+        </button>
+
+        <button
+          type="button"
+          className={['ration-toggle', procure ? 'ration-toggle--on' : '']
+            .filter(Boolean)
+            .join(' ')}
+          aria-label={`備蓄を調達：予算${BALANCE.procure.budget} → 備蓄+${BALANCE.procure.stockpile}${procureAffordable ? '' : '（予算不足）'}`}
+          aria-pressed={procure}
+          onClick={() => setProcure((p) => !p)}
+        >
+          <PixelArt kind="icon" id="procure" size="sm" />
+          <span>
+            備蓄を調達：予算{BALANCE.procure.budget} → 備蓄+{BALANCE.procure.stockpile}
+            {procureAffordable ? '' : '（不足）'}
+          </span>
+        </button>
+      </div>
 
       <div className="board__roster" data-slot="roster">
         <span className="board__roster-label">待機中の人員（{unassigned.length}）</span>

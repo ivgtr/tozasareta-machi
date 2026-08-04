@@ -745,12 +745,18 @@
   min-height: 62px;
 }
 
+.board__daily {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-top: 12px;
+}
+
 .ration-toggle {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 100%;
-  margin-top: 12px;
+  flex: 1;
   padding: 8px 10px;
   background: var(--night-800);
   border: 2px dashed var(--frame-lo);
