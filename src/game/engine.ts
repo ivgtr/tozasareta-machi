@@ -1,4 +1,14 @@
-import type { Action, DayPlan, Effect, GameState, NumericFlag, Phase, StepResult } from './types'
+import type {
+  Action,
+  DayPlan,
+  Effect,
+  GameState,
+  Modifier,
+  ModifierEffect,
+  NumericFlag,
+  Phase,
+  StepResult,
+} from './types'
 import { BALANCE } from './data/balance'
 import { resolvePlacement, sanitizePlan } from './actions'
 import { settle, type WorkEntry } from './settlement'
@@ -10,7 +20,8 @@ import {
   findEvent,
 } from './events'
 import { checkCollapse, evaluate } from './ending'
-import { tickModifiers } from './modifiers'
+import { addModifier, tickModifiers } from './modifiers'
+import { actOf } from './threat'
 
 const NUMERIC_FLAGS: NumericFlag[] = [
   'daysWithoutMedical',
@@ -60,6 +71,36 @@ export function applyEffects(prev: GameState, effects: Effect[]): GameState {
   return { ...prev, resources: { food, power, medical, morale }, budget, stockpile, flags }
 }
 
+function actTransition(mods: Modifier[], day: number): { mods: Modifier[]; fx: Effect[] } {
+  const A = BALANCE.acts
+  let next = mods
+  const fx: Effect[] = []
+  const ensure = (id: string, endDay: number, effects: ModifierEffect[], reason: string) => {
+    if (next.some((m) => m.id === id)) return
+    next = addModifier(next, { id, daysLeft: Math.max(0, endDay - day), startDay: day, effects })
+    fx.push({ day, source: id, target: 'flag:act', delta: 0, reason })
+  }
+  if (actOf(day) === 2)
+    ensure(
+      'act_stalemate',
+      A.final.start - 1,
+      [{ target: 'decay:power', op: 'mult', value: A.stalemate.powerDecayMult }],
+      '季節が悪化し、設備の劣化が目立ち始めた（膠着期：電力の衰えが速くなる）',
+    )
+  if (actOf(day) === 3)
+    ensure(
+      'act_final',
+      BALANCE.days,
+      [
+        { target: 'decay:power', op: 'mult', value: A.final.powerDecayMult },
+        { target: 'decay:medical', op: 'mult', value: A.final.medicalDecayMult },
+        { target: 'income:budget', op: 'mult', value: A.final.incomeMult },
+      ],
+      '正念場に入った——設備の老朽化が進み、医療の消耗も収入も厳しくなる',
+    )
+  return { mods: next, fx }
+}
+
 function finalizeDay(s: GameState, produced: Effect[]): StepResult {
   const day = s.day + 1
   let phase: Phase = 'planning'
@@ -71,16 +112,28 @@ function finalizeDay(s: GameState, produced: Effect[]): StepResult {
     phase = 'ended'
     ending = evaluate(s)
   }
+  let modifiers = tickModifiers(s.modifiers, s.day)
+  let effects = produced
+  let report = s.report
+  if (phase !== 'ended') {
+    const acted = actTransition(modifiers, day)
+    modifiers = acted.mods
+    if (acted.fx.length > 0) {
+      effects = [...produced, ...acted.fx]
+      report = [...(s.report ?? []), ...acted.fx]
+    }
+  }
   const state: GameState = {
     ...s,
     day,
     phase,
     ending,
-    modifiers: tickModifiers(s.modifiers, s.day),
+    modifiers,
+    report,
     pendingEvents: undefined,
     pendingChoice: undefined,
   }
-  return { state, effects: produced }
+  return { state, effects }
 }
 
 function appendReport(st: GameState, fx: Effect[]): GameState {

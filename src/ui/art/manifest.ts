@@ -94,6 +94,9 @@ export const ART_SPECS: ArtSpec[] = [
   spec('event', 'expedition', '探', PALETTE.green, '探索の機会'),
   spec('event', 'expedition_return', '帰', PALETTE.green, '探索からの帰還'),
 
+  spec('event', 'act_stalemate', '膠', PALETTE.amber, '膠着期'),
+  spec('event', 'act_final', '正', PALETTE.red, '正念場'),
+
   spec('portrait', 'mayor', '長', PALETTE.gold, '真壁史子'),
   spec('portrait', 'medic', '医', PALETTE.green, '榊直人'),
   spec('portrait', 'engineer', '工', PALETTE.cyan, '森レナ'),

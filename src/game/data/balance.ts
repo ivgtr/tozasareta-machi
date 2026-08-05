@@ -116,8 +116,8 @@ export const BALANCE = {
     },
   },
   acts: {
-    stalemate: { start: 11, powerDecayMult: 1.25 },
-    final: { start: 21, powerDecayMult: 1.5, medicalDecayMult: 1.25, incomeMult: 0.9 },
+    stalemate: { start: 11, powerDecayMult: 1.1 },
+    final: { start: 21, powerDecayMult: 1.25, medicalDecayMult: 1.15, incomeMult: 0.9 },
   },
   modifier: {
     manna: { days: 3 },
