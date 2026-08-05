@@ -3,6 +3,7 @@ import { KEYS, SCENE_EVENTS } from '../keys'
 import { COLORS } from '../tokens'
 import { deviceClassOf, readSafeInsets, type SafeInsets } from '../layout'
 import { computeRegions, type Regions } from '../regions'
+import { randomSeed } from '../../store'
 import { sharedStore, type SceneStore } from '../store-bridge'
 import {
   buildPlan,
@@ -14,6 +15,7 @@ import {
   type PlanState,
 } from '../plan'
 import { autoAssign } from '../../game/actions'
+import { applyEffects, step } from '../../game/engine'
 import { deriveFacilityView } from '../town/facility-view'
 import { FACILITIES } from '../town/facilities'
 import { TOWN_BASE, type FacilityId } from '../town/layout'
@@ -24,6 +26,9 @@ import { PlanStrip, TASK_LABEL } from '../plan-strip'
 import { DetailPanel, UnitDetailsOverlay } from '../detail-panel'
 import { LogDrawer } from '../log-drawer'
 import { ConfirmOverlay, MenuOverlay } from '../menu'
+import { OverlayStack } from '../overlays'
+import { PlaybackController } from '../playback/playback'
+import { PixelButton } from '../ui/button'
 import { pixelText } from '../ui/pixel-text'
 import { DRAG_THRESHOLD } from '../ui/token'
 
@@ -43,10 +48,12 @@ export class PlayScene extends Phaser.Scene {
   private log!: LogDrawer
   private menu!: MenuOverlay
   private confirm!: ConfirmOverlay
+  private overlays!: OverlayStack
+  private skipButton!: PixelButton
+  private readonly playback = new PlaybackController()
   private ghost: Phaser.GameObjects.Text | null = null
   private pendingTap: { unitId: string; x: number; y: number } | null = null
   private dragUnitId: string | null = null
-  private busy = false
   private unsubscribe: (() => void) | null = null
 
   constructor() {
@@ -64,26 +71,32 @@ export class PlayScene extends Phaser.Scene {
       onTokenPointerDown: (unitId, x, y) => this.onTokenPointerDown(unitId, x, y),
     })
     this.hud = new HudBar(this, {
-      onUndo: () => this.store.dispatch({ type: 'undo' }),
+      onUndo: () => {
+        if (!this.busy) this.store.dispatch({ type: 'undo' })
+      },
       onMenu: () => this.menu.show(),
     })
     this.strip = new PlanStrip(this, {
       onAuto: () => {
+        if (this.busy) return
         this.plan = fromAutoAssign(autoAssign(this.store.get().state))
         this.selectedUnitId = null
         this.refresh()
       },
       onReset: () => {
+        if (this.busy) return
         this.plan = emptyPlan()
         this.selectedUnitId = null
         this.refresh()
       },
       onCommit: () => this.tryCommit(),
       onToggleRation: () => {
+        if (this.busy) return
         this.plan = { ...this.plan, ration: !this.plan.ration }
         this.refresh()
       },
       onToggleProcure: () => {
+        if (this.busy) return
         this.plan = { ...this.plan, procure: !this.plan.procure }
         this.refresh()
       },
@@ -110,7 +123,7 @@ export class PlayScene extends Phaser.Scene {
       onRestart: () => {
         this.menu.hide()
         if (window.confirm('新しいゲームを始めますか？現在の進行は失われます。')) {
-          this.store.dispatch({ type: 'newGame', seed: Math.floor(Math.random() * 0x7fffffff) })
+          this.store.dispatch({ type: 'newGame', seed: randomSeed() })
         }
       },
     })
@@ -121,6 +134,20 @@ export class PlayScene extends Phaser.Scene {
       },
       onCancel: () => this.confirm.hide(),
     })
+    this.overlays = new OverlayStack(this, {
+      onConfirm: () => this.playback.confirm(),
+      onChoose: (optionId) => this.resolveChoice(optionId),
+      onEndingRestart: () => this.store.dispatch({ type: 'newGame', seed: randomSeed() }),
+      onEndingTitle: () => this.scene.start(KEYS.title),
+    })
+    this.skipButton = new PixelButton(this, {
+      label: 'スキップ ▶▶',
+      width: 150,
+      height: 40,
+      onAction: () => this.playback.skip(),
+    })
+    this.skipButton.setVisible(false)
+    this.playback.onChange = () => this.refresh()
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => this.onPointerMove(pointer))
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => this.onPointerUp(pointer))
     this.input.keyboard?.on('keydown-ESC', () => {
@@ -136,9 +163,22 @@ export class PlayScene extends Phaser.Scene {
     this.game.events.on(SCENE_EVENTS.deviceClass, this.layout, this)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.unsubscribe?.()
+      this.playback.destroy()
       this.game.events.off(SCENE_EVENTS.deviceClass, this.layout, this)
     })
     this.layout()
+  }
+
+  private get busy(): boolean {
+    return this.playback.current !== null
+  }
+
+  private view() {
+    const state = this.store.get().state
+    const pb = this.playback.current
+    if (!pb) return state
+    const effects = pb.beats.slice(0, pb.index + 1).flatMap((b) => b.effects)
+    return { ...applyEffects(pb.prev, effects), day: pb.prev.day }
   }
 
   private onTokenPointerDown(unitId: string, x: number, y: number): void {
@@ -189,9 +229,11 @@ export class PlayScene extends Phaser.Scene {
     if (this.pendingTap) {
       const { unitId } = this.pendingTap
       this.pendingTap = null
-      this.selectedUnitId = this.selectedUnitId === unitId ? null : unitId
-      this.selectedFacility = null
-      this.refresh()
+      if (!this.busy) {
+        this.selectedUnitId = this.selectedUnitId === unitId ? null : unitId
+        this.selectedFacility = null
+        this.refresh()
+      }
     }
   }
 
@@ -231,7 +273,20 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private commit(): void {
+    const prev = this.store.get().state
+    const result = step(prev, { type: 'commitDay', plan: buildPlan(this.plan) })
     this.store.dispatch({ type: 'commitDay', plan: buildPlan(this.plan) })
+    this.playback.start(prev, result.effects)
+    this.refresh()
+  }
+
+  private resolveChoice(optionId: string): void {
+    if (this.busy) return
+    const prev = this.store.get().state
+    const result = step(prev, { type: 'resolveChoice', optionId })
+    this.store.dispatch({ type: 'resolveChoice', optionId })
+    this.playback.start(prev, result.effects)
+    this.refresh()
   }
 
   private showGhost(x: number, y: number): void {
@@ -264,31 +319,36 @@ export class PlayScene extends Phaser.Scene {
     this.tray.setBounds(r.tray.x, r.tray.y, r.tray.width, r.tray.height)
     this.detail.setBounds(r.detail)
     this.log.setAnchor(r.hud.x + 8, r.hud.y + r.hud.height + 8, Math.min(440, r.hud.width - 16))
+    this.skipButton.setPosition(width / 2, r.town.y + r.town.height - 28)
     this.refresh()
   }
 
   private refresh(): void {
     const state = this.store.get().state
+    const view = this.view()
     const narrow = deviceClassOf(window.innerWidth) === 'narrow'
-    const view = deriveFacilityView(state, this.plan)
-    this.hud.update(state, this.store.get().history.length > 0 && !this.busy)
-    this.strip.update(state, this.plan, unassignedUnits(state, this.plan).length, this.busy)
-    this.town.update(state, this.plan, view, {
+    const busy = this.busy
+    const view2 = deriveFacilityView(view, this.plan)
+    this.hud.update(view, this.store.get().history.length > 0 && !busy)
+    this.strip.update(view, this.plan, unassignedUnits(view, this.plan).length, busy)
+    this.town.update(view, this.plan, view2, {
       selectedFacility: this.selectedFacility,
       placeableUnitId: this.selectedUnitId,
     })
-    this.tray.update(state, this.plan, this.selectedUnitId)
+    this.tray.update(view, this.plan, this.selectedUnitId)
     const hasSelection = this.selectedFacility !== null || this.selectedUnitId !== null
     this.detail.setVisible(!narrow || hasSelection)
     if (this.detail.visible) {
       this.detail.update({
-        state,
+        state: view,
         plan: this.plan,
-        view,
+        view: view2,
         selectedFacility: this.selectedFacility,
         selectedUnitId: this.selectedUnitId,
       })
     }
-    this.log.update(state.report)
+    this.log.update(view.report)
+    this.overlays.update({ state, busy, beat: this.playback.beat })
+    this.skipButton.setVisible(busy && !this.playback.waiting)
   }
 }
