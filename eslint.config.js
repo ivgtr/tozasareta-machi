@@ -38,4 +38,53 @@ export default tseslint.config(
       'no-restricted-globals': ['error', 'window', 'document', 'localStorage', 'sessionStorage'],
     },
   },
+  {
+    files: ['src/store/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: 'react', message: 'store層はReact非依存に保つ（docs/24 §1）' },
+            { name: 'react-dom', message: 'store層はReact非依存に保つ（docs/24 §1）' },
+          ],
+          patterns: ['react/*', 'react-dom/*', '*.css'],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/scene/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: 'react', message: 'シーン層はReact非依存に保つ（docs/22 §3.2）' },
+            { name: 'react-dom', message: 'シーン層はReact非依存に保つ（docs/22 §3.2）' },
+          ],
+          patterns: ['react/*', 'react-dom/*', '*.css'],
+        },
+      ],
+    },
+  },
+  {
+    files: ['tests/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [{ name: 'phaser', message: 'テストはPhaserをimportしない（docs/24 §1-5）' }],
+          patterns: [
+            'phaser/*',
+            '../src/scene/scenes/*',
+            '../src/scene/ui/*',
+            '../src/scene/game',
+            '../src/scene/main',
+            '../src/scene/art/assets',
+          ],
+        },
+      ],
+    },
+  },
 )
