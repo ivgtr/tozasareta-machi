@@ -6,7 +6,6 @@
     "module": "ESNext",
     "moduleDetection": "force",
     "moduleResolution": "bundler",
-    "jsx": "react-jsx",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,

@@ -6,7 +6,7 @@ import {
   selectRandomPortrait,
 } from '../src/game/data/units'
 import type { RngState } from '../src/game/types'
-import { artSpec } from '../src/ui/art/manifest'
+import { artSpec } from '../src/scene/art/manifest'
 
 describe('unique unit portraits', () => {
   it('30体のID・名前・肖像IDが重複しない', () => {
