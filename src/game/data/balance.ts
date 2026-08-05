@@ -103,6 +103,22 @@ export const BALANCE = {
     darkPowerBelow: 30,
     gloomyMoraleBelow: 40,
   },
+  threat: {
+    scale: 0.2,
+    cap: 2.0,
+    actBase: [0, 1, 2],
+    slack: {
+      foodDays: 4,
+      powerAt: 70,
+      medicalAt: 70,
+      moraleAt: 65,
+      stockpileAt: 40,
+    },
+  },
+  acts: {
+    stalemate: { start: 11, powerDecayMult: 1.25 },
+    final: { start: 21, powerDecayMult: 1.5, medicalDecayMult: 1.25, incomeMult: 0.9 },
+  },
   modifier: {
     manna: { days: 3 },
     sunny_stretch: { days: 3, mult: 1.5 },

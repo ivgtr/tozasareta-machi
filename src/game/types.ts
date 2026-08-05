@@ -140,6 +140,7 @@ export interface EventDef {
   name: string
   desc?: string
   kind?: 'auto' | 'choice'
+  tone?: 'threat' | 'boon'
   once?: boolean
   when: (ctx: EvalContext) => boolean
   weight: (ctx: EvalContext) => number

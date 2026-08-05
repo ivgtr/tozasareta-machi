@@ -2,6 +2,7 @@ import type { ChoiceOption, Effect, EvalContext, EventDef, GameState, RngState }
 import { BALANCE } from './data/balance'
 import { EVENTS } from './data/events-data'
 import { chance, weightedPick } from './rng'
+import { threatWeightMult } from './threat'
 
 export interface RunEventsResult {
   state: GameState
@@ -31,7 +32,12 @@ export function determineDayEvents(prev: GameState): { eventIds: string[]; rng: 
 
   const autoCands = EVENTS.filter((e) => !isChoice(e) && eligible(e, prev, ctx))
   if (autoCands.length > 0) {
-    const picked = weightedPick(autoCands, (e) => e.weight(ctx), rng)
+    const mult = threatWeightMult(prev)
+    const picked = weightedPick(
+      autoCands,
+      (e) => (e.tone === 'threat' ? e.weight(ctx) * mult : e.weight(ctx)),
+      rng,
+    )
     if (picked) {
       eventIds.push(picked[0].id)
       rng = picked[1]

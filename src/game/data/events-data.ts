@@ -18,6 +18,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'elderly_illness',
     name: '高齢者の体調不良',
+    tone: 'threat',
     when: (c) => c.day >= 3,
     weight: (c) => 0.5 + (c.state.resources.medical < 50 ? 0.5 : 0),
     apply: (c) => [
@@ -28,6 +29,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'generator_failure',
     name: '発電機の故障',
+    tone: 'threat',
     when: (c) => c.state.resources.power > 50,
     weight: (c) => 0.4 + (c.state.resources.power > 70 ? 0.2 : 0),
     apply: (c) => [
@@ -98,6 +100,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'hidden_stockpile',
     name: '隠し備蓄の発見',
+    tone: 'boon',
     once: true,
     when: (c) => c.day >= 4,
     weight: () => 0.3,
@@ -109,6 +112,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'foraging',
     name: '食料の調達',
+    tone: 'boon',
     when: (c) => c.day >= 5 && c.state.resources.food < 80,
     weight: () => 0.45,
     apply: (c) => [
@@ -119,6 +123,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'power_restored',
     name: '仮設発電の復旧',
+    tone: 'boon',
     when: (c) => c.day >= 5 && c.state.resources.power < 70,
     weight: () => 0.45,
     apply: (c) => [
@@ -129,6 +134,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'medical_donation',
     name: '医薬品の寄贈',
+    tone: 'boon',
     when: (c) => c.day >= 5 && c.state.resources.medical < 70,
     weight: () => 0.45,
     apply: (c) => [
@@ -139,6 +145,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'road_collapse',
     name: '道路の再崩落',
+    tone: 'threat',
     when: (c) => c.day >= 6,
     weight: () => 0.4,
     apply: (c) => [
@@ -149,6 +156,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'volunteers',
     name: '住民の自主協力',
+    tone: 'boon',
     when: (c) => c.state.resources.morale >= 50,
     weight: (c) => 0.4 + c.flags.cooperation * 0.05,
     apply: (c) => [
@@ -159,6 +167,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'ration_protest',
     name: '配分への反発',
+    tone: 'threat',
     when: (c) => c.flags.daysFoodCut >= 2,
     weight: (c) => 0.5 + c.flags.daysFoodCut * 0.3,
     apply: (c) => [
@@ -168,6 +177,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'rescue_contact',
     name: '救援隊からの連絡',
+    tone: 'boon',
     once: true,
     when: (c) => c.day >= 18 && c.day <= 26,
     weight: () => 1,
@@ -178,6 +188,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'infection',
     name: '感染症の発生',
+    tone: 'threat',
     when: (c) => c.state.resources.medical < 30,
     weight: (c) => ((30 - c.state.resources.medical) / 30) * 2 + c.flags.daysWithoutMedical * 0.5,
     apply: (c) => [
@@ -188,6 +199,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'protest',
     name: '抗議の集まり',
+    tone: 'threat',
     when: (c) => c.state.resources.morale < 35,
     weight: (c) => ((35 - c.state.resources.morale) / 35) * 1.5,
     apply: (c) => [
@@ -199,6 +211,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'water_shortage',
     name: '水の不足',
+    tone: 'threat',
     when: (c) => c.day >= 8,
     weight: () => 0.3,
     apply: (c) => [
@@ -209,6 +222,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'theft',
     name: '窃盗事件',
+    tone: 'threat',
     when: (c) => c.state.resources.morale < 45,
     weight: () => 0.3,
     apply: (c) => [
@@ -219,6 +233,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'radio_repair',
     name: '無線機の修復',
+    tone: 'boon',
     once: true,
     when: (c) => c.day >= 10,
     weight: () => 0.25,
@@ -229,6 +244,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'childbirth',
     name: '新しい命',
+    tone: 'boon',
     once: true,
     when: (c) => c.day >= 7,
     weight: () => 0.2,
@@ -240,6 +256,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'elder_death',
     name: '高齢者の死去',
+    tone: 'threat',
     when: (c) => c.state.resources.medical < 40,
     weight: (c) => 0.3 + c.flags.daysWithoutMedical * 0.2,
     apply: (c) => [
@@ -250,6 +267,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'wildlife',
     name: '野生動物の出没',
+    tone: 'threat',
     when: (c) => c.day >= 9,
     weight: () => 0.2,
     apply: (c) => [
@@ -260,6 +278,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'clear_weather',
     name: '天候の回復',
+    tone: 'boon',
     when: (c) => c.day >= 5,
     weight: () => 0.35,
     apply: (c) => [baseFx(c.state, 'clear_weather', 'morale', 5, '天候が回復し、空が晴れ渡った')],
@@ -267,6 +286,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'landslide_warning',
     name: '土砂災害警戒',
+    tone: 'threat',
     when: (c) => c.day >= 12,
     weight: () => 0.3,
     apply: (c) => [baseFx(c.state, 'landslide_warning', 'morale', -4, '土砂災害警戒が発令された')],
@@ -275,6 +295,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'manna',
     name: '恵みの雨',
+    tone: 'boon',
     once: true,
     when: (c) => c.day >= 10,
     weight: () => 0.06,
@@ -297,6 +318,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'supply_drop',
     name: '救援物資の投下',
+    tone: 'boon',
     once: true,
     when: (c) => c.day >= 12,
     weight: () => 0.07,
@@ -310,6 +332,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'hot_spring',
     name: '温泉の発見',
+    tone: 'boon',
     once: true,
     when: (c) => c.day >= 8,
     weight: () => 0.05,
@@ -321,6 +344,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'miracle_harvest',
     name: '奇跡の収穫',
+    tone: 'boon',
     once: true,
     when: (c) => c.day >= 10,
     weight: () => 0.06,
@@ -333,6 +357,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'sunny_stretch',
     name: '晴天続き',
+    tone: 'boon',
     when: (c) => c.day >= 5 && c.state.resources.power < 80,
     weight: () => 0.2,
     mutate: (state) => {
@@ -352,6 +377,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'animal_trap',
     name: '獣の罠',
+    tone: 'boon',
     when: (c) => c.day >= 5,
     weight: () => 0.2,
     apply: (c) => [
@@ -362,6 +388,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'traveling_engineer',
     name: '旅の技術者',
+    tone: 'boon',
     when: (c) => c.day >= 6,
     weight: () => 0.15,
     mutate: (state) => {
@@ -383,6 +410,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'volunteer_surge',
     name: 'ボランティア殺到',
+    tone: 'boon',
     when: (c) => c.day >= 6 && c.state.resources.morale >= 40,
     weight: () => 0.15,
     mutate: (state) => {
@@ -404,6 +432,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'clean_water',
     name: '湧水の発見',
+    tone: 'boon',
     when: (c) => c.day >= 5 && c.state.resources.medical < 80,
     weight: () => 0.2,
     apply: (c) => [
@@ -414,6 +443,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'cached_fuel',
     name: '燃料の備蓄発見',
+    tone: 'boon',
     when: (c) => c.day >= 6 && c.state.resources.power < 80,
     weight: () => 0.2,
     apply: (c) => [
@@ -425,6 +455,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'typhoon',
     name: '台風接近',
+    tone: 'threat',
     when: (c) => c.day >= 8,
     weight: () => 0.3,
     mutate: (state) => {
@@ -447,6 +478,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'storage_flood',
     name: '備蓄庫の浸水',
+    tone: 'threat',
     when: (c) => c.day >= 7 && c.state.stockpile >= 20,
     weight: () => 0.25,
     apply: (c) => [
@@ -457,6 +489,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'generator_overheat',
     name: '発電機の過熱',
+    tone: 'threat',
     when: (c) => c.day >= 6 && c.state.resources.power > 30,
     weight: () => 0.25,
     mutate: (state) => {
@@ -478,6 +511,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'landslide_actual',
     name: '地滑り発生',
+    tone: 'threat',
     when: (c) => c.day >= 10,
     weight: () => 0.25,
     mutate: (state) => {
@@ -511,6 +545,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'food_spoilage',
     name: '食料の腐敗',
+    tone: 'threat',
     when: (c) => c.day >= 7 && c.state.resources.food >= 30,
     weight: () => 0.25,
     apply: (c) => [baseFx(c.state, 'food_spoilage', 'food', -25, '保存状態が悪く、食料が腐敗した')],
@@ -518,6 +553,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'cold_snap',
     name: '寒波',
+    tone: 'threat',
     when: (c) => c.day >= 12,
     weight: () => 0.25,
     mutate: (state) => {
@@ -537,6 +573,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'rumor',
     name: 'デマの拡散',
+    tone: 'threat',
     when: (c) => c.day >= 6 && c.state.resources.morale >= 30,
     weight: () => 0.2,
     apply: (c) => [baseFx(c.state, 'rumor', 'morale', -12, '根拠のない噂が広まり、不安が爆発した')],
@@ -544,6 +581,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'rat_infestation',
     name: 'ネズミの大量発生',
+    tone: 'threat',
     when: (c) => c.day >= 8 && c.state.stockpile >= 15,
     weight: () => 0.25,
     mutate: (state) => {
@@ -563,6 +601,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'insomnia',
     name: '集団不眠',
+    tone: 'threat',
     when: (c) => c.day >= 9 && c.state.resources.morale < 50,
     weight: () => 0.2,
     mutate: (state) => {
@@ -583,6 +622,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'aftershock',
     name: '余震',
+    tone: 'threat',
     when: (c) => c.day >= 8 && c.state.resources.food < 60,
     weight: () => 0.35,
     mutate: (state) => {
@@ -605,6 +645,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'second_wave',
     name: '感染症の第2波',
+    tone: 'threat',
     when: (c) => c.day >= 12 && c.state.resources.medical < 25,
     weight: () => 0.35,
     mutate: (state) => {
@@ -640,6 +681,7 @@ export const EVENTS: EventDef[] = [
   {
     id: 'gratitude',
     name: '住民からの感謝',
+    tone: 'boon',
     when: (c) => c.state.resources.morale >= 70,
     weight: () => 0.3,
     apply: (c) => [
