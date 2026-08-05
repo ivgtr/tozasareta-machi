@@ -31,6 +31,11 @@ export class SceneStore {
   }
 }
 
-export function initialSceneStore(): SceneStore {
-  return new SceneStore(loadStore() ?? { state: createInitialState(randomSeed()), history: [] })
+let shared: SceneStore | null = null
+
+export function sharedStore(): SceneStore {
+  if (!shared) {
+    shared = new SceneStore(loadStore() ?? { state: createInitialState(randomSeed()), history: [] })
+  }
+  return shared
 }

@@ -12,8 +12,8 @@ export interface PixelButtonOptions {
 }
 
 export class PixelButton extends Phaser.GameObjects.Container {
-  private readonly buttonWidth: number
-  private readonly buttonHeight: number
+  private innerWidth: number
+  private buttonHeight: number
   private readonly primary: boolean
   private readonly onAction: () => void
   private readonly bg: Phaser.GameObjects.Graphics
@@ -24,7 +24,7 @@ export class PixelButton extends Phaser.GameObjects.Container {
 
   constructor(scene: Phaser.Scene, options: PixelButtonOptions) {
     super(scene)
-    this.buttonWidth = options.width
+    this.innerWidth = options.width
     this.buttonHeight = options.height
     this.primary = options.primary ?? false
     this.onAction = options.onAction
@@ -69,6 +69,20 @@ export class PixelButton extends Phaser.GameObjects.Container {
     scene.add.existing(this)
   }
 
+  get buttonWidth(): number {
+    return this.innerWidth
+  }
+
+  setSize(width: number, height: number): this {
+    this.innerWidth = width
+    this.buttonHeight = height
+    if (this.input) {
+      this.input.hitArea = new Phaser.Geom.Rectangle(-width / 2, -height / 2, width, height)
+    }
+    this.redraw()
+    return this
+  }
+
   setEnabled(value: boolean): void {
     this.enabled = value
     if (!value) {
@@ -85,7 +99,7 @@ export class PixelButton extends Phaser.GameObjects.Container {
 
   private redraw(): void {
     const g = this.bg
-    const w = this.buttonWidth
+    const w = this.innerWidth
     const h = this.buttonHeight
     const b = BUTTON.border
     const active = this.enabled && this.hovered

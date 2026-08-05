@@ -1,8 +1,9 @@
 import Phaser from 'phaser'
 import { KEYS, SCENE_EVENTS } from '../keys'
-import { COLORS, SPACING } from '../tokens'
-import { deviceClassOf } from '../layout'
-import { initialSceneStore, type SceneStore } from '../store-bridge'
+import { COLORS } from '../tokens'
+import { deviceClassOf, readSafeInsets, type SafeInsets } from '../layout'
+import { computeRegions, type Regions } from '../regions'
+import { sharedStore, type SceneStore } from '../store-bridge'
 import {
   buildPlan,
   emptyPlan,
@@ -18,7 +19,11 @@ import { FACILITIES } from '../town/facilities'
 import { TOWN_BASE, type FacilityId } from '../town/layout'
 import { TownLayer } from '../town/town-layer'
 import { TrayLayer } from '../town/tray-layer'
-import { PixelButton } from '../ui/button'
+import { HudBar } from '../hud'
+import { PlanStrip, TASK_LABEL } from '../plan-strip'
+import { DetailPanel, UnitDetailsOverlay } from '../detail-panel'
+import { LogDrawer } from '../log-drawer'
+import { ConfirmOverlay, MenuOverlay } from '../menu'
 import { pixelText } from '../ui/pixel-text'
 import { DRAG_THRESHOLD } from '../ui/token'
 
@@ -27,14 +32,21 @@ export class PlayScene extends Phaser.Scene {
   private plan: PlanState = emptyPlan()
   private selectedUnitId: string | null = null
   private selectedFacility: FacilityId | null = null
+  private insets: SafeInsets = readSafeInsets()
+  private regions!: Regions
   private town!: TownLayer
   private tray!: TrayLayer
-  private statusText!: Phaser.GameObjects.Text
-  private autoButton!: PixelButton
-  private commitButton!: PixelButton
+  private hud!: HudBar
+  private strip!: PlanStrip
+  private detail!: DetailPanel
+  private unitDetails!: UnitDetailsOverlay
+  private log!: LogDrawer
+  private menu!: MenuOverlay
+  private confirm!: ConfirmOverlay
   private ghost: Phaser.GameObjects.Text | null = null
   private pendingTap: { unitId: string; x: number; y: number } | null = null
   private dragUnitId: string | null = null
+  private busy = false
   private unsubscribe: (() => void) | null = null
 
   constructor() {
@@ -43,64 +55,77 @@ export class PlayScene extends Phaser.Scene {
 
   create(): void {
     this.cameras.main.setBackgroundColor(COLORS.night900)
-    this.store = initialSceneStore()
+    this.store = sharedStore()
     this.town = new TownLayer(this, {
       onFacilityTap: (id) => this.onFacilityTap(id),
-      onTokenPointerDown: (unitId, x, y) => {
-        this.pendingTap = { unitId, x, y }
-      },
+      onTokenPointerDown: (unitId, x, y) => this.onTokenPointerDown(unitId, x, y),
     })
     this.tray = new TrayLayer(this, {
-      onTokenPointerDown: (unitId, x, y) => {
-        this.pendingTap = { unitId, x, y }
-      },
+      onTokenPointerDown: (unitId, x, y) => this.onTokenPointerDown(unitId, x, y),
     })
-    this.statusText = pixelText(this, '', { color: COLORS.inkDim })
-    this.autoButton = new PixelButton(this, {
-      label: 'おまかせ配置',
-      width: 150,
-      height: 44,
-      onAction: () => {
+    this.hud = new HudBar(this, {
+      onUndo: () => this.store.dispatch({ type: 'undo' }),
+      onMenu: () => this.menu.show(),
+    })
+    this.strip = new PlanStrip(this, {
+      onAuto: () => {
         this.plan = fromAutoAssign(autoAssign(this.store.get().state))
         this.selectedUnitId = null
         this.refresh()
       },
+      onReset: () => {
+        this.plan = emptyPlan()
+        this.selectedUnitId = null
+        this.refresh()
+      },
+      onCommit: () => this.tryCommit(),
+      onToggleRation: () => {
+        this.plan = { ...this.plan, ration: !this.plan.ration }
+        this.refresh()
+      },
+      onToggleProcure: () => {
+        this.plan = { ...this.plan, procure: !this.plan.procure }
+        this.refresh()
+      },
     })
-    this.commitButton = new PixelButton(this, {
-      label: '本日の対応を確定',
-      width: 190,
-      height: 44,
-      primary: true,
-      onAction: () => this.commit(),
+    this.detail = new DetailPanel(this, {
+      onClose: () => {
+        this.selectedFacility = null
+        this.selectedUnitId = null
+        this.refresh()
+      },
+      onOpenUnit: (unitId) => {
+        const unit = this.store.get().state.units.find((u) => u.id === unitId)
+        if (unit) this.unitDetails.show(unit)
+      },
     })
-    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
-      if (this.pendingTap) {
-        const dx = pointer.worldX - this.pendingTap.x
-        const dy = pointer.worldY - this.pendingTap.y
-        if (Math.hypot(dx, dy) > DRAG_THRESHOLD) {
-          this.dragUnitId = this.pendingTap.unitId
-          this.pendingTap = null
-          this.showGhost(pointer.worldX, pointer.worldY)
+    this.unitDetails = new UnitDetailsOverlay(this, () => this.unitDetails.hide())
+    this.log = new LogDrawer(this)
+    this.menu = new MenuOverlay(this, {
+      onClose: () => this.menu.hide(),
+      onBackToTitle: () => {
+        this.menu.hide()
+        this.scene.start(KEYS.title)
+      },
+      onRestart: () => {
+        this.menu.hide()
+        if (window.confirm('新しいゲームを始めますか？現在の進行は失われます。')) {
+          this.store.dispatch({ type: 'newGame', seed: Math.floor(Math.random() * 0x7fffffff) })
         }
-      }
-      if (this.dragUnitId && this.ghost) {
-        this.ghost.setPosition(pointer.worldX, pointer.worldY)
-      }
+      },
     })
-    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
-      if (this.dragUnitId) {
-        this.resolveDrop(this.dragUnitId, pointer.worldX, pointer.worldY)
-        this.dragUnitId = null
-        this.hideGhost()
-        this.refresh()
-        return
-      }
-      if (this.pendingTap) {
-        const { unitId } = this.pendingTap
-        this.pendingTap = null
-        this.selectedUnitId = this.selectedUnitId === unitId ? null : unitId
-        this.refresh()
-      }
+    this.confirm = new ConfirmOverlay(this, {
+      onConfirm: () => {
+        this.confirm.hide()
+        this.commit()
+      },
+      onCancel: () => this.confirm.hide(),
+    })
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => this.onPointerMove(pointer))
+    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => this.onPointerUp(pointer))
+    this.input.keyboard?.on('keydown-ESC', () => {
+      if (this.menu.isOpen) this.menu.hide()
+      else if (this.unitDetails.isOpen) this.unitDetails.hide()
     })
     this.unsubscribe = this.store.subscribe(() => {
       this.plan = emptyPlan()
@@ -116,7 +141,13 @@ export class PlayScene extends Phaser.Scene {
     this.layout()
   }
 
+  private onTokenPointerDown(unitId: string, x: number, y: number): void {
+    if (this.busy) return
+    this.pendingTap = { unitId, x, y }
+  }
+
   private onFacilityTap(id: FacilityId): void {
+    if (this.busy) return
     const meta = FACILITIES[id]
     if (this.selectedUnitId && meta.tasks.length > 0) {
       const next = withMove(this.store.get().state, this.plan, this.selectedUnitId, meta.tasks[0]!)
@@ -128,10 +159,44 @@ export class PlayScene extends Phaser.Scene {
       return
     }
     this.selectedFacility = this.selectedFacility === id ? null : id
+    this.selectedUnitId = null
     this.refresh()
   }
 
+  private onPointerMove(pointer: Phaser.Input.Pointer): void {
+    if (this.pendingTap) {
+      const dx = pointer.worldX - this.pendingTap.x
+      const dy = pointer.worldY - this.pendingTap.y
+      if (Math.hypot(dx, dy) > DRAG_THRESHOLD) {
+        this.dragUnitId = this.pendingTap.unitId
+        this.pendingTap = null
+        this.showGhost(pointer.worldX, pointer.worldY)
+      }
+    }
+    if (this.dragUnitId && this.ghost) {
+      this.ghost.setPosition(pointer.worldX, pointer.worldY)
+    }
+  }
+
+  private onPointerUp(pointer: Phaser.Input.Pointer): void {
+    if (this.dragUnitId) {
+      this.resolveDrop(this.dragUnitId, pointer.worldX, pointer.worldY)
+      this.dragUnitId = null
+      this.hideGhost()
+      this.refresh()
+      return
+    }
+    if (this.pendingTap) {
+      const { unitId } = this.pendingTap
+      this.pendingTap = null
+      this.selectedUnitId = this.selectedUnitId === unitId ? null : unitId
+      this.selectedFacility = null
+      this.refresh()
+    }
+  }
+
   private resolveDrop(unitId: string, worldX: number, worldY: number): void {
+    if (this.busy) return
     const facility = this.town.facilityAtWorld(worldX, worldY)
     if (facility) {
       const meta = FACILITIES[facility]
@@ -144,6 +209,25 @@ export class PlayScene extends Phaser.Scene {
     if (this.tray.containsWorld(worldX, worldY)) {
       this.plan = withRemove(this.plan, unitId)
     }
+  }
+
+  private tryCommit(): void {
+    if (this.busy) return
+    const remaining = unassignedUnits(this.store.get().state, this.plan).length
+    if (remaining > 0) {
+      this.confirm.show(remaining, this.planSummary())
+      return
+    }
+    this.commit()
+  }
+
+  private planSummary(): string {
+    const plan = buildPlan(this.plan)
+    if (plan.placements.length === 0 && !plan.ration && !plan.procure) return '（割り当てなし）'
+    const parts = plan.placements.map((p) => `${TASK_LABEL[p.task]} ×${p.unitIds.length}`)
+    if (plan.ration) parts.push('節約配給')
+    if (plan.procure) parts.push('備蓄を調達')
+    return parts.join(' ／ ')
   }
 
   private commit(): void {
@@ -166,37 +250,45 @@ export class PlayScene extends Phaser.Scene {
 
   private layout(): void {
     const { width, height } = this.scale.gameSize
-    const narrow = deviceClassOf(window.innerWidth) === 'narrow'
-    const townAreaHeight = narrow ? height * 0.45 : height * 0.64
-    const scale = Math.min(
-      (width - SPACING.md) / TOWN_BASE.width,
-      townAreaHeight / TOWN_BASE.height,
-    )
+    const deviceClass = deviceClassOf(window.innerWidth)
+    this.regions = computeRegions(deviceClass, width, height, this.insets)
+    const r = this.regions
+    const scale = Math.min(r.town.width / TOWN_BASE.width, r.town.height / TOWN_BASE.height)
     this.town.setScale(scale)
-    this.town.setPosition((width - TOWN_BASE.width * scale) / 2, SPACING.md)
-    const trayHeight = narrow ? 120 : 96
-    const trayWidth = narrow ? width - SPACING.md * 2 : Math.min(440, width - SPACING.md * 2)
-    this.tray.setBounds(
-      width - trayWidth - SPACING.md,
-      height - trayHeight - SPACING.md,
-      trayWidth,
-      trayHeight,
+    this.town.setPosition(
+      r.town.x + (r.town.width - TOWN_BASE.width * scale) / 2,
+      r.town.y + (r.town.height - TOWN_BASE.height * scale) / 2,
     )
-    this.autoButton.setPosition(SPACING.md + 75, height - SPACING.md - 22)
-    this.commitButton.setPosition(SPACING.md + 75 + 150 + SPACING.sm + 95, height - SPACING.md - 22)
-    this.statusText.setPosition(SPACING.md, height - trayHeight - SPACING.md - 20)
+    this.hud.setBounds(r.hud, deviceClass)
+    this.strip.setBounds(r.strip, deviceClass)
+    this.tray.setBounds(r.tray.x, r.tray.y, r.tray.width, r.tray.height)
+    this.detail.setBounds(r.detail)
+    this.log.setAnchor(r.hud.x + 8, r.hud.y + r.hud.height + 8, Math.min(440, r.hud.width - 16))
     this.refresh()
   }
 
   private refresh(): void {
     const state = this.store.get().state
+    const narrow = deviceClassOf(window.innerWidth) === 'narrow'
     const view = deriveFacilityView(state, this.plan)
+    this.hud.update(state, this.store.get().history.length > 0 && !this.busy)
+    this.strip.update(state, this.plan, unassignedUnits(state, this.plan).length, this.busy)
     this.town.update(state, this.plan, view, {
       selectedFacility: this.selectedFacility,
       placeableUnitId: this.selectedUnitId,
     })
     this.tray.update(state, this.plan, this.selectedUnitId)
-    const remaining = unassignedUnits(state, this.plan).length
-    this.statusText.setText(remaining > 0 ? `${remaining}人 待機` : '配置完了')
+    const hasSelection = this.selectedFacility !== null || this.selectedUnitId !== null
+    this.detail.setVisible(!narrow || hasSelection)
+    if (this.detail.visible) {
+      this.detail.update({
+        state,
+        plan: this.plan,
+        view,
+        selectedFacility: this.selectedFacility,
+        selectedUnitId: this.selectedUnitId,
+      })
+    }
+    this.log.update(state.report)
   }
 }
