@@ -1,5 +1,5 @@
 import { createContext, useContext, type Dispatch } from 'react'
-import type { StoreAction, StoreState } from './store'
+import type { StoreAction, StoreState } from '../store'
 
 export interface StoreContextValue {
   store: StoreState

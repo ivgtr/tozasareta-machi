@@ -5,7 +5,7 @@ import {
   serializeStore,
   storeReducer,
   type StoreState,
-} from '../src/ui/store'
+} from '../src/store'
 import { createInitialState } from '../src/game/state'
 import { RANDOM_PORTRAIT_IDS } from '../src/game/data/units'
 import type { DayPlan } from '../src/game/types'
