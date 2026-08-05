@@ -3,7 +3,9 @@ import { createInitialState } from '../src/game/state'
 import { step } from '../src/game/engine'
 import { PHYSICAL_TASKS, autoAssign, taskCost } from '../src/game/actions'
 import { nextRandom } from '../src/game/rng'
-import type { DayPlan, Ending, GameState, RngState, TaskId } from '../src/game/types'
+import { actOf, slackCount } from '../src/game/threat'
+import { findEvent } from '../src/game/events'
+import type { DayPlan, Effect, Ending, GameState, RngState, TaskId } from '../src/game/types'
 
 function shuffle<T>(arr: T[], rng: RngState): { list: T[]; rng: RngState } {
   const list = [...arr]
@@ -86,10 +88,31 @@ type ChoiceStrategy = (state: GameState, rng: RngState) => { optionId: string; r
 interface SimStats {
   eventCounts: Record<string, number>
   modifierDays: Record<string, number>
+  autoFiresByAct: Record<number, number>
+  threatFiresByAct: Record<number, number>
+  slackDaysTotal: number
+  slackBuckets: Record<string, { games: number; survived: number }>
 }
 
 function newStats(): SimStats {
-  return { eventCounts: {}, modifierDays: {} }
+  return {
+    eventCounts: {},
+    modifierDays: {},
+    autoFiresByAct: {},
+    threatFiresByAct: {},
+    slackDaysTotal: 0,
+    slackBuckets: {
+      '0-3': { games: 0, survived: 0 },
+      '4-9': { games: 0, survived: 0 },
+      '10+': { games: 0, survived: 0 },
+    },
+  }
+}
+
+function slackBucketOf(slackDays: number): string {
+  if (slackDays <= 3) return '0-3'
+  if (slackDays <= 9) return '4-9'
+  return '10+'
 }
 
 const randomChoice: ChoiceStrategy = (s, rng) => {
@@ -137,11 +160,13 @@ function simulate(
     let s = createInitialState(1000 + g)
     let rng: RngState = { seed: 9000 + g, counter: 0 }
     let guard = 0
+    let runSlackDays = 0
     while (s.phase !== 'ended' && guard++ < 100) {
       if (s.phase === 'planning') {
         if (stats) {
           for (const m of s.modifiers)
             stats.modifierDays[m.id] = (stats.modifierDays[m.id] ?? 0) + 1
+          if (slackCount(s) > 0) runSlackDays += 1
         }
         const { plan, rng: next } = makePlan(s, rng)
         rng = next
@@ -162,16 +187,31 @@ function simulate(
     expect(s.phase).toBe('ended')
     expect(s.ending).toBeDefined()
     if (s.ending) endings[s.ending] += 1
+    if (stats) {
+      stats.slackDaysTotal += runSlackDays
+      const bucket = stats.slackBuckets[slackBucketOf(runSlackDays)]
+      if (bucket) {
+        bucket.games += 1
+        if (s.ending && s.ending !== 'collapse') bucket.survived += 1
+      }
+    }
   }
   return { survived: games - endings.collapse, endings }
 }
 
-function collectEventFires(effects: { source: string }[], stats: SimStats) {
-  const fired = new Set<string>()
+function collectEventFires(effects: Effect[], stats: SimStats) {
+  const fired = new Map<string, number>()
   for (const e of effects) {
-    if (e.source.startsWith('event:')) fired.add(e.source.slice('event:'.length))
+    if (e.source.startsWith('event:')) fired.set(e.source.slice('event:'.length), e.day)
   }
-  for (const id of fired) stats.eventCounts[id] = (stats.eventCounts[id] ?? 0) + 1
+  for (const [id, day] of fired) {
+    stats.eventCounts[id] = (stats.eventCounts[id] ?? 0) + 1
+    const ev = findEvent(id)
+    if (!ev || !ev.tone) continue
+    const act = actOf(day)
+    stats.autoFiresByAct[act] = (stats.autoFiresByAct[act] ?? 0) + 1
+    if (ev.tone === 'threat') stats.threatFiresByAct[act] = (stats.threatFiresByAct[act] ?? 0) + 1
+  }
 }
 
 function logStats(label: string, games: number, stats: SimStats) {
@@ -183,9 +223,37 @@ function logStats(label: string, games: number, stats: SimStats) {
     .sort((a, b) => b[1] - a[1])
     .map(([id, d]) => `${id}:${d}d(${(d / games).toFixed(1)})`)
   console.log(`[sim:${label}] modifier active-days /game:`, mods.join(' '))
+  const acts = [1, 2, 3]
+    .map((act) => {
+      const auto = stats.autoFiresByAct[act] ?? 0
+      const threat = stats.threatFiresByAct[act] ?? 0
+      const share = auto > 0 ? Math.round((threat / auto) * 100) : 0
+      return `act${act} ${threat}/${auto}(${share}%)`
+    })
+    .join(' ')
+  console.log(`[sim:${label}] threat fires by act:`, acts)
+  const buckets = Object.entries(stats.slackBuckets)
+    .map(([k, b]) => `${k}d: ${b.survived}/${b.games}`)
+    .join(' ')
+  console.log(
+    `[sim:${label}] slack avg ${(stats.slackDaysTotal / games).toFixed(1)}d / survival by slack-days bucket:`,
+    buckets,
+  )
 }
 
 const skilledPlan: PlanStrategy = (s, rng) => ({ plan: autoAssign(s), rng })
+
+function expectSlackInvariant(stats: SimStats) {
+  const entries = Object.entries(stats.slackBuckets).filter(([, b]) => b.games >= 5)
+  if (entries.length < 2) return
+  const rate = (b: { games: number; survived: number }) => b.survived / b.games
+  const low = entries[0]![1]
+  const high = entries[entries.length - 1]![1]
+  expect(
+    rate(high),
+    'slack ランの生存率は非 slack ラン以上でなければならない（docs/20 §2.3 規則4）',
+  ).toBeGreaterThanOrEqual(rate(low))
+}
 
 describe('simulation', () => {
   it('無作為プレイで不変条件が保たれ、必ず終了する', () => {
@@ -197,6 +265,7 @@ describe('simulation', () => {
       endings,
     )
     logStats('random', GAMES, stats)
+    expectSlackInvariant(stats)
   })
 
   it('おまかせ配置（熟練）で不変条件が保たれ、必ず終了する', () => {
@@ -208,5 +277,6 @@ describe('simulation', () => {
       endings,
     )
     logStats('skilled', GAMES, stats)
+    expectSlackInvariant(stats)
   })
 })
