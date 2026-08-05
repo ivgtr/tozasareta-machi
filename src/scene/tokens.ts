@@ -20,6 +20,10 @@ export function colorCss(color: number): string {
   return `#${color.toString(16).padStart(6, '0')}`
 }
 
+export function colorNum(css: string): number {
+  return Number.parseInt(css.slice(1), 16)
+}
+
 export const FONT_BODY = 'DotGothic16'
 export const FONT_DISPLAY = '"Press Start 2P"'
 
