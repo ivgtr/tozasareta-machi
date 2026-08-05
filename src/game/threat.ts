@@ -9,16 +9,31 @@ export function actOf(day: number): ActId {
   return 1
 }
 
-export function slackCount(state: GameState): number {
+export interface SlackDetail {
+  food: boolean
+  power: boolean
+  medical: boolean
+  morale: boolean
+  stockpile: boolean
+}
+
+export function slackDetail(state: GameState): SlackDetail {
   const S = BALANCE.threat.slack
   const present = state.units.filter((u) => u.expedition === undefined).length
-  let count = 0
-  if (state.resources.food >= present * BALANCE.unit.foodPerUnit * S.foodDays) count += 1
-  if (state.resources.power >= S.powerAt) count += 1
-  if (state.resources.medical >= S.medicalAt) count += 1
-  if (state.resources.morale >= S.moraleAt) count += 1
-  if (state.stockpile >= S.stockpileAt) count += 1
-  return count
+  return {
+    food: state.resources.food >= present * BALANCE.unit.foodPerUnit * S.foodDays,
+    power: state.resources.power >= S.powerAt,
+    medical: state.resources.medical >= S.medicalAt,
+    morale: state.resources.morale >= S.moraleAt,
+    stockpile: state.stockpile >= S.stockpileAt,
+  }
+}
+
+export function slackCount(state: GameState): number {
+  const d = slackDetail(state)
+  return (
+    Number(d.food) + Number(d.power) + Number(d.medical) + Number(d.morale) + Number(d.stockpile)
+  )
 }
 
 export function threatLevel(state: GameState): number {

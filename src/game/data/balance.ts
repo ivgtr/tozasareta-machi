@@ -3,7 +3,7 @@ export const BALANCE = {
   unit: {
     start: 4,
     cap: 10,
-    foodPerUnit: 5,
+    foodPerUnit: 4.5,
     growthThreshold: 5,
     injuryChance: 0.25,
     injuryMedicalBelow: 30,
@@ -34,7 +34,7 @@ export const BALANCE = {
     popularMorale: 1,
     troublemakerMorale: -1,
   },
-  food: { start: 100, decay: 5 },
+  food: { start: 100, decay: 3 },
   budget: { start: 100, income: 30, bonus: 15, bonusAt: 50 },
   power: { start: 60, decay: 10 },
   medical: {
@@ -108,11 +108,11 @@ export const BALANCE = {
     cap: 2.0,
     actBase: [0, 1, 2],
     slack: {
-      foodDays: 4,
-      powerAt: 70,
-      medicalAt: 70,
-      moraleAt: 65,
-      stockpileAt: 40,
+      foodDays: 6,
+      powerAt: 75,
+      medicalAt: 75,
+      moraleAt: 75,
+      stockpileAt: 55,
     },
   },
   acts: {

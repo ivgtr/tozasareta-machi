@@ -108,31 +108,36 @@ describe('actOf', () => {
 })
 
 describe('slackCount', () => {
-  it('初期状態は 食料4日分 と 備蓄40 の2条件で slack 2', () => {
-    expect(slackCount(base())).toBe(2)
+  const foodNeed = (s: GameState) =>
+    s.units.length * BALANCE.unit.foodPerUnit * BALANCE.threat.slack.foodDays
+
+  it('初期状態はまだ真の余裕がなく slack 0', () => {
+    expect(slackCount(base())).toBe(0)
   })
 
   it('各条件が独立に +1 される', () => {
     const s = scarce()
+    const T = BALANCE.threat.slack
     expect(slackCount(s)).toBe(0)
-    expect(slackCount({ ...s, resources: { ...s.resources, food: 80 } })).toBe(1)
-    expect(slackCount({ ...s, resources: { ...s.resources, power: 70 } })).toBe(1)
-    expect(slackCount({ ...s, resources: { ...s.resources, medical: 70 } })).toBe(1)
-    expect(slackCount({ ...s, resources: { ...s.resources, morale: 65 } })).toBe(1)
-    expect(slackCount({ ...s, stockpile: 40 })).toBe(1)
+    expect(slackCount({ ...s, resources: { ...s.resources, food: foodNeed(s) } })).toBe(1)
+    expect(slackCount({ ...s, resources: { ...s.resources, power: T.powerAt } })).toBe(1)
+    expect(slackCount({ ...s, resources: { ...s.resources, medical: T.medicalAt } })).toBe(1)
+    expect(slackCount({ ...s, resources: { ...s.resources, morale: T.moraleAt } })).toBe(1)
+    expect(slackCount({ ...s, stockpile: T.stockpileAt })).toBe(1)
   })
 
   it('閾値ちょうどで slack になり、1足りなければならない', () => {
     const s = scarce()
-    expect(slackCount({ ...s, resources: { ...s.resources, power: 69 } })).toBe(0)
-    expect(slackCount({ ...s, stockpile: 39 })).toBe(0)
+    const T = BALANCE.threat.slack
+    expect(slackCount({ ...s, resources: { ...s.resources, power: T.powerAt - 1 } })).toBe(0)
+    expect(slackCount({ ...s, stockpile: T.stockpileAt - 1 })).toBe(0)
   })
 
   it('全条件を満たすと最大5', () => {
     const s = base()
     const full: GameState = {
       ...s,
-      resources: { food: 200, power: 100, medical: 100, morale: 100 },
+      resources: { food: foodNeed(s) + 100, power: 100, medical: 100, morale: 100 },
       stockpile: 100,
     }
     expect(slackCount(full)).toBe(5)
@@ -140,40 +145,43 @@ describe('slackCount', () => {
 
   it('食料の閾値は在籍人員に比例し、探索中のユニットは数えない', () => {
     const s = base()
+    const food = foodNeed(s) + 10
     const many: GameState = {
       ...s,
       units: [
         ...s.units,
         ...Array.from({ length: 6 }, (_, i) => ({ ...s.units[0]!, id: `extra${i}` })),
       ],
-      resources: { ...s.resources, food: 100 },
+      resources: { ...s.resources, food },
     }
-    expect(slackCount(many)).toBe(1)
+    expect(slackCount(many)).toBe(0)
     const away: GameState = {
       ...many,
       units: many.units.map((u, i) => (i < 6 ? { ...u, expedition: 1 } : u)),
     }
-    expect(slackCount(away)).toBe(2)
+    expect(slackCount(away)).toBe(1)
   })
 })
 
 describe('threatLevel / threatWeightMult', () => {
   it('脅威度 = アクト基底 + slack 数', () => {
-    expect(threatLevel({ ...base(), day: 10 })).toBe(2)
-    expect(threatLevel({ ...base(), day: 11 })).toBe(3)
-    expect(threatLevel({ ...base(), day: 21 })).toBe(4)
+    expect(threatLevel({ ...base(), day: 10 })).toBe(0)
+    expect(threatLevel({ ...base(), day: 11 })).toBe(1)
+    expect(threatLevel({ ...base(), day: 21 })).toBe(2)
     expect(threatLevel({ ...scarce(), day: 5 })).toBe(0)
   })
 
   it('スケーリング倍率 = 1 + scale×level、cap で頭打ち', () => {
+    const s = scarce()
     const full: GameState = {
-      ...base(),
-      resources: { food: 200, power: 100, medical: 100, morale: 100 },
+      ...s,
+      resources: { food: 400, power: 100, medical: 100, morale: 100 },
       stockpile: 100,
     }
-    expect(threatWeightMult({ ...scarce(), day: 5 })).toBe(1)
-    expect(threatWeightMult({ ...base(), day: 5 })).toBeCloseTo(1.4)
-    expect(threatWeightMult({ ...base(), day: 21 })).toBeCloseTo(1.8)
+    expect(threatWeightMult({ ...s, day: 5 })).toBe(1)
+    expect(threatWeightMult({ ...base(), day: 21 })).toBeCloseTo(
+      1 + BALANCE.threat.scale * BALANCE.threat.actBase[2]!,
+    )
     expect(threatWeightMult({ ...full, day: 21 })).toBe(BALANCE.threat.cap)
   })
 })
