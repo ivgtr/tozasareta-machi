@@ -54,7 +54,7 @@ describe('computeRegions', () => {
       left: 0,
     })
     expect(notched.hud.y).toBe(20)
-    expect(notched.strip.y + notched.strip.height + 12).toBe(720)
+    expect(notched.detail.y + notched.detail.height + 12).toBe(720)
     const tiny = computeRegions('wide', 1280, 720, { top: 4, right: 0, bottom: 0, left: 0 })
     expect(tiny.hud.y).toBe(8)
   })
