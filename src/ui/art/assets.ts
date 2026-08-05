@@ -1,6 +1,6 @@
 import type { ArtKind } from './manifest'
 
-const ASSETS = import.meta.glob('../assets/**/*.png', {
+const ASSETS = import.meta.glob('../../assets/**/*.png', {
   eager: true,
   query: '?url',
   import: 'default',

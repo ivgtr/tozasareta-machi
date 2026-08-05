@@ -1,4 +1,4 @@
-const ASSET_GLOB = import.meta.glob('../../ui/assets/**/*.png', {
+const ASSET_GLOB = import.meta.glob('../../assets/**/*.png', {
   eager: true,
   query: '?url',
   import: 'default',
