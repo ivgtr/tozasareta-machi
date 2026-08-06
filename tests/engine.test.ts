@@ -24,6 +24,16 @@ function play(seed: number, planFor: (s: GameState) => DayPlan): GameState {
 }
 
 describe('engine', () => {
+  it('初期状態の資源は BALANCE の初期値と一致する', () => {
+    const s = createInitialState(1)
+    expect(s.resources.food).toBe(BALANCE.food.start)
+    expect(s.resources.power).toBe(BALANCE.power.start)
+    expect(s.resources.medical).toBe(BALANCE.medical.start)
+    expect(s.resources.morale).toBe(BALANCE.morale.start)
+    expect(s.budget).toBe(BALANCE.budget.start)
+    expect(s.stockpile).toBe(BALANCE.stockpile.start)
+  })
+
   it('commitDay で日が進み report が埋まる', () => {
     const s0 = createInitialState(5)
     const { state, effects } = step(s0, { type: 'commitDay', plan: idle })

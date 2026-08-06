@@ -36,6 +36,7 @@ export const BALANCE = {
   },
   food: { start: 100, decay: 3 },
   budget: { start: 100, income: 30, bonus: 15, bonusAt: 50 },
+  stockpile: { start: 50 },
   power: { start: 60, decay: 10, lowAt: 30 },
   medical: {
     start: 60,

@@ -18,7 +18,7 @@ export function createInitialState(seed: number): GameState {
       morale: BALANCE.morale.start,
     },
     budget: BALANCE.budget.start,
-    stockpile: 50,
+    stockpile: BALANCE.stockpile.start,
     units: INITIAL_UNITS.map((u) => cloneUnit(u)),
     flags: {
       daysWithoutMedical: 0,
