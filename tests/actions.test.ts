@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/game/state'
-import { autoAssign, preview, resolvePlacement, sanitizePlan } from '../src/game/actions'
+import { autoAssign, resolvePlacement, sanitizePlan } from '../src/game/actions'
 import { BALANCE } from '../src/game/data/balance'
 import type { GameState } from '../src/game/types'
 
@@ -119,20 +119,6 @@ describe('sanitizePlan', () => {
     })
     expect(plan.placements).toHaveLength(1)
     expect(plan.procure).toBe(false)
-  })
-})
-
-describe('preview', () => {
-  it('配給を絞ると食料温存と士気減の見込みを返す', () => {
-    const fx = preview(base(), { placements: [], ration: true, procure: false })
-    expect(sum(fx, 'food')).toBeGreaterThan(0)
-    expect(sum(fx, 'morale')).toBeLessThan(0)
-  })
-
-  it('procure は予算減と備蓄増の見込みを返す', () => {
-    const fx = preview(base(), { placements: [], ration: false, procure: true })
-    expect(sum(fx, 'budget')).toBe(-BALANCE.procure.budget)
-    expect(sum(fx, 'stockpile')).toBe(BALANCE.procure.stockpile)
   })
 })
 

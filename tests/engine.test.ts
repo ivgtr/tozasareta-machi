@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/game/state'
 import { step } from '../src/game/engine'
-import { autoAssign, preview } from '../src/game/actions'
+import { autoAssign, resolvePlacement } from '../src/game/actions'
 import { BALANCE } from '../src/game/data/balance'
 import type { DayPlan, GameState } from '../src/game/types'
 
@@ -58,7 +58,7 @@ describe('engine', () => {
     expect(after.effects).toHaveLength(0)
   })
 
-  it('preview は実際の任務フェーズの効果と一致する', () => {
+  it('commitDay の任務効果は resolvePlacement と一致する', () => {
     const s0 = createInitialState(5)
     const plan: DayPlan = {
       placements: [
@@ -68,7 +68,7 @@ describe('engine', () => {
       ration: true,
       procure: false,
     }
-    const pv = preview(s0, plan).filter((e) => e.source !== 'task:ration')
+    const pv = plan.placements.flatMap((p) => resolvePlacement(s0, p))
     const applied = step(s0, { type: 'commitDay', plan }).effects.filter(
       (e) => e.source.startsWith('task:') && e.source !== 'task:ration',
     )

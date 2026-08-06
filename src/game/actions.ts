@@ -163,46 +163,6 @@ export function sanitizePlan(state: GameState, plan: DayPlan): DayPlan {
   return { placements, ration: plan.ration, procure }
 }
 
-export function preview(state: GameState, plan: DayPlan): Effect[] {
-  const clean = sanitizePlan(state, plan)
-  const effects: Effect[] = []
-  for (const p of clean.placements) effects.push(...resolvePlacement(state, p))
-  if (clean.ration) {
-    const consume = Math.round(state.units.length * BALANCE.unit.foodPerUnit * 0.5)
-    effects.push({
-      day: state.day,
-      source: 'task:ration',
-      target: 'food',
-      delta: consume,
-      reason: '配給を絞り、消費を抑える見込み',
-    })
-    effects.push({
-      day: state.day,
-      source: 'task:ration',
-      target: 'morale',
-      delta: BALANCE.morale.ration,
-      reason: '配給を絞れば不満が出る見込み',
-    })
-  }
-  if (clean.procure) {
-    effects.push({
-      day: state.day,
-      source: 'task:procure',
-      target: 'budget',
-      delta: -BALANCE.procure.budget,
-      reason: '備蓄の調達に予算を使う見込み',
-    })
-    effects.push({
-      day: state.day,
-      source: 'task:procure',
-      target: 'stockpile',
-      delta: BALANCE.procure.stockpile,
-      reason: '備蓄を調達する見込み',
-    })
-  }
-  return effects
-}
-
 function maxApt(u: Unit): number {
   return Math.max(u.apt.labor, u.apt.tech, u.apt.medical, u.apt.charm)
 }
