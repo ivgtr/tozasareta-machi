@@ -10,6 +10,7 @@ interface TurnPlayback {
   skip(): void
 }
 
+/** Storeの状態遷移結果を、そのまま再生制御へ引き渡す境界。 */
 export class TurnCoordinator {
   constructor(
     private readonly store: TurnStore,
