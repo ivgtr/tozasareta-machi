@@ -339,7 +339,7 @@ export class PlayScene extends Phaser.Scene {
     this.tray.setBounds(r.tray.x, r.tray.y, r.tray.width, r.tray.height, deviceClass)
     this.detail.setBounds(r.detail)
     this.log.setAnchor(r.hud.x + 8, r.hud.y + r.hud.height + 8, Math.min(440, r.hud.width - 16))
-    this.skipButton.setPosition(width / 2, r.town.y + r.town.height - 28)
+    this.skipButton.setPosition(width - 100, r.town.y + r.town.height - 24)
     this.ambience.setPosition(r.town.x, r.town.y)
     this.ambience.setArea(r.town.width, r.town.height)
     this.refresh()
@@ -394,7 +394,10 @@ export class PlayScene extends Phaser.Scene {
     }
     this.log.update(view.report)
     this.overlays.update({ state, busy, beat: this.playback.beat })
-    this.skipButton.setVisible(busy && !this.playback.waiting)
+    const pb = this.playback.current
+    this.skipButton.setVisible(
+      !!pb && !this.playback.waiting && pb.index < pb.beats.length - 1,
+    )
     this.ambience.update(view)
     this.triggerBeatFx()
   }
