@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import type { GameState, TaskId } from '../game/types'
 import { BALANCE } from '../game/data/balance'
-import { PHYSICAL_TASKS, taskCost } from '../game/actions'
+import { PHYSICAL_TASKS } from '../game/actions'
 import { artSpec } from './art/manifest'
 import { textureKey } from './art/assets'
 import { COLORS, SPACING, TEXT_SIZE, colorNum } from './tokens'
@@ -198,17 +198,7 @@ export class PlanStrip extends Phaser.GameObjects.Container {
       d.add(num)
       cursor += num.width + SPACING.md
     }
-    const cost = PHYSICAL_TASKS.reduce(
-      (acc, t) => {
-        if ((plan.placements[t] ?? []).length > 0) {
-          const c = taskCost(t)
-          acc.budget += c.budget
-          acc.stockpile += c.stockpile
-        }
-        return acc
-      },
-      { budget: 0, stockpile: 0 },
-    )
+    const cost = spentOf(plan.placements)
     const remainText = wide
       ? `${remaining > 0 ? `${remaining}人 待機` : '配置完了'} 予算−${cost.budget}`
       : remaining > 0
