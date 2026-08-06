@@ -28,6 +28,7 @@ import { LogDrawer } from '../log-drawer'
 import { ConfirmOverlay, MenuOverlay } from '../menu'
 import { OverlayStack } from '../overlays'
 import { PlaybackController } from '../playback/playback'
+import { restartGame } from '../restart'
 import { TownAmbience } from '../town/ambience'
 import { resolveFx } from '../town/fx-map'
 import { formatDelta, CONFIRM_NEW_GAME } from '../labels'
@@ -290,7 +291,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private startNewGame(): void {
-    this.store.dispatch({ type: 'newGame', seed: randomSeed() })
+    restartGame(this.playback, this.store, randomSeed())
     this.clearPlan()
   }
 

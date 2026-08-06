@@ -146,16 +146,18 @@ export function sanitizePlan(state: GameState, plan: DayPlan): DayPlan {
   for (const p of plan.placements) {
     if (isTaskDisabled(state.modifiers, p.task)) continue
     const unitIds: string[] = []
+    const selected = new Set<string>()
     for (const id of p.unitIds) {
-      if (used.has(id)) continue
+      if (used.has(id) || selected.has(id)) continue
       const unit = state.units.find((u) => u.id === id)
       if (!unit || isOnExpedition(unit)) continue
-      used.add(id)
+      selected.add(id)
       unitIds.push(id)
     }
     if (unitIds.length === 0) continue
     const cost = taskCost(p.task)
     if (budget < cost.budget || stockpile < cost.stockpile) continue
+    for (const id of unitIds) used.add(id)
     budget -= cost.budget
     stockpile -= cost.stockpile
     placements.push({ task: p.task, unitIds })

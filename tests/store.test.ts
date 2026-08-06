@@ -114,6 +114,22 @@ describe('persistence', () => {
     expect(parsed).toEqual(s)
   })
 
+  it('固有ユニット属性は state と history の両方で保持される', () => {
+    const s = fresh()
+    const uniqueUnit = { ...s.state.units[0]!, unique: true }
+    const uniqueState: GameState = {
+      ...s.state,
+      units: [uniqueUnit, ...s.state.units.slice(1)],
+    }
+    const store: StoreState = {
+      state: uniqueState,
+      history: [{ ...uniqueState, day: uniqueState.day - 1 }],
+    }
+    const parsed = parseStore(serializeStore(store))
+    expect(parsed?.state.units[0]?.unique).toBe(true)
+    expect(parsed?.history[0]?.units[0]?.unique).toBe(true)
+  })
+
   it('壊れた JSON は null', () => {
     expect(parseStore('{broken')).toBeNull()
   })

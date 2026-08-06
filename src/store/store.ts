@@ -74,6 +74,7 @@ const UnitSchema = z.object({
   id: z.string(),
   name: z.string(),
   alias: z.string().optional(),
+  unique: z.boolean().optional(),
   flavor: z.string().optional(),
   portrait: z.string(),
   apt: AptSchema,
