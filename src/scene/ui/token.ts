@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import type { Aptitude, Unit } from '../../game/types'
+import type { Aptitude, GameState, Unit } from '../../game/types'
 import { artSpec } from '../art/manifest'
 import { resolveToken } from '../town/token-resolve'
 import { COLORS, colorCss, colorNum, fitSize } from '../tokens'
@@ -127,4 +127,57 @@ export class UnitToken extends Phaser.GameObjects.Container {
   get isSelected(): boolean {
     return this.selected
   }
+}
+
+export interface TokenReconcileOptions {
+  unitOptions?: UnitTokenOptions
+  onPointerDown: (unitId: string, worldX: number, worldY: number) => void
+  onRemoved?: (unitId: string) => void
+}
+
+export function reconcileTokens(
+  scene: Phaser.Scene,
+  host: Phaser.GameObjects.Container,
+  state: GameState,
+  unitIds: string[],
+  options: TokenReconcileOptions,
+): { tokens: UnitToken[]; created: UnitToken[] } {
+  const wanted = new Set(unitIds)
+  for (const child of [...host.list]) {
+    const token = child as UnitToken
+    if (!wanted.has(token.unitId)) {
+      host.remove(token)
+      token.destroy()
+      options.onRemoved?.(token.unitId)
+    }
+  }
+  const have = new Map((host.list as UnitToken[]).map((t) => [t.unitId, t] as [string, UnitToken]))
+  const tokens: UnitToken[] = []
+  const created: UnitToken[] = []
+  for (const id of unitIds) {
+    const existing = have.get(id)
+    if (existing) {
+      tokens.push(existing)
+      continue
+    }
+    const unit = state.units.find((u) => u.id === id)
+    if (!unit) continue
+    const token = new UnitToken(scene, unit, options.unitOptions)
+    token.on(
+      'pointerdown',
+      (
+        pointer: Phaser.Input.Pointer,
+        _lx: number,
+        _ly: number,
+        event: Phaser.Types.Input.EventData,
+      ) => {
+        event.stopPropagation()
+        options.onPointerDown(id, pointer.worldX, pointer.worldY)
+      },
+    )
+    host.add(token)
+    tokens.push(token)
+    created.push(token)
+  }
+  return { tokens, created }
 }

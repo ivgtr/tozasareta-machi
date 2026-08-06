@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import type { GameState } from '../../game/types'
 import { COLORS, colorCss } from '../tokens'
 import { expeditionUnits, unassignedUnits, type PlanState } from '../plan'
-import { TOKEN_HIT, UnitToken } from '../ui/token'
+import { TOKEN_HIT, reconcileTokens, type UnitToken } from '../ui/token'
 import type { DeviceClass } from '../layout'
 
 export interface TrayCallbacks {
@@ -131,39 +131,15 @@ export class TrayLayer extends Phaser.GameObjects.Container {
     scale: number,
     awayIds: string[],
   ): void {
-    const have = new Map(
-      (host.list as UnitToken[]).map((t) => [t.unitId, t] as [string, UnitToken]),
-    )
-    const wanted = new Set(unitIds)
-    for (const [id, token] of have) {
-      if (!wanted.has(id)) {
-        host.remove(token)
-        token.destroy()
-        this.removeAwayBadge(host, id)
-      }
-    }
+    const { tokens } = reconcileTokens(this.scene, host, state, unitIds, {
+      unitOptions: { scale },
+      onPointerDown: (id, x, y) => this.callbacks.onTokenPointerDown(id, x, y),
+      onRemoved: (id) => this.removeAwayBadge(host, id),
+    })
     const awaySet = new Set(awayIds)
     const pitch = this.pitchFor(unitIds.length)
-    unitIds.forEach((id, i) => {
-      let token = have.get(id)
-      const unit = state.units.find((u) => u.id === id)
-      if (!unit) return
-      if (!token) {
-        token = new UnitToken(this.scene, unit, { scale })
-        token.on(
-          'pointerdown',
-          (
-            pointer: Phaser.Input.Pointer,
-            _lx: number,
-            _ly: number,
-            event: Phaser.Types.Input.EventData,
-          ) => {
-            event.stopPropagation()
-            this.callbacks.onTokenPointerDown(id, pointer.worldX, pointer.worldY)
-          },
-        )
-        host.add(token)
-      }
+    tokens.forEach((token, i) => {
+      const id = token.unitId
       if (awaySet.has(id)) {
         token.disableInteractive()
         token.setAlpha(0.5)

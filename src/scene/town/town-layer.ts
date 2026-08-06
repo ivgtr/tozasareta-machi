@@ -16,7 +16,7 @@ import {
   type FacilityPlot,
 } from './layout'
 import { textureKey } from '../art/assets'
-import { UnitToken } from '../ui/token'
+import { reconcileTokens } from '../ui/token'
 
 const GROUND_TOP = 84
 const TOKEN_FAN: Array<{ x: number; y: number }> = [
@@ -298,37 +298,16 @@ export class TownLayer extends Phaser.GameObjects.Container {
     state: GameState,
     unitIds: string[],
   ): void {
-    const wanted = new Set(unitIds)
-    for (const child of [...host.list]) {
-      const token = child as UnitToken
-      if (!wanted.has(token.unitId)) {
-        host.remove(token)
-        token.destroy()
-      }
-    }
-    const have = new Set(host.list.map((c) => (c as UnitToken).unitId))
-    unitIds.forEach((id, i) => {
-      if (have.has(id)) return
-      const unit = state.units.find((u) => u.id === id)
-      if (!unit) return
-      const token = new UnitToken(this.scene, unit, { variant: 'town' })
-      token.on(
-        'pointerdown',
-        (
-          pointer: Phaser.Input.Pointer,
-          _lx: number,
-          _ly: number,
-          event: Phaser.Types.Input.EventData,
-        ) => {
-          event.stopPropagation()
-          this.callbacks.onTokenPointerDown(id, pointer.worldX, pointer.worldY)
-        },
-      )
+    const { tokens, created } = reconcileTokens(this.scene, host, state, unitIds, {
+      unitOptions: { variant: 'town' },
+      onPointerDown: (id, x, y) => this.callbacks.onTokenPointerDown(id, x, y),
+    })
+    for (const token of created) {
+      const i = tokens.indexOf(token)
       const slot = TOKEN_FAN[i % TOKEN_FAN.length] ?? { x: 0, y: 8 }
       token.setPosition(slot.x, slot.y)
-      host.add(token)
-    })
-    const sorted = [...(host.list as UnitToken[])].sort((a, b) => a.y - b.y)
+    }
+    const sorted = [...tokens].sort((a, b) => a.y - b.y)
     sorted.forEach((c, i) => c.setDepth(i))
   }
 }
