@@ -249,18 +249,12 @@ export class DetailPanel extends Phaser.GameObjects.Container {
 }
 
 export class UnitDetailsOverlay extends ModalCard {
-  private readonly closeButton: PixelButton
+  private readonly onClose: () => void
   private visibleFlag = false
 
   constructor(scene: Phaser.Scene, onClose: () => void) {
     super(scene)
-    this.closeButton = new PixelButton(scene, {
-      label: '閉じる',
-      width: 120,
-      height: 40,
-      onAction: onClose,
-    })
-    this.add(this.closeButton)
+    this.onClose = onClose
   }
 
   show(unit: Unit): void {
@@ -344,8 +338,14 @@ export class UnitDetailsOverlay extends ModalCard {
       color: COLORS.inkDim,
     })
     this.finish(height, body.bottom, 60)
-    this.closeButton.setPosition(cardW / 2, this.cardH - 34)
-    d.add(this.closeButton)
+    const closeButton = new PixelButton(this.scene, {
+      label: '閉じる',
+      width: 120,
+      height: 40,
+      onAction: this.onClose,
+    })
+    closeButton.setPosition(cardW / 2, this.cardH - 34)
+    d.add(closeButton)
     this.showCard()
   }
 
