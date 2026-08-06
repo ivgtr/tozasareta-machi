@@ -7,9 +7,10 @@ import { choiceOptions, findEvent } from '../game/events'
 import { EXPEDITION_RETURN_SOURCE } from '../game/settlement'
 import { artSpec } from './art/manifest'
 import { textureKey } from './art/assets'
-import { COLORS, PANEL_CONTENT_INSET, SPACING, TEXT_SIZE, colorNum, fitSize } from './tokens'
+import { COLORS, SPACING, TEXT_SIZE, colorNum, fitSize } from './tokens'
+import { ModalCard } from './ui/modal-card'
 import { PixelButton } from './ui/button'
-import { PixelPanel } from './ui/panel'
+import { TextStack } from './ui/text-stack'
 import { pixelText } from './ui/pixel-text'
 import type { Beat } from './playback/beats'
 
@@ -41,43 +42,19 @@ export interface OverlayCallbacks {
   onEndingTitle: () => void
 }
 
-export class OverlayStack extends Phaser.GameObjects.Container {
-  private readonly dim: Phaser.GameObjects.Rectangle
-  private readonly panel: PixelPanel
-  private readonly dynamic: Phaser.GameObjects.Container
+export class OverlayStack extends ModalCard {
   private readonly callbacks: OverlayCallbacks
 
   constructor(scene: Phaser.Scene, callbacks: OverlayCallbacks) {
     super(scene)
     this.callbacks = callbacks
-    this.dim = scene.add.rectangle(0, 0, 2000, 1200, COLORS.night900, 0.75)
-    this.dim.setOrigin(0)
-    this.dim.setInteractive()
-    this.dim.on(
-      'pointerdown',
-      (
-        _pointer: Phaser.Input.Pointer,
-        _lx: number,
-        _ly: number,
-        event: Phaser.Types.Input.EventData,
-      ) => {
-        event.stopPropagation()
-      },
-    )
-    this.panel = new PixelPanel(scene, 560, 560)
-    this.dynamic = scene.add.container()
-    this.add([this.panel, this.dynamic])
-    this.setVisible(false)
-    scene.add.existing(this)
   }
 
   update(ctx: OverlayContext): void {
-    const d = this.dynamic
-    d.removeAll(true)
+    this.content.removeAll(true)
     const { width, height } = this.scene.scale.gameSize
     if (ctx.beat?.kind === 'event') {
-      this.setVisible(true)
-      this.dim.setVisible(true)
+      this.showCard()
       this.drawEvent(
         ctx.beat.id,
         ctx.beat.effects.map((e) => e.reason),
@@ -87,38 +64,21 @@ export class OverlayStack extends Phaser.GameObjects.Container {
       return
     }
     if (ctx.beat?.kind === 'arrival') {
-      this.setVisible(true)
-      this.dim.setVisible(true)
+      this.showCard()
       this.drawArrival(ctx, width, height)
       return
     }
     if (!ctx.busy && ctx.state.phase === 'choice' && ctx.state.pendingChoice) {
-      this.setVisible(true)
-      this.dim.setVisible(true)
+      this.showCard()
       this.drawChoice(ctx.state, width, height)
       return
     }
     if (!ctx.busy && ctx.state.phase === 'ended' && ctx.state.ending) {
-      this.setVisible(true)
-      this.dim.setVisible(true)
+      this.showCard()
       this.drawEnding(ctx.state, width, height)
       return
     }
-    this.setVisible(false)
-    this.dim.setVisible(false)
-  }
-
-  private layoutCard(width: number, height: number, cardH: number): void {
-    const cardW = Math.min(560, width - SPACING.lg * 2)
-    this.dim.setSize(width, height)
-    this.dim.setPosition(0, 0)
-    if (this.dim.input) {
-      this.dim.input.hitArea = new Phaser.Geom.Rectangle(0, 0, width, height)
-    }
-    this.setPosition(0, 0)
-    this.panel.setPanelSize(cardW, cardH)
-    this.panel.setPosition((width - cardW) / 2, (height - cardH) / 2)
-    this.dynamic.setPosition((width - cardW) / 2, (height - cardH) / 2)
+    this.hideCard()
   }
 
   private addArt(
@@ -159,32 +119,27 @@ export class OverlayStack extends Phaser.GameObjects.Container {
   }
 
   private drawEvent(id: string, reasons: string[], width: number, height: number): void {
-    const d = this.dynamic
-    const inset = PANEL_CONTENT_INSET
-    const cardW = Math.min(560, width - SPACING.lg * 2)
-    const contentW = cardW - inset * 2
+    const d = this.content
+    const inset = this.contentInset
+    const contentW = this.begin(width, height)
+    const cardW = this.cardW
     const spec = artSpec('event', id)
     this.addArt(d, 'event', id, (cardW - 256) / 2, inset)
-    const title = pixelText(this.scene, spec?.label ?? id, {
+    const stack = new TextStack(inset, inset + 176)
+    stack.add(this.scene, d, spec?.label ?? id, {
       fontSize: TEXT_SIZE.heading,
       color: COLORS.gold,
-      wordWrapWidth: contentW,
+      wrapWidth: contentW,
     })
-    title.setPosition(inset, inset + 176)
-    d.add(title)
-    let y = inset + 176 + title.height + 12
+    stack.advance(6)
     for (const r of reasons) {
-      const line = pixelText(this.scene, r, {
+      stack.add(this.scene, d, r, {
         fontSize: TEXT_SIZE.bodyWide,
         color: COLORS.ink,
-        wordWrapWidth: contentW,
+        wrapWidth: contentW,
       })
-      line.setPosition(inset, y)
-      d.add(line)
-      y += line.height + 6
     }
-    const cardH = Math.min(height - SPACING.lg * 2, y + 44 + SPACING.lg)
-    this.layoutCard(width, height, cardH)
+    this.finish(height, stack.bottom, 44 + SPACING.lg)
     const btn = new PixelButton(this.scene, {
       label: '続ける',
       width: 140,
@@ -192,12 +147,12 @@ export class OverlayStack extends Phaser.GameObjects.Container {
       primary: true,
       onAction: this.callbacks.onConfirm,
     })
-    btn.setPosition(cardW / 2, cardH - 40)
+    btn.setPosition(cardW / 2, this.cardH - 40)
     d.add(btn)
   }
 
   private drawArrival(ctx: OverlayContext, width: number, height: number): void {
-    const d = this.dynamic
+    const d = this.content
     const beat = ctx.beat
     if (!beat || beat.kind !== 'arrival') return
     const unit = ctx.state.units.find((u) => u.id === beat.unitId)
@@ -205,9 +160,9 @@ export class OverlayStack extends Phaser.GameObjects.Container {
     const returning = beat.effects.some((e) => e.source === EXPEDITION_RETURN_SOURCE)
     const kicker = returning ? '探索から帰還した' : '新たな仲間が辿り着いた'
     const unique = unit.unique === true
-    const inset = PANEL_CONTENT_INSET
-    const cardW = Math.min(560, width - SPACING.lg * 2)
-    const contentW = cardW - inset * 2
+    const inset = this.contentInset
+    const contentW = this.begin(width, height)
+    const cardW = this.cardW
     const kick = pixelText(this.scene, kicker, {
       fontSize: TEXT_SIZE.labelWide,
       color: COLORS.cyan,
@@ -273,32 +228,24 @@ export class OverlayStack extends Phaser.GameObjects.Container {
       d.add(inline)
       y += 24
     }
+    const traitsFlavor = new TextStack(inset, y)
     if (unique && unit.traits.length > 0) {
-      const traits = pixelText(
+      traitsFlavor.add(
         this.scene,
+        d,
         unit.traits.map((t) => `${TRAITS[t].name}: ${TRAITS[t].desc}`).join(' / '),
-        {
-          fontSize: TEXT_SIZE.labelWide,
-          color: COLORS.inkDim,
-          wordWrapWidth: contentW,
-        },
+        { fontSize: TEXT_SIZE.labelWide, color: COLORS.inkDim, wrapWidth: contentW, gap: 12 },
       )
-      traits.setPosition(inset, y + 12)
-      d.add(traits)
-      y += traits.height + 20
     }
     if (unique && unit.flavor) {
-      const flavor = pixelText(this.scene, unit.flavor, {
+      traitsFlavor.add(this.scene, d, unit.flavor, {
         fontSize: TEXT_SIZE.labelWide,
         color: COLORS.inkDim,
-        wordWrapWidth: contentW,
+        wrapWidth: contentW,
       })
-      flavor.setPosition(inset, y + 8)
-      d.add(flavor)
-      y += flavor.height + 8
     }
-    const cardH = Math.min(height - SPACING.lg * 2, Math.max(y, inset + 40 + boxH) + 56)
-    this.layoutCard(width, height, cardH)
+    const bottom = Math.max(traitsFlavor.bottom + 8, inset + 40 + boxH)
+    this.finish(height, bottom, 44 + SPACING.lg)
     const btn = new PixelButton(this.scene, {
       label: returning ? '続ける' : unique ? '迎え入れる' : '続ける',
       width: 160,
@@ -306,20 +253,20 @@ export class OverlayStack extends Phaser.GameObjects.Container {
       primary: true,
       onAction: this.callbacks.onConfirm,
     })
-    btn.setPosition(cardW / 2, cardH - 40)
+    btn.setPosition(cardW / 2, this.cardH - 40)
     d.add(btn)
   }
 
   private drawChoice(state: GameState, width: number, height: number): void {
-    const d = this.dynamic
+    const d = this.content
     const pending = state.pendingChoice
     if (!pending) return
     const event = findEvent(pending.eventId)
     if (!event) return
     const options = choiceOptions(state, event).filter((o) => pending.optionIds.includes(o.id))
-    const inset = PANEL_CONTENT_INSET
-    const cardW = Math.min(560, width - SPACING.lg * 2)
-    const contentW = cardW - inset * 2
+    const inset = this.contentInset
+    const contentW = this.begin(width, height)
+    const cardW = this.cardW
     const kick = pixelText(this.scene, '判断を求められている', {
       fontSize: TEXT_SIZE.labelWide,
       color: COLORS.cyan,
@@ -327,79 +274,66 @@ export class OverlayStack extends Phaser.GameObjects.Container {
     kick.setPosition(inset, inset)
     d.add(kick)
     this.addArt(d, 'event', event.id, (cardW - 256) / 2, inset + 24)
-    const name = pixelText(this.scene, event.name, {
+    const stack = new TextStack(inset, inset + 196)
+    stack.add(this.scene, d, event.name, {
       fontSize: TEXT_SIZE.heading,
       color: COLORS.gold,
-      wordWrapWidth: contentW,
+      wrapWidth: contentW,
     })
-    name.setPosition(inset, inset + 196)
-    d.add(name)
-    let y = inset + 196 + name.height + 12
     if (event.desc) {
-      const desc = pixelText(this.scene, event.desc, {
+      stack.add(this.scene, d, event.desc, {
         fontSize: TEXT_SIZE.bodyWide,
         color: COLORS.inkDim,
-        wordWrapWidth: contentW,
+        wrapWidth: contentW,
       })
-      desc.setPosition(inset, y)
-      d.add(desc)
-      y += desc.height + 10
     }
-    const btnW = contentW
     for (const o of options) {
       const label = o.desc ? `${o.label} — ${o.desc}` : o.label
       const btn = new PixelButton(this.scene, {
         label,
-        width: btnW,
+        width: contentW,
         height: 44,
         fontSize: TEXT_SIZE.labelWide,
-        wordWrapWidth: btnW - 20,
+        wordWrapWidth: contentW - 20,
         onAction: () => this.callbacks.onChoose(o.id),
       })
-      btn.setPosition(cardW / 2, y + btn.buttonHeight / 2)
+      stack.advance(10)
+      btn.setPosition(cardW / 2, stack.bottom + btn.buttonHeight / 2)
       d.add(btn)
-      y += btn.buttonHeight + 10
+      stack.advance(btn.buttonHeight)
     }
-    const cardH = Math.min(height - SPACING.lg * 2, y + 16)
-    this.layoutCard(width, height, cardH)
+    this.finish(height, stack.bottom, 16)
   }
 
   private drawEnding(state: GameState, width: number, height: number): void {
-    const d = this.dynamic
+    const d = this.content
     const ending = state.ending
     if (!ending) return
     const spec = artSpec('ending', ending)
-    const inset = PANEL_CONTENT_INSET
-    const cardW = Math.min(560, width - SPACING.lg * 2)
-    const contentW = cardW - inset * 2
+    const inset = this.contentInset
+    const contentW = this.begin(width, height)
+    const cardW = this.cardW
     this.addArt(d, 'ending', ending, (cardW - 256) / 2, inset)
-    const title = pixelText(this.scene, spec?.label ?? ending, {
+    const stack = new TextStack(inset, inset + 176)
+    stack.add(this.scene, d, spec?.label ?? ending, {
       fontSize: TEXT_SIZE.heading + 4,
       color: COLORS.gold,
-      wordWrapWidth: contentW,
+      wrapWidth: contentW,
     })
-    title.setPosition(inset, inset + 176)
-    d.add(title)
-    const flavor = pixelText(this.scene, ENDING_FLAVOR[ending], {
+    stack.advance(4)
+    stack.add(this.scene, d, ENDING_FLAVOR[ending], {
       fontSize: TEXT_SIZE.bodyWide,
       color: COLORS.ink,
-      wordWrapWidth: contentW,
+      wrapWidth: contentW,
     })
-    flavor.setPosition(inset, inset + 176 + title.height + 12)
-    d.add(flavor)
     const reached = Math.min(state.day - 1, BALANCE.days)
-    const stats = pixelText(
+    stack.add(
       this.scene,
+      d,
       `到達 第${reached}日 ／ 犠牲者 ${state.flags.casualties} ／ 協力 ${state.flags.cooperation}`,
       { fontSize: TEXT_SIZE.labelWide, color: COLORS.inkDim },
     )
-    stats.setPosition(inset, inset + 176 + title.height + 12 + flavor.height + 14)
-    d.add(stats)
-    const cardH = Math.min(
-      height - SPACING.lg * 2,
-      inset + 176 + title.height + 12 + flavor.height + 14 + stats.height + 72,
-    )
-    this.layoutCard(width, height, cardH)
+    this.finish(height, stack.bottom, 44 + SPACING.lg)
     const restart = new PixelButton(this.scene, {
       label: 'もう一度',
       width: 150,
@@ -407,14 +341,14 @@ export class OverlayStack extends Phaser.GameObjects.Container {
       primary: true,
       onAction: this.callbacks.onEndingRestart,
     })
-    restart.setPosition(cardW / 2 - 90, cardH - 60)
+    restart.setPosition(cardW / 2 - 90, this.cardH - 60)
     const toTitle = new PixelButton(this.scene, {
       label: 'タイトルへ',
       width: 150,
       height: 44,
       onAction: this.callbacks.onEndingTitle,
     })
-    toTitle.setPosition(cardW / 2 + 80, cardH - 60)
+    toTitle.setPosition(cardW / 2 + 80, this.cardH - 60)
     d.add([restart, toTitle])
   }
 }

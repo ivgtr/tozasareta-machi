@@ -1,10 +1,8 @@
 import Phaser from 'phaser'
 import { COLORS, TEXT_SIZE } from './tokens'
+import { ModalCard } from './ui/modal-card'
 import { PixelButton } from './ui/button'
-import { PixelPanel } from './ui/panel'
 import { pixelText } from './ui/pixel-text'
-
-const DIM_ALPHA = 0.7
 
 export interface MenuCallbacks {
   onClose: () => void
@@ -12,30 +10,14 @@ export interface MenuCallbacks {
   onRestart: () => void
 }
 
-export class MenuOverlay extends Phaser.GameObjects.Container {
-  private readonly dim: Phaser.GameObjects.Rectangle
-  private readonly panel: PixelPanel
-  private readonly buttons: PixelButton[]
+const MENU_W = 360
+const MENU_H = 280
+
+export class MenuOverlay extends ModalCard {
   private openFlag = false
 
   constructor(scene: Phaser.Scene, callbacks: MenuCallbacks) {
-    super(scene)
-    this.dim = scene.add.rectangle(0, 0, 10, 10, COLORS.night900, DIM_ALPHA)
-    this.dim.setOrigin(0)
-    this.dim.setInteractive()
-    this.dim.on(
-      'pointerdown',
-      (
-        pointer: Phaser.Input.Pointer,
-        _lx: number,
-        _ly: number,
-        event: Phaser.Types.Input.EventData,
-      ) => {
-        event.stopPropagation()
-        if (!this.panelContains(pointer)) callbacks.onClose()
-      },
-    )
-    this.panel = new PixelPanel(scene, 360, 280)
+    super(scene, callbacks.onClose)
     const title = pixelText(scene, 'ゲームメニュー', {
       fontSize: TEXT_SIZE.heading,
       color: COLORS.gold,
@@ -69,35 +51,24 @@ export class MenuOverlay extends Phaser.GameObjects.Container {
       onAction: callbacks.onRestart,
     })
     restart.setPosition(180, 234)
-    this.buttons = [close, toTitle, restart]
-    this.add([this.panel, title, note, ...this.buttons])
-    this.setVisible(false)
-    scene.add.existing(this)
+    this.content.add([title, note, close, toTitle, restart])
   }
 
   show(): void {
     this.openFlag = true
-    this.setVisible(true)
-    this.dim.setVisible(true)
     const { width, height } = this.scene.scale.gameSize
-    fitDim(this.dim, width, height)
-    this.setPosition((width - 360) / 2, (height - 280) / 2)
+    this.begin(width, height, MENU_W, MENU_W, false)
+    this.finish(height, MENU_H - 32, 32)
+    this.showCard()
   }
 
   hide(): void {
     this.openFlag = false
-    this.setVisible(false)
-    this.dim.setVisible(false)
+    this.hideCard()
   }
 
   get isOpen(): boolean {
     return this.openFlag
-  }
-
-  private panelContains(pointer: Phaser.Input.Pointer): boolean {
-    const x = pointer.worldX - this.x
-    const y = pointer.worldY - this.y
-    return x >= 0 && x <= 360 && y >= 0 && y <= 280
   }
 }
 
@@ -106,31 +77,16 @@ export interface ConfirmCallbacks {
   onCancel: () => void
 }
 
-export class ConfirmOverlay extends Phaser.GameObjects.Container {
-  private readonly dim: Phaser.GameObjects.Rectangle
-  private readonly panel: PixelPanel
+const CONFIRM_W = 420
+const CONFIRM_H = 220
+
+export class ConfirmOverlay extends ModalCard {
   private readonly headText: Phaser.GameObjects.Text
   private readonly planText: Phaser.GameObjects.Text
   private openFlag = false
 
   constructor(scene: Phaser.Scene, callbacks: ConfirmCallbacks) {
-    super(scene)
-    this.dim = scene.add.rectangle(0, 0, 10, 10, COLORS.night900, DIM_ALPHA)
-    this.dim.setOrigin(0)
-    this.dim.setInteractive()
-    this.dim.on(
-      'pointerdown',
-      (
-        pointer: Phaser.Input.Pointer,
-        _lx: number,
-        _ly: number,
-        event: Phaser.Types.Input.EventData,
-      ) => {
-        event.stopPropagation()
-        if (!this.panelContains(pointer)) callbacks.onCancel()
-      },
-    )
-    this.panel = new PixelPanel(scene, 420, 220)
+    super(scene, callbacks.onCancel)
     this.headText = pixelText(scene, '', { fontSize: TEXT_SIZE.heading, color: COLORS.amber })
     this.headText.setPosition(24, 28)
     const note = pixelText(scene, '未配置の人員はこの日、何も生み出しません。', {
@@ -159,43 +115,25 @@ export class ConfirmOverlay extends Phaser.GameObjects.Container {
       onAction: callbacks.onCancel,
     })
     cancel.setPosition(290, 176)
-    this.add([this.panel, this.headText, note, this.planText, confirmButton, cancel])
-    this.setVisible(false)
-    scene.add.existing(this)
+    this.content.add([this.headText, note, this.planText, confirmButton, cancel])
   }
 
   show(remaining: number, planSummary: string): void {
     this.openFlag = true
-    this.setVisible(true)
-    this.dim.setVisible(true)
     this.headText.setText(`${remaining}人の人員が未配置です`)
     this.planText.setText(planSummary)
     const { width, height } = this.scene.scale.gameSize
-    fitDim(this.dim, width, height)
-    this.setPosition((width - 420) / 2, (height - 220) / 2)
+    this.begin(width, height, CONFIRM_W, CONFIRM_W, false)
+    this.finish(height, CONFIRM_H - 32, 32)
+    this.showCard()
   }
 
   hide(): void {
     this.openFlag = false
-    this.setVisible(false)
-    this.dim.setVisible(false)
+    this.hideCard()
   }
 
   get isOpen(): boolean {
     return this.openFlag
-  }
-
-  private panelContains(pointer: Phaser.Input.Pointer): boolean {
-    const x = pointer.worldX - this.x
-    const y = pointer.worldY - this.y
-    return x >= 0 && x <= 420 && y >= 0 && y <= 220
-  }
-}
-
-function fitDim(dim: Phaser.GameObjects.Rectangle, width: number, height: number): void {
-  dim.setSize(width, height)
-  dim.setPosition(0, 0)
-  if (dim.input) {
-    dim.input.hitArea = new Phaser.Geom.Rectangle(0, 0, width, height)
   }
 }

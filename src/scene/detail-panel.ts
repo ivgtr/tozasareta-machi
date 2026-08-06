@@ -22,6 +22,8 @@ import { formatDelta } from './labels'
 import { type PlanState } from './plan'
 import { PixelButton } from './ui/button'
 import { PixelPanel } from './ui/panel'
+import { ModalCard } from './ui/modal-card'
+import { TextStack } from './ui/text-stack'
 import { pixelText } from './ui/pixel-text'
 import type { Rect } from './regions'
 
@@ -86,6 +88,7 @@ export class DetailPanel extends Phaser.GameObjects.Container {
     const d = this.dynamic
     d.removeAll(true)
     const inset = PANEL_CONTENT_INSET
+    const wrapW = Math.max(80, this.panel.panelWidth - inset * 2)
     let y = inset
     const put = (text: Phaser.GameObjects.Text, x: number, yy?: number): void => {
       text.setPosition(x, yy ?? y)
@@ -99,6 +102,7 @@ export class DetailPanel extends Phaser.GameObjects.Container {
           pixelText(this.scene, `${unit.name}${unit.alias ? `（${unit.alias}）` : ''}`, {
             fontSize: TEXT_SIZE.heading,
             color: COLORS.gold,
+            wordWrapWidth: wrapW - 64,
           }),
           inset + 64,
           y + 8,
@@ -114,7 +118,7 @@ export class DetailPanel extends Phaser.GameObjects.Container {
         const apts = pixelText(
           this.scene,
           APTS.map((a) => `${APTITUDE_LABEL[a].slice(0, 1)}${unit.apt[a]}`).join(' '),
-          { fontSize: TEXT_SIZE.bodyWide, color: COLORS.ink },
+          { fontSize: TEXT_SIZE.bodyWide, color: COLORS.ink, wordWrapWidth: wrapW - 64 },
         )
         put(apts, inset + 64, y + 58)
         const details = new PixelButton(this.scene, {
@@ -143,6 +147,7 @@ export class DetailPanel extends Phaser.GameObjects.Container {
         pixelText(this.scene, `${meta.glyph} ${meta.label} — ${VIEW_LABEL[viewId]}`, {
           fontSize: TEXT_SIZE.heading,
           color: meta.color,
+          wordWrapWidth: wrapW,
         }),
         inset,
       )
@@ -153,7 +158,11 @@ export class DetailPanel extends Phaser.GameObjects.Container {
             ? `配給・調達は計画ストリップで切替 / 備蓄 ${ctx.state.stockpile}`
             : '指揮の拠点。人員の配置はできない。'
         put(
-          pixelText(this.scene, note, { fontSize: TEXT_SIZE.bodyWide, color: COLORS.inkDim }),
+          pixelText(this.scene, note, {
+            fontSize: TEXT_SIZE.bodyWide,
+            color: COLORS.inkDim,
+            wordWrapWidth: wrapW,
+          }),
           inset,
           y,
         )
@@ -176,6 +185,7 @@ export class DetailPanel extends Phaser.GameObjects.Container {
           pixelText(this.scene, line, {
             fontSize: TEXT_SIZE.bodyWide,
             color: disabled ? COLORS.red : COLORS.ink,
+            wordWrapWidth: wrapW,
           }),
           inset,
           y,
@@ -188,6 +198,7 @@ export class DetailPanel extends Phaser.GameObjects.Container {
       pixelText(this.scene, '施設または人員を選択すると詳細を表示する', {
         fontSize: TEXT_SIZE.bodyWide,
         color: COLORS.inkDim,
+        wordWrapWidth: wrapW,
       }),
       inset,
     )
@@ -215,81 +226,68 @@ export class DetailPanel extends Phaser.GameObjects.Container {
   }
 }
 
-export class UnitDetailsOverlay extends Phaser.GameObjects.Container {
-  private readonly dynamic: Phaser.GameObjects.Container
-  private readonly panel: PixelPanel
+export class UnitDetailsOverlay extends ModalCard {
   private readonly closeButton: PixelButton
   private visibleFlag = false
 
   constructor(scene: Phaser.Scene, onClose: () => void) {
     super(scene)
-    this.dynamic = scene.add.container()
-    this.panel = new PixelPanel(scene, 420, 460)
     this.closeButton = new PixelButton(scene, {
       label: '閉じる',
       width: 120,
       height: 40,
       onAction: onClose,
     })
-    this.add([this.panel, this.dynamic, this.closeButton])
-    this.setVisible(false)
-    scene.add.existing(this)
   }
 
   show(unit: Unit): void {
     this.visibleFlag = true
-    this.setVisible(true)
     const { width, height } = this.scene.scale.gameSize
-    this.setPosition((width - 420) / 2, (height - 460) / 2)
-    const d = this.dynamic
-    d.removeAll(true)
-    const inset = PANEL_CONTENT_INSET
-    let y = inset
+    const d = this.content
+    const contentW = this.begin(width, height, 420, 420)
+    const cardW = this.cardW
+    const inset = this.contentInset
     const spec = artSpec('portrait', unit.portrait)
     const key = textureKey('portrait', unit.portrait)
+    const portraitY = inset + 40
     if (this.scene.textures.exists(key)) {
-      const img = this.scene.add.image(inset + 32, y + 40, key)
+      const img = this.scene.add.image(inset + 32, portraitY, key)
       const src = img.texture.getSourceImage() as { width: number; height: number }
       const fit = fitSize(src.width, src.height, 64, 85)
       img.setDisplaySize(fit.width, fit.height)
-      img.setPosition(inset + 32, y + 40 + (85 - fit.height) / 2)
+      img.setPosition(inset + 32, portraitY + (85 - fit.height) / 2)
       d.add(img)
     } else {
       const glyph = pixelText(this.scene, spec?.glyph ?? '人', {
         fontSize: 40,
         color: spec ? colorNum(spec.color) : COLORS.inkDim,
       })
-      glyph.setPosition(inset + 32, y + 40)
+      glyph.setPosition(inset + 32, portraitY)
       glyph.setOrigin(0.5)
       d.add(glyph)
     }
-    const name = pixelText(this.scene, unit.name, {
+    const textX = inset + 80
+    const stack = new TextStack(textX, inset)
+    stack.add(this.scene, d, unit.name, {
       fontSize: TEXT_SIZE.heading,
       color: COLORS.gold,
+      wrapWidth: contentW - 80,
+      gap: 4,
     })
-    name.setPosition(inset + 80, y)
-    d.add(name)
-    y += 28
     if (unit.alias) {
-      const alias = pixelText(this.scene, `二つ名: ${unit.alias}`, {
+      stack.add(this.scene, d, `二つ名: ${unit.alias}`, {
         fontSize: TEXT_SIZE.bodyWide,
         color: COLORS.inkDim,
+        wrapWidth: contentW - 80,
+        gap: 4,
       })
-      alias.setPosition(inset + 80, y)
-      d.add(alias)
-      y += 24
     }
-    const cond = pixelText(
-      this.scene,
-      unit.condition === 'injured' ? '負傷中（効果半減）' : '健康',
-      {
-        fontSize: TEXT_SIZE.bodyWide,
-        color: unit.condition === 'injured' ? COLORS.red : COLORS.green,
-      },
-    )
-    cond.setPosition(inset + 80, y)
-    d.add(cond)
-    y += 40
+    stack.add(this.scene, d, unit.condition === 'injured' ? '負傷中（効果半減）' : '健康', {
+      fontSize: TEXT_SIZE.bodyWide,
+      color: unit.condition === 'injured' ? COLORS.red : COLORS.green,
+    })
+    stack.advance(18)
+    let y = stack.bottom
     for (const a of APTS) {
       const label = pixelText(this.scene, APTITUDE_LABEL[a], {
         fontSize: TEXT_SIZE.bodyWide,
@@ -308,48 +306,41 @@ export class UnitDetailsOverlay extends Phaser.GameObjects.Container {
       d.add(num)
       y += 24
     }
-    y += 8
+    const body = new TextStack(inset, y + 8)
     if (unit.traits.length === 0) {
-      const none = pixelText(this.scene, '特性なし', {
+      body.add(this.scene, d, '特性なし', {
         fontSize: TEXT_SIZE.bodyWide,
         color: COLORS.inkDim,
       })
-      none.setPosition(inset, y)
-      d.add(none)
-      y += 24
     } else {
       for (const t of unit.traits) {
-        const trait = pixelText(this.scene, `${TRAITS[t].name} — ${TRAITS[t].desc}`, {
+        body.add(this.scene, d, `${TRAITS[t].name} — ${TRAITS[t].desc}`, {
           fontSize: TEXT_SIZE.labelWide,
           color: TRAITS[t].positive ? COLORS.ink : COLORS.red,
-          wordWrapWidth: 380,
+          wrapWidth: contentW,
         })
-        trait.setPosition(inset, y)
-        d.add(trait)
-        y += trait.height + 6
       }
     }
     if (unit.flavor) {
-      const flavor = pixelText(this.scene, unit.flavor, {
+      body.add(this.scene, d, unit.flavor, {
         fontSize: TEXT_SIZE.labelWide,
         color: COLORS.inkDim,
-        wordWrapWidth: 380,
+        wrapWidth: contentW,
       })
-      flavor.setPosition(inset, y)
-      d.add(flavor)
     }
-    const xp = pixelText(this.scene, `成長 ${unit.xp}/${BALANCE.unit.growthThreshold}`, {
+    body.add(this.scene, d, `成長 ${unit.xp}/${BALANCE.unit.growthThreshold}`, {
       fontSize: TEXT_SIZE.labelWide,
       color: COLORS.inkDim,
     })
-    xp.setPosition(inset, 460 - 60)
-    d.add(xp)
-    this.closeButton.setPosition(210, 460 - 34)
+    this.finish(height, body.bottom, 60)
+    this.closeButton.setPosition(cardW / 2, this.cardH - 34)
+    d.add(this.closeButton)
+    this.showCard()
   }
 
   hide(): void {
     this.visibleFlag = false
-    this.setVisible(false)
+    this.hideCard()
   }
 
   get isOpen(): boolean {
