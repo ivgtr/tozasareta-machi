@@ -80,118 +80,161 @@ export class DetailPanel extends Phaser.GameObjects.Container {
     d.removeAll(true)
     const inset = PANEL_CONTENT_INSET
     const wrapW = Math.max(80, this.panel.panelWidth - inset * 2)
-    let y = inset
-    const put = (text: Phaser.GameObjects.Text, x: number, yy?: number): void => {
-      text.setPosition(x, yy ?? y)
-      d.add(text)
-    }
     if (ctx.selectedUnitId) {
       const unit = ctx.state.units.find((u) => u.id === ctx.selectedUnitId)
       if (unit) {
-        this.addPortrait(d, inset, y + 24, unit)
-        put(
-          pixelText(this.scene, `${unit.name}${unit.alias ? `（${unit.alias}）` : ''}`, {
-            fontSize: TEXT_SIZE.heading,
-            color: COLORS.gold,
-            wordWrapWidth: wrapW - 64,
-          }),
-          inset + 64,
-          y + 8,
-        )
-        put(
-          pixelText(this.scene, unit.condition === 'injured' ? '負傷中（効果半減）' : '健康', {
-            fontSize: TEXT_SIZE.bodyWide,
-            color: unit.condition === 'injured' ? COLORS.red : COLORS.green,
-          }),
-          inset + 64,
-          y + 34,
-        )
-        const apts = pixelText(
-          this.scene,
-          APTS.map((a) => `${APTITUDE_LABEL[a].slice(0, 1)}${unit.apt[a]}`).join(' '),
-          { fontSize: TEXT_SIZE.bodyWide, color: COLORS.ink, wordWrapWidth: wrapW - 64 },
-        )
-        put(apts, inset + 64, y + 58)
-        const details = new PixelButton(this.scene, {
-          label: '詳細',
-          width: 88,
-          height: 36,
-          onAction: () => this.callbacks.onOpenUnit(unit.id),
-        })
-        details.setPosition(inset + 64 + 60, y + 92)
-        d.add(details)
-        put(
-          pixelText(this.scene, '配置先: 町の施設をタップして配置', {
-            fontSize: TEXT_SIZE.labelWide,
-            color: COLORS.inkDim,
-          }),
-          inset + 260,
-          y + 34,
-        )
+        this.renderUnit(d, inset, wrapW, unit)
         return
       }
     }
     if (ctx.selectedFacility) {
-      const meta = FACILITIES[ctx.selectedFacility]
-      const viewId = ctx.view[ctx.selectedFacility]
-      put(
-        pixelText(this.scene, `${meta.glyph} ${meta.label} — ${VIEW_LABEL[viewId]}`, {
-          fontSize: TEXT_SIZE.heading,
-          color: meta.color,
+      this.renderFacility(d, inset, wrapW, ctx, ctx.selectedFacility)
+      return
+    }
+    this.renderHint(d, inset, wrapW)
+  }
+
+  private put(
+    d: Phaser.GameObjects.Container,
+    text: Phaser.GameObjects.Text,
+    x: number,
+    y: number,
+  ): void {
+    text.setPosition(x, y)
+    d.add(text)
+  }
+
+  private renderUnit(
+    d: Phaser.GameObjects.Container,
+    inset: number,
+    wrapW: number,
+    unit: Unit,
+  ): void {
+    const y = inset
+    this.addPortrait(d, inset, y + 24, unit)
+    this.put(
+      d,
+      pixelText(this.scene, `${unit.name}${unit.alias ? `（${unit.alias}）` : ''}`, {
+        fontSize: TEXT_SIZE.heading,
+        color: COLORS.gold,
+        wordWrapWidth: wrapW - 64,
+      }),
+      inset + 64,
+      y + 8,
+    )
+    this.put(
+      d,
+      pixelText(this.scene, unit.condition === 'injured' ? '負傷中（効果半減）' : '健康', {
+        fontSize: TEXT_SIZE.bodyWide,
+        color: unit.condition === 'injured' ? COLORS.red : COLORS.green,
+      }),
+      inset + 64,
+      y + 34,
+    )
+    this.put(
+      d,
+      pixelText(
+        this.scene,
+        APTS.map((a) => `${APTITUDE_LABEL[a].slice(0, 1)}${unit.apt[a]}`).join(' '),
+        { fontSize: TEXT_SIZE.bodyWide, color: COLORS.ink, wordWrapWidth: wrapW - 64 },
+      ),
+      inset + 64,
+      y + 58,
+    )
+    const details = new PixelButton(this.scene, {
+      label: '詳細',
+      width: 88,
+      height: 36,
+      onAction: () => this.callbacks.onOpenUnit(unit.id),
+    })
+    details.setPosition(inset + 64 + 60, y + 92)
+    d.add(details)
+    this.put(
+      d,
+      pixelText(this.scene, '配置先: 町の施設をタップして配置', {
+        fontSize: TEXT_SIZE.labelWide,
+        color: COLORS.inkDim,
+      }),
+      inset + 260,
+      y + 34,
+    )
+  }
+
+  private renderFacility(
+    d: Phaser.GameObjects.Container,
+    inset: number,
+    wrapW: number,
+    ctx: DetailContext,
+    facility: FacilityId,
+  ): void {
+    const meta = FACILITIES[facility]
+    const viewId = ctx.view[facility]
+    let y = inset
+    this.put(
+      d,
+      pixelText(this.scene, `${meta.glyph} ${meta.label} — ${VIEW_LABEL[viewId]}`, {
+        fontSize: TEXT_SIZE.heading,
+        color: meta.color,
+        wordWrapWidth: wrapW,
+      }),
+      inset,
+      y,
+    )
+    y += 34
+    if (meta.tasks.length === 0) {
+      const note =
+        facility === 'warehouse'
+          ? `配給・調達は計画ストリップで切替 / 備蓄 ${ctx.state.stockpile}`
+          : '指揮の拠点。人員の配置はできない。'
+      this.put(
+        d,
+        pixelText(this.scene, note, {
+          fontSize: TEXT_SIZE.bodyWide,
+          color: COLORS.inkDim,
           wordWrapWidth: wrapW,
         }),
         inset,
+        y,
       )
-      y += 34
-      if (meta.tasks.length === 0) {
-        const note =
-          ctx.selectedFacility === 'warehouse'
-            ? `配給・調達は計画ストリップで切替 / 備蓄 ${ctx.state.stockpile}`
-            : '指揮の拠点。人員の配置はできない。'
-        put(
-          pixelText(this.scene, note, {
-            fontSize: TEXT_SIZE.bodyWide,
-            color: COLORS.inkDim,
-            wordWrapWidth: wrapW,
-          }),
-          inset,
-          y,
-        )
-        return
-      }
-      for (const task of meta.tasks) {
-        const cost = taskCost(task)
-        const disabled = isTaskDisabled(ctx.state.modifiers, task)
-        const unitIds = ctx.plan.placements[task] ?? []
-        const fx = unitIds.length > 0 ? resolvePlacement(ctx.state, { task, unitIds }) : []
-        const line = [
-          `${unitIds.length}人配置`,
-          cost.budget > 0 ? `予算${cost.budget}` : '',
-          disabled ? '配置不可' : '',
-          fx.map((e) => formatDelta(e.target, e.delta)).join('・'),
-        ]
-          .filter(Boolean)
-          .join(' / ')
-        put(
-          pixelText(this.scene, line, {
-            fontSize: TEXT_SIZE.bodyWide,
-            color: disabled ? COLORS.red : COLORS.ink,
-            wordWrapWidth: wrapW,
-          }),
-          inset,
-          y,
-        )
-        y += 26
-      }
       return
     }
-    put(
+    for (const task of meta.tasks) {
+      const cost = taskCost(task)
+      const disabled = isTaskDisabled(ctx.state.modifiers, task)
+      const unitIds = ctx.plan.placements[task] ?? []
+      const fx = unitIds.length > 0 ? resolvePlacement(ctx.state, { task, unitIds }) : []
+      const line = [
+        `${unitIds.length}人配置`,
+        cost.budget > 0 ? `予算${cost.budget}` : '',
+        disabled ? '配置不可' : '',
+        fx.map((e) => formatDelta(e.target, e.delta)).join('・'),
+      ]
+        .filter(Boolean)
+        .join(' / ')
+      this.put(
+        d,
+        pixelText(this.scene, line, {
+          fontSize: TEXT_SIZE.bodyWide,
+          color: disabled ? COLORS.red : COLORS.ink,
+          wordWrapWidth: wrapW,
+        }),
+        inset,
+        y,
+      )
+      y += 26
+    }
+  }
+
+  private renderHint(d: Phaser.GameObjects.Container, inset: number, wrapW: number): void {
+    this.put(
+      d,
       pixelText(this.scene, '施設または人員を選択すると詳細を表示する', {
         fontSize: TEXT_SIZE.bodyWide,
         color: COLORS.inkDim,
         wordWrapWidth: wrapW,
       }),
       inset,
+      PANEL_CONTENT_INSET,
     )
   }
 
