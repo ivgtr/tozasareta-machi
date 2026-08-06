@@ -1,7 +1,9 @@
 import Phaser from 'phaser'
 import type { GameState } from '../../game/types'
+import { reducedMotion } from '../../store'
 import { COLORS, colorCss } from '../tokens'
 import type { PlanState } from '../plan'
+import type { FxEntry } from './fx-map'
 import { FACILITIES, type FacilityViewId } from './facilities'
 import { facilityAssetId } from './facility-view'
 import {
@@ -142,6 +144,73 @@ export class TownLayer extends Phaser.GameObjects.Container {
       this.syncTokens(v.tokens, state, unitIds)
       this.syncSprite(v, p, stateId)
     }
+  }
+
+  playFx(entry: FxEntry, text: string, color: number): void {
+    if (reducedMotion()) return
+    const anchor = entry.facility
+      ? (FACILITY_PLOTS.find((p) => p.id === entry.facility) ?? null)
+      : null
+    const x = anchor ? anchor.x : TOWN_BASE.width - 60
+    const y = anchor ? anchor.y - 34 : 48
+    const t = this.scene.add.text(x, y, text, {
+      fontFamily: 'DotGothic16',
+      fontSize: '14px',
+      color: colorCss(color),
+    })
+    t.setOrigin(0.5)
+    this.add(t)
+    this.scene.tweens.add({
+      targets: t,
+      y: y - 26,
+      alpha: 0,
+      duration: 900,
+      onComplete: () => {
+        this.remove(t)
+        t.destroy()
+      },
+    })
+    if (anchor && entry.kind !== 'float') this.pulse(anchor)
+  }
+
+  playArrival(): void {
+    if (reducedMotion()) return
+    const road = FACILITY_PLOTS.find((p) => p.id === 'road')
+    if (!road) return
+    this.pulse(road)
+    const t = this.scene.add.text(road.x, road.y - 40, '到', {
+      fontFamily: 'DotGothic16',
+      fontSize: '18px',
+      color: colorCss(COLORS.gold),
+    })
+    t.setOrigin(0.5)
+    this.add(t)
+    this.scene.tweens.add({
+      targets: t,
+      y: road.y - 66,
+      alpha: 0,
+      duration: 1100,
+      onComplete: () => {
+        this.remove(t)
+        t.destroy()
+      },
+    })
+  }
+
+  private pulse(p: FacilityPlot): void {
+    const g = this.scene.add.graphics()
+    g.lineStyle(3, COLORS.gold)
+    g.strokePoints(pointsToGeom(footprintDiamond(p.x, p.y)), true)
+    this.add(g)
+    this.scene.tweens.add({
+      targets: g,
+      alpha: 0,
+      duration: 700,
+      onComplete: () => {
+        this.remove(g)
+        g.destroy()
+      },
+    })
   }
 
   private syncSprite(v: FacilityVisual, p: FacilityPlot, stateId: FacilityViewId): void {

@@ -28,6 +28,9 @@ import { LogDrawer } from '../log-drawer'
 import { ConfirmOverlay, MenuOverlay } from '../menu'
 import { OverlayStack } from '../overlays'
 import { PlaybackController } from '../playback/playback'
+import { TownAmbience } from '../town/ambience'
+import { resolveFx } from '../town/fx-map'
+import { formatDelta } from '../labels'
 import { PixelButton } from '../ui/button'
 import { pixelText } from '../ui/pixel-text'
 import { DRAG_THRESHOLD } from '../ui/token'
@@ -49,7 +52,9 @@ export class PlayScene extends Phaser.Scene {
   private menu!: MenuOverlay
   private confirm!: ConfirmOverlay
   private overlays!: OverlayStack
+  private ambience!: TownAmbience
   private skipButton!: PixelButton
+  private lastBeatKey: string | null = null
   private readonly playback = new PlaybackController()
   private ghost: Phaser.GameObjects.Text | null = null
   private pendingTap: { unitId: string; x: number; y: number } | null = null
@@ -70,6 +75,7 @@ export class PlayScene extends Phaser.Scene {
     this.tray = new TrayLayer(this, {
       onTokenPointerDown: (unitId, x, y) => this.onTokenPointerDown(unitId, x, y),
     })
+    this.ambience = new TownAmbience(this)
     this.hud = new HudBar(this, {
       onUndo: () => {
         if (!this.busy) this.store.dispatch({ type: 'undo' })
@@ -320,7 +326,31 @@ export class PlayScene extends Phaser.Scene {
     this.detail.setBounds(r.detail)
     this.log.setAnchor(r.hud.x + 8, r.hud.y + r.hud.height + 8, Math.min(440, r.hud.width - 16))
     this.skipButton.setPosition(width / 2, r.town.y + r.town.height - 28)
+    this.ambience.setPosition(r.town.x, r.town.y)
+    this.ambience.setArea(r.town.width, r.town.height)
     this.refresh()
+  }
+
+  private triggerBeatFx(): void {
+    const pb = this.playback.current
+    const beatKey = pb ? `${pb.prev.rng.seed}:${pb.index}` : null
+    if (pb && beatKey !== this.lastBeatKey) {
+      const beat = pb.beats[pb.index]
+      if (beat?.kind === 'flow') {
+        const e = beat.effects[0]
+        if (e) {
+          const entry = resolveFx(e.source, e.target)
+          this.town.playFx(
+            entry,
+            formatDelta(e.target, e.delta),
+            e.delta >= 0 ? COLORS.green : COLORS.red,
+          )
+        }
+      } else if (beat?.kind === 'arrival') {
+        this.town.playArrival()
+      }
+    }
+    this.lastBeatKey = beatKey
   }
 
   private refresh(): void {
@@ -350,5 +380,7 @@ export class PlayScene extends Phaser.Scene {
     this.log.update(view.report)
     this.overlays.update({ state, busy, beat: this.playback.beat })
     this.skipButton.setVisible(busy && !this.playback.waiting)
+    this.ambience.update(view)
+    this.triggerBeatFx()
   }
 }
