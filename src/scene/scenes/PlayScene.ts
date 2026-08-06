@@ -322,7 +322,7 @@ export class PlayScene extends Phaser.Scene {
     )
     this.hud.setBounds(r.hud, deviceClass)
     this.strip.setBounds(r.strip, deviceClass)
-    this.tray.setBounds(r.tray.x, r.tray.y, r.tray.width, r.tray.height)
+    this.tray.setBounds(r.tray.x, r.tray.y, r.tray.width, r.tray.height, deviceClass)
     this.detail.setBounds(r.detail)
     this.log.setAnchor(r.hud.x + 8, r.hud.y + r.hud.height + 8, Math.min(440, r.hud.width - 16))
     this.skipButton.setPosition(width / 2, r.town.y + r.town.height - 28)
