@@ -15,7 +15,7 @@ import {
   type PlanState,
 } from '../plan'
 import { autoAssign } from '../../game/actions'
-import { applyEffects, step } from '../../game/engine'
+import { applyEffects } from '../../game/effects'
 import { deriveFacilityView } from '../town/facility-view'
 import { FACILITIES } from '../town/facilities'
 import { TOWN_BASE, type FacilityId } from '../town/layout'
@@ -28,7 +28,8 @@ import { LogDrawer } from '../log-drawer'
 import { ConfirmOverlay, MenuOverlay } from '../menu'
 import { OverlayStack } from '../overlays'
 import { PlaybackController } from '../playback/playback'
-import { restartGame } from '../restart'
+import { TurnCoordinator } from '../turn-coordinator'
+import { UnitDragController } from '../unit-drag-controller'
 import { TownAmbience } from '../town/ambience'
 import { resolveFx } from '../town/fx-map'
 import { formatDelta, CONFIRM_NEW_GAME } from '../labels'
@@ -38,6 +39,8 @@ import { DRAG_THRESHOLD } from '../ui/token'
 
 export class PlayScene extends Phaser.Scene {
   private store!: SceneStore
+  private turns!: TurnCoordinator
+  private drag!: UnitDragController
   private plan: PlanState = emptyPlan()
   private selectedUnitId: string | null = null
   private selectedFacility: FacilityId | null = null
@@ -57,9 +60,6 @@ export class PlayScene extends Phaser.Scene {
   private skipButton!: PixelButton
   private lastBeatKey: string | null = null
   private readonly playback = new PlaybackController()
-  private ghost: Phaser.GameObjects.Text | null = null
-  private pendingTap: { unitId: string; x: number; y: number } | null = null
-  private dragUnitId: string | null = null
   private unsubscribe: (() => void) | null = null
 
   constructor() {
@@ -69,12 +69,29 @@ export class PlayScene extends Phaser.Scene {
   create(): void {
     this.cameras.main.setBackgroundColor(COLORS.night900)
     this.store = sharedStore()
+    this.turns = new TurnCoordinator(this.store, this.playback)
+
+    const dragGhost = pixelText(this, '人', { fontSize: 20, color: COLORS.gold })
+    dragGhost.setOrigin(0.5)
+    dragGhost.setDepth(1000)
+    dragGhost.setVisible(false)
+    this.drag = new UnitDragController({
+      threshold: DRAG_THRESHOLD,
+      ghost: dragGhost,
+      canInteract: () => !this.busy,
+      onTap: (unitId) => this.selectUnit(unitId),
+      onDrop: (unitId, worldX, worldY) => {
+        this.resolveDrop(unitId, worldX, worldY)
+        this.refresh()
+      },
+    })
+
     this.town = new TownLayer(this, {
       onFacilityTap: (id) => this.onFacilityTap(id),
-      onTokenPointerDown: (unitId, x, y) => this.onTokenPointerDown(unitId, x, y),
+      onTokenPointerDown: (unitId, x, y) => this.drag.pointerDown(unitId, x, y),
     })
     this.tray = new TrayLayer(this, {
-      onTokenPointerDown: (unitId, x, y) => this.onTokenPointerDown(unitId, x, y),
+      onTokenPointerDown: (unitId, x, y) => this.drag.pointerDown(unitId, x, y),
     })
     this.ambience = new TownAmbience(this)
     this.hud = new HudBar(this, {
@@ -117,7 +134,7 @@ export class PlayScene extends Phaser.Scene {
         this.refresh()
       },
       onOpenUnit: (unitId) => {
-        const unit = this.store.get().state.units.find((u) => u.id === unitId)
+        const unit = this.store.get().state.units.find((candidate) => candidate.id === unitId)
         if (unit) this.unitDetails.show(unit)
       },
     })
@@ -158,8 +175,8 @@ export class PlayScene extends Phaser.Scene {
       if (!this.playback.current) this.clearPlan()
       this.refresh()
     }
-    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => this.onPointerMove(pointer))
-    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => this.onPointerUp(pointer))
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => this.drag.pointerMove(pointer))
+    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => this.drag.pointerUp(pointer))
     this.input.keyboard?.on('keydown-ESC', () => {
       if (this.menu.isOpen) this.menu.hide()
       else if (this.unitDetails.isOpen) this.unitDetails.hide()
@@ -172,6 +189,7 @@ export class PlayScene extends Phaser.Scene {
     this.game.events.on(SCENE_EVENTS.deviceClass, this.layout, this)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.unsubscribe?.()
+      this.drag.cancel()
       this.playback.destroy()
       this.game.events.off(SCENE_EVENTS.deviceClass, this.layout, this)
     })
@@ -184,15 +202,17 @@ export class PlayScene extends Phaser.Scene {
 
   private view() {
     const state = this.store.get().state
-    const pb = this.playback.current
-    if (!pb) return state
-    const effects = pb.beats.slice(0, pb.index + 1).flatMap((b) => b.effects)
-    return { ...applyEffects(pb.prev, effects), day: pb.prev.day }
+    const playback = this.playback.current
+    if (!playback) return state
+    const effects = playback.beats.slice(0, playback.index + 1).flatMap((beat) => beat.effects)
+    return { ...applyEffects(playback.prev, effects), day: playback.prev.day }
   }
 
-  private onTokenPointerDown(unitId: string, x: number, y: number): void {
+  private selectUnit(unitId: string): void {
     if (this.busy) return
-    this.pendingTap = { unitId, x, y }
+    this.selectedUnitId = this.selectedUnitId === unitId ? null : unitId
+    this.selectedFacility = null
+    this.refresh()
   }
 
   private onFacilityTap(id: FacilityId): void {
@@ -210,40 +230,6 @@ export class PlayScene extends Phaser.Scene {
     this.selectedFacility = this.selectedFacility === id ? null : id
     this.selectedUnitId = null
     this.refresh()
-  }
-
-  private onPointerMove(pointer: Phaser.Input.Pointer): void {
-    if (this.pendingTap) {
-      const dx = pointer.worldX - this.pendingTap.x
-      const dy = pointer.worldY - this.pendingTap.y
-      if (Math.hypot(dx, dy) > DRAG_THRESHOLD) {
-        this.dragUnitId = this.pendingTap.unitId
-        this.pendingTap = null
-        this.showGhost(pointer.worldX, pointer.worldY)
-      }
-    }
-    if (this.dragUnitId && this.ghost) {
-      this.ghost.setPosition(pointer.worldX, pointer.worldY)
-    }
-  }
-
-  private onPointerUp(pointer: Phaser.Input.Pointer): void {
-    if (this.dragUnitId) {
-      this.resolveDrop(this.dragUnitId, pointer.worldX, pointer.worldY)
-      this.dragUnitId = null
-      this.hideGhost()
-      this.refresh()
-      return
-    }
-    if (this.pendingTap) {
-      const { unitId } = this.pendingTap
-      this.pendingTap = null
-      if (!this.busy) {
-        this.selectedUnitId = this.selectedUnitId === unitId ? null : unitId
-        this.selectedFacility = null
-        this.refresh()
-      }
-    }
   }
 
   private resolveDrop(unitId: string, worldX: number, worldY: number): void {
@@ -275,23 +261,21 @@ export class PlayScene extends Phaser.Scene {
   private planSummary(): string {
     const plan = buildPlan(this.plan)
     if (plan.placements.length === 0 && !plan.ration && !plan.procure) return '（割り当てなし）'
-    const parts = plan.placements.map((p) => `${TASK_LABEL[p.task]} ×${p.unitIds.length}`)
+    const parts = plan.placements.map(
+      (placement) => `${TASK_LABEL[placement.task]} ×${placement.unitIds.length}`,
+    )
     if (plan.ration) parts.push('節約配給')
     if (plan.procure) parts.push('備蓄を調達')
     return parts.join(' ／ ')
   }
 
   private commit(): void {
-    const prev = this.store.get().state
-    const plan = buildPlan(this.plan)
-    const result = step(prev, { type: 'commitDay', plan })
-    this.store.dispatch({ type: 'commitDay', plan })
-    this.playback.start(prev, result.effects)
+    this.turns.commit(buildPlan(this.plan))
     this.refresh()
   }
 
   private startNewGame(): void {
-    restartGame(this.playback, this.store, randomSeed())
+    this.turns.restart(randomSeed())
     this.clearPlan()
   }
 
@@ -299,66 +283,63 @@ export class PlayScene extends Phaser.Scene {
     this.plan = emptyPlan()
     this.selectedUnitId = null
     this.selectedFacility = null
+    this.drag.cancel()
   }
 
   private resolveChoice(optionId: string): void {
     if (this.busy) return
-    const prev = this.store.get().state
-    const result = step(prev, { type: 'resolveChoice', optionId })
-    this.store.dispatch({ type: 'resolveChoice', optionId })
-    this.playback.start(prev, result.effects)
+    this.turns.resolveChoice(optionId)
     this.refresh()
-  }
-
-  private showGhost(x: number, y: number): void {
-    if (!this.ghost) {
-      this.ghost = pixelText(this, '人', { fontSize: 20, color: COLORS.gold })
-      this.ghost.setOrigin(0.5)
-      this.ghost.setDepth(1000)
-    }
-    this.ghost.setPosition(x, y)
-    this.ghost.setVisible(true)
-  }
-
-  private hideGhost(): void {
-    this.ghost?.setVisible(false)
   }
 
   private layout(): void {
     const { width, height } = this.scale.gameSize
     const deviceClass = deviceClassOf(window.innerWidth)
     this.regions = computeRegions(deviceClass, width, height, this.insets)
-    const r = this.regions
-    const scale = Math.min(r.town.width / TOWN_BASE.width, r.town.height / TOWN_BASE.height)
+    const regions = this.regions
+    const scale = Math.min(
+      regions.town.width / TOWN_BASE.width,
+      regions.town.height / TOWN_BASE.height,
+    )
     this.town.setScale(scale)
     this.town.setPosition(
-      r.town.x + (r.town.width - TOWN_BASE.width * scale) / 2,
-      r.town.y + (r.town.height - TOWN_BASE.height * scale) / 2,
+      regions.town.x + (regions.town.width - TOWN_BASE.width * scale) / 2,
+      regions.town.y + (regions.town.height - TOWN_BASE.height * scale) / 2,
     )
-    this.hud.setBounds(r.hud, deviceClass)
-    this.strip.setBounds(r.strip, deviceClass)
-    this.tray.setBounds(r.tray.x, r.tray.y, r.tray.width, r.tray.height, deviceClass)
-    this.detail.setBounds(r.detail)
-    this.log.setAnchor(r.hud.x + 8, r.hud.y + r.hud.height + 8, Math.min(440, r.hud.width - 16))
-    this.skipButton.setPosition(width - 100, r.town.y + r.town.height - 24)
-    this.ambience.setPosition(r.town.x, r.town.y)
-    this.ambience.setArea(r.town.width, r.town.height)
+    this.hud.setBounds(regions.hud, deviceClass)
+    this.strip.setBounds(regions.strip, deviceClass)
+    this.tray.setBounds(
+      regions.tray.x,
+      regions.tray.y,
+      regions.tray.width,
+      regions.tray.height,
+      deviceClass,
+    )
+    this.detail.setBounds(regions.detail)
+    this.log.setAnchor(
+      regions.hud.x + 8,
+      regions.hud.y + regions.hud.height + 8,
+      Math.min(440, regions.hud.width - 16),
+    )
+    this.skipButton.setPosition(width - 100, regions.town.y + regions.town.height - 24)
+    this.ambience.setPosition(regions.town.x, regions.town.y)
+    this.ambience.setArea(regions.town.width, regions.town.height)
     this.refresh()
   }
 
   private triggerBeatFx(): void {
-    const pb = this.playback.current
-    const beatKey = pb ? `${pb.prev.rng.seed}:${pb.index}` : null
-    if (pb && beatKey !== this.lastBeatKey) {
-      const beat = pb.beats[pb.index]
+    const playback = this.playback.current
+    const beatKey = playback ? `${playback.prev.rng.seed}:${playback.index}` : null
+    if (playback && beatKey !== this.lastBeatKey) {
+      const beat = playback.beats[playback.index]
       if (beat?.kind === 'flow') {
-        const e = beat.effects[0]
-        if (e) {
-          const entry = resolveFx(e.source, e.target)
+        const effect = beat.effects[0]
+        if (effect) {
+          const entry = resolveFx(effect.source, effect.target)
           this.town.playFx(
             entry,
-            formatDelta(e.target, e.delta),
-            e.delta >= 0 ? COLORS.green : COLORS.red,
+            formatDelta(effect.target, effect.delta),
+            effect.delta >= 0 ? COLORS.green : COLORS.red,
           )
         }
       } else if (beat?.kind === 'arrival') {
@@ -374,10 +355,10 @@ export class PlayScene extends Phaser.Scene {
     const view = this.view()
     const narrow = deviceClassOf(window.innerWidth) === 'narrow'
     const busy = this.busy
-    const view2 = deriveFacilityView(view, this.plan)
+    const facilityView = deriveFacilityView(view, this.plan)
     this.hud.update(view, store.history.length > 0 && !busy)
     this.strip.update(view, this.plan, unassignedUnits(view, this.plan).length, busy)
-    this.town.update(view, this.plan, view2, {
+    this.town.update(view, this.plan, facilityView, {
       selectedFacility: this.selectedFacility,
       placeableUnitId: this.selectedUnitId,
     })
@@ -388,15 +369,17 @@ export class PlayScene extends Phaser.Scene {
       this.detail.update({
         state: view,
         plan: this.plan,
-        view: view2,
+        view: facilityView,
         selectedFacility: this.selectedFacility,
         selectedUnitId: this.selectedUnitId,
       })
     }
     this.log.update(view.report)
     this.overlays.update({ state, busy, beat: this.playback.beat })
-    const pb = this.playback.current
-    this.skipButton.setVisible(!!pb && !this.playback.waiting && pb.index < pb.beats.length - 1)
+    const playback = this.playback.current
+    this.skipButton.setVisible(
+      !!playback && !this.playback.waiting && playback.index < playback.beats.length - 1,
+    )
     this.ambience.update(view)
     this.triggerBeatFx()
   }

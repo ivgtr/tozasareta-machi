@@ -22,15 +22,17 @@ export interface Unit {
   expedition?: number
 }
 
-export type EffectTarget =
-  | 'food'
-  | 'power'
-  | 'medical'
-  | 'morale'
-  | 'budget'
-  | 'stockpile'
-  | `flag:${string}`
-  | `unit:${string}`
+export type NumericFlag =
+  'daysWithoutMedical' | 'daysFoodCut' | 'casualties' | 'refugeesAccepted' | 'cooperation'
+
+export type ResourceEffectTarget =
+  'food' | 'power' | 'medical' | 'morale' | 'budget' | 'stockpile'
+
+export type NumericFlagEffectTarget = `flag:${NumericFlag}`
+
+export type NoticeEffectTarget = `flag:${string}` | `unit:${string}`
+
+export type EffectTarget = ResourceEffectTarget | NumericFlagEffectTarget | NoticeEffectTarget
 
 export interface Effect {
   day: number
@@ -38,6 +40,19 @@ export interface Effect {
   target: EffectTarget
   delta: number
   reason: string
+}
+
+export interface StateEffect extends Effect {
+  target: ResourceEffectTarget | NumericFlagEffectTarget
+}
+
+export interface NoticeEffect extends Effect {
+  target: NoticeEffectTarget
+}
+
+export interface EffectChannels {
+  stateChanges: StateEffect[]
+  notices: NoticeEffect[]
 }
 
 export interface Resources {
@@ -149,6 +164,3 @@ export interface EventDef {
   choices?: ChoiceOption[]
   perUnit?: (unit: Unit, ctx: EvalContext) => ChoiceOption
 }
-
-export type NumericFlag =
-  'daysWithoutMedical' | 'daysFoodCut' | 'casualties' | 'refugeesAccepted' | 'cooperation'

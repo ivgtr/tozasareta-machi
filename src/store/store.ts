@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { DayPlan, EffectTarget, GameState } from '../game/types'
+import type { DayPlan, Effect, EffectTarget, GameState } from '../game/types'
 import { createInitialState } from '../game/state'
 import { step } from '../game/engine'
 import { SAVE_VERSION } from '../game/data/balance'
@@ -16,6 +16,13 @@ export type StoreAction =
   | { type: 'resolveChoice'; optionId: string }
   | { type: 'undo' }
 
+export interface StoreTransition {
+  store: StoreState
+  previousState: GameState
+  effects: Effect[]
+  changed: boolean
+}
+
 export const HISTORY_LIMIT = 30
 const SAVE_KEY = 'tozasareta-machi:save'
 
@@ -23,27 +30,61 @@ export function randomSeed(): number {
   return Math.floor(Math.random() * 0x7fffffff)
 }
 
-export function storeReducer(store: StoreState, action: StoreAction): StoreState {
+function unchanged(store: StoreState): StoreTransition {
+  return {
+    store,
+    previousState: store.state,
+    effects: [],
+    changed: false,
+  }
+}
+
+export function transitionStore(store: StoreState, action: StoreAction): StoreTransition {
+  const previousState = store.state
   switch (action.type) {
     case 'newGame':
-      return { state: createInitialState(action.seed), history: [] }
+      return {
+        store: { state: createInitialState(action.seed), history: [] },
+        previousState,
+        effects: [],
+        changed: true,
+      }
     case 'commitDay': {
-      const result = step(store.state, { type: 'commitDay', plan: action.plan })
-      if (result.state === store.state) return store
-      const history = [...store.history, store.state].slice(-HISTORY_LIMIT)
-      return { state: result.state, history }
+      const result = step(previousState, { type: 'commitDay', plan: action.plan })
+      if (result.state === previousState) return unchanged(store)
+      const history = [...store.history, previousState].slice(-HISTORY_LIMIT)
+      return {
+        store: { state: result.state, history },
+        previousState,
+        effects: result.effects,
+        changed: true,
+      }
     }
     case 'resolveChoice': {
-      const result = step(store.state, { type: 'resolveChoice', optionId: action.optionId })
-      if (result.state === store.state) return store
-      return { state: result.state, history: store.history }
+      const result = step(previousState, { type: 'resolveChoice', optionId: action.optionId })
+      if (result.state === previousState) return unchanged(store)
+      return {
+        store: { state: result.state, history: store.history },
+        previousState,
+        effects: result.effects,
+        changed: true,
+      }
     }
     case 'undo': {
       const last = store.history[store.history.length - 1]
-      if (!last) return store
-      return { state: last, history: store.history.slice(0, -1) }
+      if (!last) return unchanged(store)
+      return {
+        store: { state: last, history: store.history.slice(0, -1) },
+        previousState,
+        effects: [],
+        changed: true,
+      }
     }
   }
+}
+
+export function storeReducer(store: StoreState, action: StoreAction): StoreState {
+  return transitionStore(store, action).store
 }
 
 const ResourcesSchema = z.object({
