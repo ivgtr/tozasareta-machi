@@ -54,11 +54,20 @@ export class PixelButton extends Phaser.GameObjects.Container {
       this.pressed = false
       this.redraw()
     })
-    this.on('pointerdown', () => {
-      if (!this.enabled) return
-      this.pressed = true
-      this.redraw()
-    })
+    this.on(
+      'pointerdown',
+      (
+        _pointer: Phaser.Input.Pointer,
+        _lx: number,
+        _ly: number,
+        event: Phaser.Types.Input.EventData,
+      ) => {
+        if (!this.enabled) return
+        event.stopPropagation()
+        this.pressed = true
+        this.redraw()
+      },
+    )
     this.on('pointerup', () => {
       const wasPressed = this.pressed
       this.pressed = false

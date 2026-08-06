@@ -55,9 +55,20 @@ export class OverlayStack extends Phaser.GameObjects.Container {
     this.dim = scene.add.rectangle(0, 0, 2000, 1200, COLORS.night900, 0.75)
     this.dim.setOrigin(0)
     this.dim.setInteractive()
+    this.dim.on(
+      'pointerdown',
+      (
+        _pointer: Phaser.Input.Pointer,
+        _lx: number,
+        _ly: number,
+        event: Phaser.Types.Input.EventData,
+      ) => {
+        event.stopPropagation()
+      },
+    )
     this.panel = new PixelPanel(scene, 560, 560)
     this.dynamic = scene.add.container()
-    this.add([this.dim, this.panel, this.dynamic])
+    this.add([this.panel, this.dynamic])
     this.setVisible(false)
     scene.add.existing(this)
   }
@@ -68,6 +79,7 @@ export class OverlayStack extends Phaser.GameObjects.Container {
     const { width, height } = this.scene.scale.gameSize
     if (ctx.beat?.kind === 'event') {
       this.setVisible(true)
+      this.dim.setVisible(true)
       this.layoutCard(width, height, 560)
       this.drawEvent(
         ctx.beat.id,
@@ -77,34 +89,42 @@ export class OverlayStack extends Phaser.GameObjects.Container {
     }
     if (ctx.beat?.kind === 'arrival') {
       this.setVisible(true)
+      this.dim.setVisible(true)
       this.layoutCard(width, height, 620)
       this.drawArrival(ctx)
       return
     }
     if (!ctx.busy && ctx.state.phase === 'choice' && ctx.state.pendingChoice) {
       this.setVisible(true)
+      this.dim.setVisible(true)
       this.layoutCard(width, height, 640)
       this.drawChoice(ctx.state)
       return
     }
     if (!ctx.busy && ctx.state.phase === 'ended' && ctx.state.ending) {
       this.setVisible(true)
+      this.dim.setVisible(true)
       this.layoutCard(width, height, 620)
       this.drawEnding(ctx.state)
       return
     }
     this.setVisible(false)
+    this.dim.setVisible(false)
   }
 
   private layoutCard(width: number, height: number, cardH: number): void {
     this.cardH = cardH
     const cardW = Math.min(560, width - SPACING.lg * 2)
     this.cardW = cardW
+    this.dim.setSize(width, height)
+    this.dim.setPosition(0, 0)
+    if (this.dim.input) {
+      this.dim.input.hitArea = new Phaser.Geom.Rectangle(0, 0, width, height)
+    }
+    this.setPosition(0, 0)
     this.panel.setPanelSize(cardW, cardH)
     this.panel.setPosition((width - cardW) / 2, (height - cardH) / 2)
     this.dynamic.setPosition((width - cardW) / 2, (height - cardH) / 2)
-    this.dim.setSize(width + 4, height + 4)
-    this.dim.setPosition(-2, -2)
   }
 
   private addArt(

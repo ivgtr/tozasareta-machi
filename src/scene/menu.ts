@@ -4,6 +4,8 @@ import { PixelButton } from './ui/button'
 import { PixelPanel } from './ui/panel'
 import { pixelText } from './ui/pixel-text'
 
+const DIM_ALPHA = 0.7
+
 export interface MenuCallbacks {
   onClose: () => void
   onBackToTitle: () => void
@@ -18,11 +20,22 @@ export class MenuOverlay extends Phaser.GameObjects.Container {
 
   constructor(scene: Phaser.Scene, callbacks: MenuCallbacks) {
     super(scene)
-    this.dim = scene.add.rectangle(0, 0, 2000, 1200, COLORS.night900, 0.7)
+    this.dim = scene.add.rectangle(0, 0, 10, 10, COLORS.night900, DIM_ALPHA)
     this.dim.setOrigin(0)
     this.dim.setInteractive()
-    this.dim.on('pointerdown', () => callbacks.onClose())
-    this.panel = new PixelPanel(scene, 360, 260)
+    this.dim.on(
+      'pointerdown',
+      (
+        pointer: Phaser.Input.Pointer,
+        _lx: number,
+        _ly: number,
+        event: Phaser.Types.Input.EventData,
+      ) => {
+        event.stopPropagation()
+        if (!this.panelContains(pointer)) callbacks.onClose()
+      },
+    )
+    this.panel = new PixelPanel(scene, 360, 280)
     const title = pixelText(scene, 'ゲームメニュー', {
       fontSize: TEXT_SIZE.heading,
       color: COLORS.gold,
@@ -57,7 +70,7 @@ export class MenuOverlay extends Phaser.GameObjects.Container {
     })
     restart.setPosition(180, 234)
     this.buttons = [close, toTitle, restart]
-    this.add([this.dim, this.panel, title, note, ...this.buttons])
+    this.add([this.panel, title, note, ...this.buttons])
     this.setVisible(false)
     scene.add.existing(this)
   }
@@ -65,17 +78,26 @@ export class MenuOverlay extends Phaser.GameObjects.Container {
   show(): void {
     this.openFlag = true
     this.setVisible(true)
+    this.dim.setVisible(true)
     const { width, height } = this.scene.scale.gameSize
+    fitDim(this.dim, width, height)
     this.setPosition((width - 360) / 2, (height - 280) / 2)
   }
 
   hide(): void {
     this.openFlag = false
     this.setVisible(false)
+    this.dim.setVisible(false)
   }
 
   get isOpen(): boolean {
     return this.openFlag
+  }
+
+  private panelContains(pointer: Phaser.Input.Pointer): boolean {
+    const x = pointer.worldX - this.x
+    const y = pointer.worldY - this.y
+    return x >= 0 && x <= 360 && y >= 0 && y <= 280
   }
 }
 
@@ -89,13 +111,25 @@ export class ConfirmOverlay extends Phaser.GameObjects.Container {
   private readonly panel: PixelPanel
   private readonly headText: Phaser.GameObjects.Text
   private readonly planText: Phaser.GameObjects.Text
-  private readonly confirmButton: PixelButton
   private openFlag = false
 
   constructor(scene: Phaser.Scene, callbacks: ConfirmCallbacks) {
     super(scene)
-    this.dim = scene.add.rectangle(0, 0, 2000, 1200, COLORS.night900, 0.7)
+    this.dim = scene.add.rectangle(0, 0, 10, 10, COLORS.night900, DIM_ALPHA)
     this.dim.setOrigin(0)
+    this.dim.setInteractive()
+    this.dim.on(
+      'pointerdown',
+      (
+        pointer: Phaser.Input.Pointer,
+        _lx: number,
+        _ly: number,
+        event: Phaser.Types.Input.EventData,
+      ) => {
+        event.stopPropagation()
+        if (!this.panelContains(pointer)) callbacks.onCancel()
+      },
+    )
     this.panel = new PixelPanel(scene, 420, 220)
     this.headText = pixelText(scene, '', { fontSize: TEXT_SIZE.heading, color: COLORS.amber })
     this.headText.setPosition(24, 28)
@@ -110,14 +144,14 @@ export class ConfirmOverlay extends Phaser.GameObjects.Container {
       wordWrapWidth: 370,
     })
     this.planText.setPosition(24, 96)
-    this.confirmButton = new PixelButton(scene, {
+    const confirmButton = new PixelButton(scene, {
       label: 'このまま開始',
       width: 150,
       height: 44,
       primary: true,
       onAction: callbacks.onConfirm,
     })
-    this.confirmButton.setPosition(120, 176)
+    confirmButton.setPosition(120, 176)
     const cancel = new PixelButton(scene, {
       label: '戻って調整',
       width: 150,
@@ -125,7 +159,7 @@ export class ConfirmOverlay extends Phaser.GameObjects.Container {
       onAction: callbacks.onCancel,
     })
     cancel.setPosition(290, 176)
-    this.add([this.dim, this.panel, this.headText, note, this.planText, this.confirmButton, cancel])
+    this.add([this.panel, this.headText, note, this.planText, confirmButton, cancel])
     this.setVisible(false)
     scene.add.existing(this)
   }
@@ -133,18 +167,35 @@ export class ConfirmOverlay extends Phaser.GameObjects.Container {
   show(remaining: number, planSummary: string): void {
     this.openFlag = true
     this.setVisible(true)
+    this.dim.setVisible(true)
     this.headText.setText(`${remaining}人の人員が未配置です`)
     this.planText.setText(planSummary)
     const { width, height } = this.scene.scale.gameSize
+    fitDim(this.dim, width, height)
     this.setPosition((width - 420) / 2, (height - 220) / 2)
   }
 
   hide(): void {
     this.openFlag = false
     this.setVisible(false)
+    this.dim.setVisible(false)
   }
 
   get isOpen(): boolean {
     return this.openFlag
+  }
+
+  private panelContains(pointer: Phaser.Input.Pointer): boolean {
+    const x = pointer.worldX - this.x
+    const y = pointer.worldY - this.y
+    return x >= 0 && x <= 420 && y >= 0 && y <= 220
+  }
+}
+
+function fitDim(dim: Phaser.GameObjects.Rectangle, width: number, height: number): void {
+  dim.setSize(width, height)
+  dim.setPosition(0, 0)
+  if (dim.input) {
+    dim.input.hitArea = new Phaser.Geom.Rectangle(0, 0, width, height)
   }
 }
