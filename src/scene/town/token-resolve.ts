@@ -20,6 +20,8 @@ export function resolveToken(
 ): TokenResolution {
   const own = `token/${portraitId}`
   if (hasTexture(own)) return { kind: 'token', key: own, fallbackPortrait: null }
+  const portraitKey = `portrait/${portraitId}`
+  if (hasTexture(portraitKey)) return { kind: 'token', key: portraitKey, fallbackPortrait: null }
   if (GENERIC_POOL.includes(portraitId)) {
     return { kind: 'glyph', key: null, fallbackPortrait: portraitId }
   }

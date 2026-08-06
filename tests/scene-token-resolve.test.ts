@@ -26,6 +26,11 @@ describe('resolveToken', () => {
     expect(r).toEqual({ kind: 'token', key: 'token/mayor', fallbackPortrait: null })
   })
 
+  it('トークン未着でもユニットグラフィック（portrait）があれば中間フォールバックする', () => {
+    const r = resolveToken('masamune', (k) => k === 'portrait/masamune')
+    expect(r).toEqual({ kind: 'token', key: 'portrait/masamune', fallbackPortrait: null })
+  })
+
   it('ユニークは汎用プール経由で解決する', () => {
     const fallback = recruitFallbackOf('masamune')
     const r = resolveToken('masamune', (k) => k === `token/${fallback}`)
