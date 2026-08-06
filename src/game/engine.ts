@@ -206,7 +206,10 @@ function commitDayStep(prev: GameState, plan: DayPlan): StepResult {
 }
 
 function resolveChoiceStep(prev: GameState, optionId: string): StepResult {
-  if (prev.phase !== 'choice' || !prev.pendingChoice) return { state: prev, effects: [] }
+  if (prev.phase !== 'choice') return { state: prev, effects: [] }
+  if (!prev.pendingChoice) {
+    return { state: { ...prev, phase: 'planning', pendingChoice: undefined }, effects: [] }
+  }
   const event = findEvent(prev.pendingChoice.eventId)
   if (!event) {
     return { state: { ...prev, phase: 'planning', pendingChoice: undefined }, effects: [] }

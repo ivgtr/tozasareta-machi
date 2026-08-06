@@ -123,4 +123,46 @@ describe('engine', () => {
     expect(state.stockpile).toBe(before)
     expect(state.resources.morale).toBe(beforeMorale)
   })
+
+  it('不正な選択肢IDは解決できず、状態は変わらない', () => {
+    const s0 = createInitialState(1)
+    const s: GameState = {
+      ...s0,
+      phase: 'choice',
+      pendingChoice: { eventId: 'stockpile_crisis', optionIds: ['distribute', 'reserve'] },
+    }
+    const { state } = step(s, { type: 'resolveChoice', optionId: 'nope' })
+    expect(state).toBe(s)
+    expect(state.phase).toBe('choice')
+  })
+
+  it('planning 中の resolveChoice は無視される', () => {
+    const s = createInitialState(1)
+    expect(step(s, { type: 'resolveChoice', optionId: 'x' }).state).toBe(s)
+  })
+
+  it('choice 中の commitDay は無視される', () => {
+    const s0 = createInitialState(1)
+    const s: GameState = {
+      ...s0,
+      phase: 'choice',
+      pendingChoice: { eventId: 'power_crisis', optionIds: ['divert_medical', 'endure_dark'] },
+    }
+    expect(step(s, { type: 'commitDay', plan: idle }).state).toBe(s)
+  })
+
+  it('ended 中の commitDay / resolveChoice は無視される', () => {
+    const s0 = createInitialState(1)
+    const s: GameState = { ...s0, phase: 'ended', ending: 'collapse' }
+    expect(step(s, { type: 'commitDay', plan: idle }).state).toBe(s)
+    expect(step(s, { type: 'resolveChoice', optionId: 'x' }).state).toBe(s)
+  })
+
+  it('choice なのに pendingChoice がない状態は resolveChoice で planning に回復する', () => {
+    const s0 = createInitialState(1)
+    const s: GameState = { ...s0, phase: 'choice' }
+    const { state } = step(s, { type: 'resolveChoice', optionId: 'x' })
+    expect(state.phase).toBe('planning')
+    expect(state.pendingChoice).toBeUndefined()
+  })
 })
