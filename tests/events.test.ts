@@ -102,4 +102,12 @@ describe('events', () => {
     const ok: GameState = { ...poor, stockpile: BALANCE.expedition.cost }
     expect(expedition.when({ state: ok, flags: ok.flags, day: ok.day })).toBe(true)
   })
+
+  it('備蓄が配布コスト未満なら distribute は候補に出ない', () => {
+    const crisis = EVENTS.find((e) => e.id === 'stockpile_crisis')!
+    const poor: GameState = { ...base(), day: 9, stockpile: 14 }
+    expect(choiceOptions(poor, crisis).some((o) => o.id === 'distribute')).toBe(false)
+    const ok: GameState = { ...poor, stockpile: 15 }
+    expect(choiceOptions(ok, crisis).some((o) => o.id === 'distribute')).toBe(true)
+  })
 })

@@ -784,6 +784,7 @@ export const EVENTS: EventDef[] = [
         id: 'distribute',
         label: '備蓄を配る',
         desc: '備蓄-15 / 士気+12',
+        when: (c) => c.state.stockpile >= 15,
         apply: (c) => [
           baseFx(c.state, 'stockpile_crisis', 'stockpile', -15, '備蓄を住民に配った'),
           baseFx(c.state, 'stockpile_crisis', 'morale', 12, '備蓄の配給で士気が上がった'),

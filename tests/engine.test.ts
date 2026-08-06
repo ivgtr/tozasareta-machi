@@ -105,4 +105,22 @@ describe('engine', () => {
     expect(away?.xp).toBe(0)
     expect(away?.condition).toBe('healthy')
   })
+
+  it('備蓄不足の distribute は解決できない（支払い超過なし）', () => {
+    const s0 = createInitialState(7)
+    const s: GameState = {
+      ...s0,
+      day: 9,
+      phase: 'choice',
+      stockpile: 2,
+      resources: { ...s0.resources, morale: 50 },
+      pendingChoice: { eventId: 'stockpile_crisis', optionIds: ['distribute', 'reserve'] },
+    }
+    const before = s.stockpile
+    const beforeMorale = s.resources.morale
+    const { state } = step(s, { type: 'resolveChoice', optionId: 'distribute' })
+    expect(state).toBe(s)
+    expect(state.stockpile).toBe(before)
+    expect(state.resources.morale).toBe(beforeMorale)
+  })
 })
