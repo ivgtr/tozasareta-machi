@@ -138,6 +138,15 @@ export class PlanStrip extends Phaser.GameObjects.Container {
   }
 
   update(state: GameState, plan: PlanState, remaining: number, busy: boolean): void {
+    this.updateButtons(busy, plan, state)
+    const d = this.dynamic
+    d.removeAll(true)
+    const wide = this.deviceClass === 'wide'
+    const cursor = this.renderTasks(d, wide, plan)
+    this.renderRemaining(d, cursor, wide, remaining, plan)
+  }
+
+  private updateButtons(busy: boolean, plan: PlanState, state: GameState): void {
     for (const b of [
       this.rationButton,
       this.procureButton,
@@ -162,11 +171,11 @@ export class PlanStrip extends Phaser.GameObjects.Container {
           ? '調達:ON'
           : `調達:OFF${procureOk ? '' : '（不足）'}`,
     )
-    const d = this.dynamic
-    d.removeAll(true)
+  }
+
+  private renderTasks(d: Phaser.GameObjects.Container, wide: boolean, plan: PlanState): number {
     const cy = this.rect.height / 2
     let cursor = SPACING.sm
-    const wide = this.deviceClass === 'wide'
     for (const t of PHYSICAL_TASKS) {
       const count = (plan.placements[t] ?? []).length
       if (!wide && count === 0) continue
@@ -182,7 +191,7 @@ export class PlanStrip extends Phaser.GameObjects.Container {
       }
       cursor += 20
       const num = pixelText(this.scene, `×${count}`, {
-        fontSize: this.deviceClass === 'wide' ? TEXT_SIZE.bodyWide : TEXT_SIZE.bodyNarrow,
+        fontSize: wide ? TEXT_SIZE.bodyWide : TEXT_SIZE.bodyNarrow,
         color: count === 0 ? COLORS.frameLo : COLORS.ink,
       })
       num.setPosition(cursor, cy)
@@ -190,6 +199,17 @@ export class PlanStrip extends Phaser.GameObjects.Container {
       d.add(num)
       cursor += num.width + SPACING.md
     }
+    return cursor
+  }
+
+  private renderRemaining(
+    d: Phaser.GameObjects.Container,
+    cursor: number,
+    wide: boolean,
+    remaining: number,
+    plan: PlanState,
+  ): void {
+    const cy = this.rect.height / 2
     const cost = spentOf(plan.placements)
     const remainText = wide
       ? `${remaining > 0 ? `${remaining}人 待機` : '配置完了'} 予算−${cost.budget}`
