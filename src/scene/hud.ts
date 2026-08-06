@@ -94,9 +94,17 @@ export class HudBar extends Phaser.GameObjects.Container {
     const wide = this.deviceClass === 'wide'
     const d = this.dynamic
     d.removeAll(true)
-    const day = Math.min(state.day, BALANCE.days)
-    const rescueIn = Math.max(1, BALANCE.days - day + 1)
-    const dayNum = pixelText(this.scene, String(day), {
+    let cursor = this.renderDay(d, wide, state.day)
+    cursor = this.renderResources(d, cursor, wide, state)
+    cursor = this.renderStocks(d, cursor, wide, state)
+    cursor = this.renderAlerts(d, cursor, wide, state)
+    this.renderModifiers(d, cursor, wide, state)
+  }
+
+  private renderDay(d: Phaser.GameObjects.Container, wide: boolean, day: number): number {
+    const clamped = Math.min(day, BALANCE.days)
+    const rescueIn = Math.max(1, BALANCE.days - clamped + 1)
+    const dayNum = pixelText(this.scene, String(clamped), {
       fontFamily: FONT_DISPLAY,
       fontSize: wide ? TEXT_SIZE.dayCounterWide : TEXT_SIZE.dayCounterNarrow,
       color: COLORS.gold,
@@ -115,6 +123,15 @@ export class HudBar extends Phaser.GameObjects.Container {
       d.add(side)
       cursor += side.width + SPACING.lg
     }
+    return cursor
+  }
+
+  private renderResources(
+    d: Phaser.GameObjects.Container,
+    cursor: number,
+    wide: boolean,
+    state: GameState,
+  ): number {
     const items: Array<[string, number]> = [
       ['food', state.resources.food],
       ['power', state.resources.power],
@@ -124,6 +141,15 @@ export class HudBar extends Phaser.GameObjects.Container {
     for (const [id, value] of items) {
       cursor += this.addResource(d, cursor, id, value, wide)
     }
+    return cursor
+  }
+
+  private renderStocks(
+    d: Phaser.GameObjects.Container,
+    cursor: number,
+    wide: boolean,
+    state: GameState,
+  ): number {
     if (wide) {
       const stocks = pixelText(this.scene, `予算${state.budget} 備蓄${state.stockpile}`, {
         fontSize: TEXT_SIZE.labelWide,
@@ -132,26 +158,32 @@ export class HudBar extends Phaser.GameObjects.Container {
       stocks.setPosition(cursor + SPACING.sm, this.rect.height / 2)
       stocks.setOrigin(0, 0.5)
       d.add(stocks)
-      cursor += stocks.width + SPACING.lg
-    } else {
-      const budget = pixelText(this.scene, `予${state.budget}`, {
-        fontSize: TEXT_SIZE.labelNarrow,
-        color: COLORS.inkDim,
-      })
-      budget.setPosition(cursor, this.rect.height / 2)
-      budget.setOrigin(0, 0.5)
-      d.add(budget)
-      cursor += budget.width + SPACING.sm
-      const stock = pixelText(this.scene, `備${state.stockpile}`, {
-        fontSize: TEXT_SIZE.labelNarrow,
-        color: COLORS.inkDim,
-      })
-      stock.setPosition(cursor, this.rect.height / 2)
-      stock.setOrigin(0, 0.5)
-      d.add(stock)
-      cursor += stock.width + SPACING.sm
+      return cursor + stocks.width + SPACING.lg
     }
+    const budget = pixelText(this.scene, `予${state.budget}`, {
+      fontSize: TEXT_SIZE.labelNarrow,
+      color: COLORS.inkDim,
+    })
+    budget.setPosition(cursor, this.rect.height / 2)
+    budget.setOrigin(0, 0.5)
+    d.add(budget)
+    cursor += budget.width + SPACING.sm
+    const stock = pixelText(this.scene, `備${state.stockpile}`, {
+      fontSize: TEXT_SIZE.labelNarrow,
+      color: COLORS.inkDim,
+    })
+    stock.setPosition(cursor, this.rect.height / 2)
+    stock.setOrigin(0, 0.5)
+    d.add(stock)
+    return cursor + stock.width + SPACING.sm
+  }
 
+  private renderAlerts(
+    d: Phaser.GameObjects.Container,
+    cursor: number,
+    wide: boolean,
+    state: GameState,
+  ): number {
     const alerts = deriveAlerts(state)
     for (const a of alerts) {
       const color = a.tone === 'danger' ? COLORS.red : COLORS.amber
@@ -176,22 +208,30 @@ export class HudBar extends Phaser.GameObjects.Container {
       d.add(ok)
       cursor += ok.width + SPACING.md
     }
-    if (wide) {
-      for (const m of state.modifiers) {
-        const spec = artSpec('event', m.id)
-        const badge = pixelText(
-          this.scene,
-          `${spec?.glyph ?? '状'}${spec?.label ?? m.id} あと${m.daysLeft}日`,
-          {
-            fontSize: TEXT_SIZE.labelNarrow,
-            color: spec ? colorNum(spec.color) : COLORS.inkDim,
-          },
-        )
-        badge.setPosition(cursor, this.rect.height / 2)
-        badge.setOrigin(0, 0.5)
-        d.add(badge)
-        cursor += badge.width + SPACING.md
-      }
+    return cursor
+  }
+
+  private renderModifiers(
+    d: Phaser.GameObjects.Container,
+    cursor: number,
+    wide: boolean,
+    state: GameState,
+  ): void {
+    if (!wide) return
+    for (const m of state.modifiers) {
+      const spec = artSpec('event', m.id)
+      const badge = pixelText(
+        this.scene,
+        `${spec?.glyph ?? '状'}${spec?.label ?? m.id} あと${m.daysLeft}日`,
+        {
+          fontSize: TEXT_SIZE.labelNarrow,
+          color: spec ? colorNum(spec.color) : COLORS.inkDim,
+        },
+      )
+      badge.setPosition(cursor, this.rect.height / 2)
+      badge.setOrigin(0, 0.5)
+      d.add(badge)
+      cursor += badge.width + SPACING.md
     }
   }
 
