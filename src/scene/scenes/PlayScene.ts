@@ -288,8 +288,9 @@ export class PlayScene extends Phaser.Scene {
 
   private commit(): void {
     const prev = this.store.get().state
-    const result = step(prev, { type: 'commitDay', plan: buildPlan(this.plan) })
-    this.store.dispatch({ type: 'commitDay', plan: buildPlan(this.plan) })
+    const plan = buildPlan(this.plan)
+    const result = step(prev, { type: 'commitDay', plan })
+    this.store.dispatch({ type: 'commitDay', plan })
     this.playback.start(prev, result.effects)
     this.refresh()
   }
@@ -368,12 +369,13 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private refresh(): void {
-    const state = this.store.get().state
+    const store = this.store.get()
+    const state = store.state
     const view = this.view()
     const narrow = deviceClassOf(window.innerWidth) === 'narrow'
     const busy = this.busy
     const view2 = deriveFacilityView(view, this.plan)
-    this.hud.update(view, this.store.get().history.length > 0 && !busy)
+    this.hud.update(view, store.history.length > 0 && !busy)
     this.strip.update(view, this.plan, unassignedUnits(view, this.plan).length, busy)
     this.town.update(view, this.plan, view2, {
       selectedFacility: this.selectedFacility,
