@@ -5,6 +5,7 @@ import { deviceClassOf } from '../layout'
 import { getSettings, randomSeed, updateSettings } from '../../store'
 import { sharedStore } from '../store-bridge'
 import { COLORS, TEXT_SIZE } from '../tokens'
+import { CONFIRM_NEW_GAME } from '../labels'
 import { PixelButton } from '../ui/button'
 import { pixelText } from '../ui/pixel-text'
 
@@ -86,7 +87,7 @@ export class TitleScene extends Phaser.Scene {
       height: 48,
       primary: !canResume,
       onAction: () => {
-        if (hasProgress && !window.confirm('新しいゲームを始めますか？現在の進行は失われます。')) {
+        if (hasProgress && !window.confirm(CONFIRM_NEW_GAME)) {
           return
         }
         store.dispatch({ type: 'newGame', seed: randomSeed() })

@@ -1,3 +1,5 @@
+export const CONFIRM_NEW_GAME = '新しいゲームを始めますか？現在の進行は失われます。'
+
 export const TARGET_LABEL: Record<string, string> = {
   food: '食料',
   power: '電力',

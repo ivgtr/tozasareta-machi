@@ -30,7 +30,7 @@ import { OverlayStack } from '../overlays'
 import { PlaybackController } from '../playback/playback'
 import { TownAmbience } from '../town/ambience'
 import { resolveFx } from '../town/fx-map'
-import { formatDelta } from '../labels'
+import { formatDelta, CONFIRM_NEW_GAME } from '../labels'
 import { PixelButton } from '../ui/button'
 import { pixelText } from '../ui/pixel-text'
 import { DRAG_THRESHOLD } from '../ui/token'
@@ -130,10 +130,7 @@ export class PlayScene extends Phaser.Scene {
       },
       onRestart: () => {
         this.menu.hide()
-        if (window.confirm('新しいゲームを始めますか？現在の進行は失われます。')) {
-          this.store.dispatch({ type: 'newGame', seed: randomSeed() })
-          this.clearPlan()
-        }
+        if (window.confirm(CONFIRM_NEW_GAME)) this.startNewGame()
       },
     })
     this.confirm = new ConfirmOverlay(this, {
@@ -146,10 +143,7 @@ export class PlayScene extends Phaser.Scene {
     this.overlays = new OverlayStack(this, {
       onConfirm: () => this.playback.confirm(),
       onChoose: (optionId) => this.resolveChoice(optionId),
-      onEndingRestart: () => {
-        this.store.dispatch({ type: 'newGame', seed: randomSeed() })
-        this.clearPlan()
-      },
+      onEndingRestart: () => this.startNewGame(),
       onEndingTitle: () => this.scene.start(KEYS.title),
     })
     this.skipButton = new PixelButton(this, {
@@ -293,6 +287,11 @@ export class PlayScene extends Phaser.Scene {
     this.store.dispatch({ type: 'commitDay', plan })
     this.playback.start(prev, result.effects)
     this.refresh()
+  }
+
+  private startNewGame(): void {
+    this.store.dispatch({ type: 'newGame', seed: randomSeed() })
+    this.clearPlan()
   }
 
   private clearPlan(): void {
