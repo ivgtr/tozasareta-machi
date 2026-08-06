@@ -78,7 +78,9 @@ export class PlayScene extends Phaser.Scene {
     this.ambience = new TownAmbience(this)
     this.hud = new HudBar(this, {
       onUndo: () => {
-        if (!this.busy) this.store.dispatch({ type: 'undo' })
+        if (this.busy) return
+        this.store.dispatch({ type: 'undo' })
+        this.clearPlan()
       },
       onMenu: () => this.menu.show(),
     })
@@ -130,6 +132,7 @@ export class PlayScene extends Phaser.Scene {
         this.menu.hide()
         if (window.confirm('新しいゲームを始めますか？現在の進行は失われます。')) {
           this.store.dispatch({ type: 'newGame', seed: randomSeed() })
+          this.clearPlan()
         }
       },
     })
@@ -143,7 +146,10 @@ export class PlayScene extends Phaser.Scene {
     this.overlays = new OverlayStack(this, {
       onConfirm: () => this.playback.confirm(),
       onChoose: (optionId) => this.resolveChoice(optionId),
-      onEndingRestart: () => this.store.dispatch({ type: 'newGame', seed: randomSeed() }),
+      onEndingRestart: () => {
+        this.store.dispatch({ type: 'newGame', seed: randomSeed() })
+        this.clearPlan()
+      },
       onEndingTitle: () => this.scene.start(KEYS.title),
     })
     this.skipButton = new PixelButton(this, {
@@ -153,7 +159,10 @@ export class PlayScene extends Phaser.Scene {
       onAction: () => this.playback.skip(),
     })
     this.skipButton.setVisible(false)
-    this.playback.onChange = () => this.refresh()
+    this.playback.onChange = () => {
+      if (!this.playback.current) this.clearPlan()
+      this.refresh()
+    }
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => this.onPointerMove(pointer))
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => this.onPointerUp(pointer))
     this.input.keyboard?.on('keydown-ESC', () => {
@@ -161,7 +170,6 @@ export class PlayScene extends Phaser.Scene {
       else if (this.unitDetails.isOpen) this.unitDetails.hide()
     })
     this.unsubscribe = this.store.subscribe(() => {
-      this.plan = emptyPlan()
       this.selectedUnitId = null
       this.selectedFacility = null
       this.refresh()
@@ -284,6 +292,12 @@ export class PlayScene extends Phaser.Scene {
     this.store.dispatch({ type: 'commitDay', plan: buildPlan(this.plan) })
     this.playback.start(prev, result.effects)
     this.refresh()
+  }
+
+  private clearPlan(): void {
+    this.plan = emptyPlan()
+    this.selectedUnitId = null
+    this.selectedFacility = null
   }
 
   private resolveChoice(optionId: string): void {
