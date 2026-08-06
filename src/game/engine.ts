@@ -71,14 +71,18 @@ export function applyEffects(prev: GameState, effects: Effect[]): GameState {
   return { ...prev, resources: { food, power, medical, morale }, budget, stockpile, flags }
 }
 
-function actTransition(mods: Modifier[], day: number): { mods: Modifier[]; fx: Effect[] } {
+function actTransition(
+  mods: Modifier[],
+  day: number,
+  fxDay: number,
+): { mods: Modifier[]; fx: Effect[] } {
   const A = BALANCE.acts
   let next = mods
   const fx: Effect[] = []
   const ensure = (id: string, endDay: number, effects: ModifierEffect[], reason: string) => {
     if (next.some((m) => m.id === id)) return
     next = addModifier(next, { id, daysLeft: Math.max(0, endDay - day), startDay: day, effects })
-    fx.push({ day, source: id, target: 'flag:act', delta: 0, reason })
+    fx.push({ day: fxDay, source: id, target: 'flag:act', delta: 0, reason })
   }
   if (actOf(day) === 2)
     ensure(
@@ -116,7 +120,7 @@ function finalizeDay(s: GameState, produced: Effect[]): StepResult {
   let effects = produced
   let report = s.report
   if (phase !== 'ended') {
-    const acted = actTransition(modifiers, day)
+    const acted = actTransition(modifiers, day, s.day)
     modifiers = acted.mods
     if (acted.fx.length > 0) {
       effects = [...produced, ...acted.fx]

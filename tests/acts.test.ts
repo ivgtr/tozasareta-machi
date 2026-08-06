@@ -154,4 +154,12 @@ describe('アクト機構', () => {
     expect(r.state.phase).toBe('ended')
     expect(r.state.modifiers.some((m) => m.id.startsWith('act_'))).toBe(false)
   })
+
+  it('アクト境界日の report は全エントリが同じ日を持つ', () => {
+    const s11 = playDay(atDay(1, 10))
+    expect(s11.state.report.every((e) => e.day === 10)).toBe(true)
+    const s20 = playDay(atDay(2, 19))
+    const s21 = playDay(s20.state)
+    expect(s21.state.report.every((e) => e.day === 20)).toBe(true)
+  })
 })
