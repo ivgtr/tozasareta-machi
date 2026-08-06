@@ -119,6 +119,19 @@ export class OverlayStack extends ModalCard {
     }
   }
 
+  private addConfirmButton(label: string, width: number): PixelButton {
+    const btn = new PixelButton(this.scene, {
+      label,
+      width,
+      height: 44,
+      primary: true,
+      onAction: this.callbacks.onConfirm,
+    })
+    btn.setPosition(this.cardW / 2, this.cardH - 40)
+    this.content.add(btn)
+    return btn
+  }
+
   private drawEvent(id: string, reasons: string[], width: number, height: number): void {
     const d = this.content
     const inset = this.contentInset
@@ -141,15 +154,7 @@ export class OverlayStack extends ModalCard {
       })
     }
     this.finish(height, stack.bottom, 44 + SPACING.lg)
-    const btn = new PixelButton(this.scene, {
-      label: '続ける',
-      width: 140,
-      height: 44,
-      primary: true,
-      onAction: this.callbacks.onConfirm,
-    })
-    btn.setPosition(cardW / 2, this.cardH - 40)
-    d.add(btn)
+    this.addConfirmButton('続ける', 140)
   }
 
   private drawArrival(ctx: OverlayContext, width: number, height: number): void {
@@ -163,7 +168,6 @@ export class OverlayStack extends ModalCard {
     const unique = unit.unique === true
     const inset = this.contentInset
     const contentW = this.begin(width, height)
-    const cardW = this.cardW
     const kick = pixelText(this.scene, kicker, {
       fontSize: TEXT_SIZE.labelWide,
       color: COLORS.cyan,
@@ -235,15 +239,7 @@ export class OverlayStack extends ModalCard {
     }
     const bottom = Math.max(traitsFlavor.bottom + 8, inset + 40 + boxH)
     this.finish(height, bottom, 44 + SPACING.lg)
-    const btn = new PixelButton(this.scene, {
-      label: returning ? '続ける' : unique ? '迎え入れる' : '続ける',
-      width: 160,
-      height: 44,
-      primary: true,
-      onAction: this.callbacks.onConfirm,
-    })
-    btn.setPosition(cardW / 2, this.cardH - 40)
-    d.add(btn)
+    this.addConfirmButton(returning ? '続ける' : unique ? '迎え入れる' : '続ける', 160)
   }
 
   private drawChoice(state: GameState, width: number, height: number): void {
