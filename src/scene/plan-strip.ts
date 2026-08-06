@@ -2,12 +2,11 @@ import Phaser from 'phaser'
 import type { GameState, TaskId } from '../game/types'
 import { BALANCE } from '../game/data/balance'
 import { PHYSICAL_TASKS } from '../game/actions'
-import { artSpec } from './art/manifest'
-import { textureKey } from './art/assets'
-import { COLORS, SPACING, TEXT_SIZE, colorNum } from './tokens'
+import { COLORS, SPACING, TEXT_SIZE, colorCss } from './tokens'
 import { spentOf, type PlanState } from './plan'
 import { PixelButton } from './ui/button'
 import { pixelText } from './ui/pixel-text'
+import { drawArtSlot } from './ui/art-slot'
 import type { Rect } from './regions'
 import type { DeviceClass } from './layout'
 
@@ -171,22 +170,15 @@ export class PlanStrip extends Phaser.GameObjects.Container {
     for (const t of PHYSICAL_TASKS) {
       const count = (plan.placements[t] ?? []).length
       if (!wide && count === 0) continue
-      const spec = artSpec('icon', t)
-      const color = spec ? colorNum(spec.color) : COLORS.inkDim
-      const key = textureKey('icon', t)
-      if (this.scene.textures.exists(key)) {
-        const img = this.scene.add.image(cursor + 9, cy, key)
-        img.setDisplaySize(18, 18)
-        if (count === 0) img.setAlpha(0.35)
-        d.add(img)
-      } else {
-        const glyph = pixelText(this.scene, spec?.glyph ?? '・', {
-          fontSize: 14,
-          color: count === 0 ? COLORS.frameLo : color,
-        })
-        glyph.setPosition(cursor + 9, cy)
-        glyph.setOrigin(0.5)
-        d.add(glyph)
+      const slot = drawArtSlot(this.scene, d, 'icon', t, cursor + 9, cy, {
+        width: 18,
+        height: 18,
+        glyphSize: 14,
+        fallbackGlyph: '・',
+      })
+      if (count === 0) {
+        if (slot instanceof Phaser.GameObjects.Image) slot.setAlpha(0.35)
+        else slot.setColor(colorCss(COLORS.frameLo))
       }
       cursor += 20
       const num = pixelText(this.scene, `×${count}`, {

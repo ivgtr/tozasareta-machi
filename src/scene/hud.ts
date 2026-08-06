@@ -4,10 +4,10 @@ import { BALANCE } from '../game/data/balance'
 import { isOnExpedition } from '../game/actions'
 import { lowFoodThreshold } from '../game/settlement'
 import { artSpec } from './art/manifest'
-import { textureKey } from './art/assets'
-import { COLORS, FONT_DISPLAY, SPACING, TEXT_SIZE, colorCss, colorNum } from './tokens'
+import { COLORS, FONT_DISPLAY, SPACING, TEXT_SIZE, colorNum } from './tokens'
 import { PixelButton } from './ui/button'
 import { pixelText } from './ui/pixel-text'
+import { drawArtSlot } from './ui/art-slot'
 import type { Rect } from './regions'
 import type { DeviceClass } from './layout'
 
@@ -215,22 +215,13 @@ export class HudBar extends Phaser.GameObjects.Container {
   }
 
   private addIcon(host: Phaser.GameObjects.Container, x: number, id: string): number {
-    const key = textureKey('icon', id)
     const size = 18
-    if (this.scene.textures.exists(key)) {
-      const img = this.scene.add.image(x + size / 2, this.rect.height / 2, key)
-      img.setDisplaySize(size, size)
-      host.add(img)
-    } else {
-      const spec = artSpec('icon', id)
-      const g = this.scene.add.text(x + size / 2, this.rect.height / 2, spec?.glyph ?? '・', {
-        fontFamily: 'DotGothic16',
-        fontSize: '14px',
-        color: colorCss(spec ? colorNum(spec.color) : COLORS.inkDim),
-      })
-      g.setOrigin(0.5)
-      host.add(g)
-    }
+    drawArtSlot(this.scene, host, 'icon', id, x + size / 2, this.rect.height / 2, {
+      width: size,
+      height: size,
+      glyphSize: 14,
+      fallbackGlyph: '・',
+    })
     return size + 2
   }
 }

@@ -7,11 +7,12 @@ import { choiceOptions, findEvent } from '../game/events'
 import { EXPEDITION_RETURN_SOURCE } from '../game/settlement'
 import { artSpec } from './art/manifest'
 import { textureKey } from './art/assets'
-import { COLORS, SPACING, TEXT_SIZE, colorNum, fitSize } from './tokens'
+import { COLORS, SPACING, TEXT_SIZE, colorNum } from './tokens'
 import { ModalCard } from './ui/modal-card'
 import { PixelButton } from './ui/button'
 import { TextStack } from './ui/text-stack'
 import { pixelText } from './ui/pixel-text'
+import { drawArtSlot } from './ui/art-slot'
 import type { Beat } from './playback/beats'
 
 const APTS: Aptitude[] = ['labor', 'tech', 'medical', 'charm']
@@ -169,27 +170,15 @@ export class OverlayStack extends ModalCard {
     })
     kick.setPosition(inset, inset)
     d.add(kick)
-    const key = textureKey('portrait', unit.portrait)
     const px = inset + 48
     const boxW = unique ? 96 : 64
     const boxH = unique ? 128 : 85
-    if (this.scene.textures.exists(key)) {
-      const img = this.scene.add.image(px, inset + 90, key)
-      const src = img.texture.getSourceImage() as { width: number; height: number }
-      const fit = fitSize(src.width, src.height, boxW, boxH)
-      img.setDisplaySize(fit.width, fit.height)
-      img.setPosition(px, inset + 90 + (boxH - fit.height) / 2)
-      d.add(img)
-    } else {
-      const spec = artSpec('portrait', unit.portrait)
-      const glyph = pixelText(this.scene, spec?.glyph ?? '人', {
-        fontSize: unique ? 48 : 32,
-        color: spec ? colorNum(spec.color) : COLORS.inkDim,
-      })
-      glyph.setPosition(px, inset + 90)
-      glyph.setOrigin(0.5)
-      d.add(glyph)
-    }
+    drawArtSlot(this.scene, d, 'portrait', unit.portrait, px, inset + 90, {
+      width: boxW,
+      height: boxH,
+      glyphSize: unique ? 48 : 32,
+      fallbackGlyph: '人',
+    })
     const name = pixelText(this.scene, unit.name, {
       fontSize: TEXT_SIZE.heading,
       color: COLORS.gold,

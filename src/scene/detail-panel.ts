@@ -5,17 +5,7 @@ import { TRAITS } from '../game/traits'
 import { APTITUDE_LABEL } from '../game/data/units'
 import { resolvePlacement, taskCost } from '../game/actions'
 import { isTaskDisabled } from '../game/modifiers'
-import { artSpec } from './art/manifest'
-import { textureKey } from './art/assets'
-import {
-  COLORS,
-  PANEL_CONTENT_INSET,
-  SPACING,
-  TEXT_SIZE,
-  colorCss,
-  colorNum,
-  fitSize,
-} from './tokens'
+import { COLORS, PANEL_CONTENT_INSET, SPACING, TEXT_SIZE } from './tokens'
 import { FACILITIES, type FacilityViewId } from './town/facilities'
 import type { FacilityId } from './town/layout'
 import { formatDelta } from './labels'
@@ -25,6 +15,7 @@ import { PixelPanel } from './ui/panel'
 import { ModalCard } from './ui/modal-card'
 import { TextStack } from './ui/text-stack'
 import { pixelText } from './ui/pixel-text'
+import { drawArtSlot } from './ui/art-slot'
 import type { Rect } from './regions'
 
 const APTS: Aptitude[] = ['labor', 'tech', 'medical', 'charm']
@@ -205,24 +196,12 @@ export class DetailPanel extends Phaser.GameObjects.Container {
   }
 
   private addPortrait(host: Phaser.GameObjects.Container, x: number, y: number, unit: Unit): void {
-    const key = textureKey('portrait', unit.portrait)
-    if (this.scene.textures.exists(key)) {
-      const img = this.scene.add.image(x + 24, y, key)
-      const src = img.texture.getSourceImage() as { width: number; height: number }
-      const fit = fitSize(src.width, src.height, 48, 64)
-      img.setDisplaySize(fit.width, fit.height)
-      img.setPosition(x + 24, y + (64 - fit.height) / 2)
-      host.add(img)
-    } else {
-      const spec = artSpec('portrait', unit.portrait)
-      const g = this.scene.add.text(x + 24, y, spec?.glyph ?? '人', {
-        fontFamily: 'DotGothic16',
-        fontSize: '28px',
-        color: colorCss(spec ? colorNum(spec.color) : COLORS.inkDim),
-      })
-      g.setOrigin(0.5)
-      host.add(g)
-    }
+    drawArtSlot(this.scene, host, 'portrait', unit.portrait, x + 24, y, {
+      width: 48,
+      height: 64,
+      glyphSize: 28,
+      fallbackGlyph: '人',
+    })
   }
 }
 
@@ -247,25 +226,13 @@ export class UnitDetailsOverlay extends ModalCard {
     const contentW = this.begin(width, height, 420, 420)
     const cardW = this.cardW
     const inset = this.contentInset
-    const spec = artSpec('portrait', unit.portrait)
-    const key = textureKey('portrait', unit.portrait)
     const portraitY = inset + 40
-    if (this.scene.textures.exists(key)) {
-      const img = this.scene.add.image(inset + 32, portraitY, key)
-      const src = img.texture.getSourceImage() as { width: number; height: number }
-      const fit = fitSize(src.width, src.height, 64, 85)
-      img.setDisplaySize(fit.width, fit.height)
-      img.setPosition(inset + 32, portraitY + (85 - fit.height) / 2)
-      d.add(img)
-    } else {
-      const glyph = pixelText(this.scene, spec?.glyph ?? '人', {
-        fontSize: 40,
-        color: spec ? colorNum(spec.color) : COLORS.inkDim,
-      })
-      glyph.setPosition(inset + 32, portraitY)
-      glyph.setOrigin(0.5)
-      d.add(glyph)
-    }
+    drawArtSlot(this.scene, d, 'portrait', unit.portrait, inset + 32, portraitY, {
+      width: 64,
+      height: 85,
+      glyphSize: 40,
+      fallbackGlyph: '人',
+    })
     const textX = inset + 80
     const stack = new TextStack(textX, inset)
     stack.add(this.scene, d, unit.name, {
