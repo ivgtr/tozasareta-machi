@@ -260,6 +260,7 @@ export class UnitDetailsOverlay extends ModalCard {
       height: 40,
       onAction: onClose,
     })
+    this.add(this.closeButton)
   }
 
   show(unit: Unit): void {

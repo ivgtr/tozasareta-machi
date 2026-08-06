@@ -33,6 +33,7 @@ export class ModalCard extends Phaser.GameObjects.Container {
     )
     this.panel = new PixelPanel(scene, 10, 10)
     this.content = scene.add.container(0, 0)
+    this.dim.setVisible(false)
     this.add([this.panel, this.content])
     this.setVisible(false)
     scene.add.existing(this)
