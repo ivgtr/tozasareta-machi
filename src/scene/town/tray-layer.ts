@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import type { GameState } from '../../game/types'
+import type { GameState, Unit } from '../../game/types'
 import { COLORS, colorCss } from '../tokens'
 import { expeditionUnits, unassignedUnits, type PlanState } from '../plan'
 import { TOKEN_HIT, reconcileTokens, type UnitToken } from '../ui/token'
@@ -68,21 +68,39 @@ export class TrayLayer extends Phaser.GameObjects.Container {
     const unassigned = unassignedUnits(state, plan)
     const away = expeditionUnits(state)
     if (this.deviceClass === 'wide') {
-      this.header.setVisible(false)
-      this.awayHeader.setVisible(false)
-      this.row.setPosition(8, this.trayHeight / 2)
-      this.awayRow.removeAll(true)
-      this.awayRow.setVisible(false)
-      this.syncRow(
-        this.row,
-        state,
-        [...unassigned.map((u) => u.id), ...away.map((u) => u.id)],
-        selectedUnitId,
-        TRAY_SCALE,
-        away.map((u) => u.id),
-      )
+      this.renderWide(state, selectedUnitId, unassigned, away)
       return
     }
+    this.renderNarrow(state, selectedUnitId, unassigned, away)
+  }
+
+  private renderWide(
+    state: GameState,
+    selectedUnitId: string | null,
+    unassigned: Unit[],
+    away: Unit[],
+  ): void {
+    this.header.setVisible(false)
+    this.awayHeader.setVisible(false)
+    this.row.setPosition(8, this.trayHeight / 2)
+    this.awayRow.removeAll(true)
+    this.awayRow.setVisible(false)
+    this.syncRow(
+      this.row,
+      state,
+      [...unassigned.map((u) => u.id), ...away.map((u) => u.id)],
+      selectedUnitId,
+      TRAY_SCALE,
+      away.map((u) => u.id),
+    )
+  }
+
+  private renderNarrow(
+    state: GameState,
+    selectedUnitId: string | null,
+    unassigned: Unit[],
+    away: Unit[],
+  ): void {
     this.header.setVisible(true)
     this.header.setText(`待機中の人員（${unassigned.length}）`)
     this.row.setPosition(8, HEADER_HEIGHT + ROW_HEIGHT / 2)
