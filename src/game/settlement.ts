@@ -225,12 +225,13 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
 
   addMorale(-B.morale.decay, '孤立生活のストレスが蓄積した')
   if (input.ration) addMorale(B.morale.ration, '配給を絞ったため、不満が高まった')
-  if (food < lowFoodThreshold(presentCount))
+  const presentAfter = units.filter((u) => !isOnExpedition(u))
+  if (food < lowFoodThreshold(presentAfter.length))
     addMorale(B.morale.lowFood, '食料の残りが少なく、不安が広がった')
   if (medical < B.medical.neglectAt) addMorale(B.morale.lowMedical, '医療体制への不安が広がった')
   if (power < B.power.lowAt) addMorale(B.morale.lowPower, '暗闇への不満が広がった')
   if (
-    food >= lowFoodThreshold(presentCount) &&
+    food >= lowFoodThreshold(presentAfter.length) &&
     medical >= B.morale.calmMedicalAt &&
     power >= B.morale.calmPowerAt
   )

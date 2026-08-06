@@ -125,6 +125,26 @@ describe('settlement', () => {
     expect(state.resources.morale).toBe(60)
   })
 
+  it('探索から帰還したユニットは低食料の閾値に数えられる', () => {
+    const b = base()
+    const s: GameState = {
+      ...b,
+      day: 5,
+      resources: { ...b.resources, morale: 60, power: 100, medical: 100 },
+      rng: { seed: 8042, counter: 0 },
+      units: b.units.map((u) =>
+        u.id === 'farmer' ? { ...u, expedition: b.day - BALANCE.expedition.minDays } : u,
+      ),
+    }
+    s.resources.food = 66
+    const { state, effects } = settle(s, { ration: false, procure: false, worked: [] })
+    const farmer = state.units.find((u) => u.id === 'farmer')
+    expect(farmer?.expedition).toBeUndefined()
+    expect(state.resources.food).toBe(49)
+    expect(effects.some((e) => e.reason.includes('残りが少なく'))).toBe(true)
+    expect(state.resources.morale).toBe(60 - BALANCE.morale.decay + BALANCE.morale.lowFood)
+  })
+
   it('procure を指定すると予算を払って備蓄が増える', () => {
     const s = base()
     const { state } = settle(s, { ration: false, procure: true, worked: [] })
