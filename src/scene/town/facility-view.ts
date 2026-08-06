@@ -1,6 +1,7 @@
 import type { GameState, TaskId } from '../../game/types'
+import { BALANCE } from '../../game/data/balance'
 import type { PlanState } from '../plan'
-import { POWER_LOW_THRESHOLD, type FacilityViewId } from './facilities'
+import type { FacilityViewId } from './facilities'
 import { FACILITY_PLOTS, type FacilityId } from './layout'
 
 export function deriveFacilityView(
@@ -12,7 +13,7 @@ export function deriveFacilityView(
     hq: 'normal',
     power: placed('repair_power')
       ? 'working'
-      : state.resources.power < POWER_LOW_THRESHOLD
+      : state.resources.power < BALANCE.power.lowAt
         ? 'low'
         : 'normal',
     road: placed('restore_road') ? 'working' : 'collapsed',

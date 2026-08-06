@@ -52,5 +52,3 @@ export const FACILITIES: Record<FacilityId, FacilityMeta> = {
 export const FACILITY_IDS = Object.keys(FACILITIES) as FacilityId[]
 
 export type FacilityViewId = 'normal' | 'low' | 'working' | 'collapsed' | 'restored' | 'damaged'
-
-export const POWER_LOW_THRESHOLD = 30

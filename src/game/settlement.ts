@@ -172,7 +172,7 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
   const powerDecay = Math.round(B.power.decay * queryMult(prev.modifiers, 'decay:power'))
   power = clamp(power - powerDecay, 0, 100)
   eff('power', -powerDecay, '発電設備が劣化した')
-  const extra = power < B.medical.lowPowerAt ? B.medical.extraDecay : 0
+  const extra = power < B.power.lowAt ? B.medical.extraDecay : 0
   const medDecay = Math.round(
     (B.medical.decay + extra) * queryMult(prev.modifiers, 'decay:medical'),
   )
@@ -228,7 +228,7 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
   if (food < lowFoodThreshold(presentCount))
     addMorale(B.morale.lowFood, '食料の残りが少なく、不安が広がった')
   if (medical < B.medical.neglectAt) addMorale(B.morale.lowMedical, '医療体制への不安が広がった')
-  if (power < 30) addMorale(B.morale.lowPower, '暗闇への不満が広がった')
+  if (power < B.power.lowAt) addMorale(B.morale.lowPower, '暗闇への不満が広がった')
   if (
     food >= lowFoodThreshold(presentCount) &&
     medical >= B.morale.calmMedicalAt &&

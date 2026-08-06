@@ -80,6 +80,26 @@ describe('settlement', () => {
     expect(state.resources.morale).toBe(60)
   })
 
+  it('清算後 power が閾値未満なら低電力の士気ペナルティが発火する', () => {
+    const s: GameState = {
+      ...base(),
+      resources: { ...base().resources, morale: 60, food: 1000, power: 39, medical: 60 },
+    }
+    const { state } = settle(s, { ration: false, procure: false, worked: [] })
+    expect(state.resources.power).toBe(29)
+    expect(state.resources.morale).toBe(60 - BALANCE.morale.decay + BALANCE.morale.lowPower)
+  })
+
+  it('清算後 power が閾値ちょうどなら低電力ペナルティは発火しない', () => {
+    const s: GameState = {
+      ...base(),
+      resources: { ...base().resources, morale: 60, food: 1000, power: 40, medical: 60 },
+    }
+    const { state } = settle(s, { ration: false, procure: false, worked: [] })
+    expect(state.resources.power).toBe(30)
+    expect(state.resources.morale).toBe(60 - BALANCE.morale.decay)
+  })
+
   it('低食料の閾値は 在籍人員 × 1人あたり消費 × 日数', () => {
     expect(lowFoodThreshold(4)).toBe(54)
     expect(lowFoodThreshold(0)).toBe(0)

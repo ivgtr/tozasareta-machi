@@ -25,7 +25,8 @@ export function deriveAlerts(state: GameState): HudAlert[] {
     alerts.push({ icon: 'alert_warning', text: '食料の残りが少ない', tone: 'warning' })
   if (r.medical < BALANCE.medical.neglectAt)
     alerts.push({ icon: 'alert_danger', text: '医療体制が逼迫', tone: 'danger' })
-  if (r.power < 30) alerts.push({ icon: 'alert_warning', text: '電力不足', tone: 'warning' })
+  if (r.power < BALANCE.power.lowAt)
+    alerts.push({ icon: 'alert_warning', text: '電力不足', tone: 'warning' })
   if (r.morale < BALANCE.morale.riotAt)
     alerts.push({ icon: 'alert_danger', text: '暴動の危険', tone: 'danger' })
   return alerts
