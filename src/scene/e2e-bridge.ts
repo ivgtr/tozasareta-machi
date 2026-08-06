@@ -1,0 +1,160 @@
+import Phaser from 'phaser'
+import { KEYS } from './keys'
+import { deviceClassOf } from './layout'
+import { sharedStore } from './store-bridge'
+
+interface CssBounds {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+interface PlaySceneInternals {
+  menu?: { isOpen: boolean }
+  confirm?: { isOpen: boolean }
+  unitDetails?: { isOpen: boolean }
+  playback?: { current: unknown | null }
+  selectedUnitId?: string | null
+}
+
+interface E2ESnapshot {
+  activeScenes: string[]
+  day: number
+  phase: string
+  historyLength: number
+  menuOpen: boolean
+  confirmOpen: boolean
+  unitDetailsOpen: boolean
+  busy: boolean
+  selectedUnitId: string | null
+  deviceClass: 'wide' | 'narrow'
+  gameSize: { width: number; height: number }
+  canvas: {
+    width: number
+    height: number
+    cssWidth: number
+    cssHeight: number
+  }
+}
+
+interface E2EBridge {
+  snapshot(): E2ESnapshot
+  textBounds(text: string, exact?: boolean): CssBounds | null
+  firstUnitBounds(): CssBounds | null
+}
+
+type E2EWindow = Window & {
+  __TOZASARETA_MACHI_E2E__?: E2EBridge
+}
+
+function isVisible(object: Phaser.GameObjects.GameObject): boolean {
+  const candidate = object as Phaser.GameObjects.GameObject & {
+    visible?: boolean
+    alpha?: number
+  }
+  return object.active && candidate.visible !== false && (candidate.alpha ?? 1) > 0
+}
+
+function collectVisible(
+  objects: readonly Phaser.GameObjects.GameObject[],
+  result: Phaser.GameObjects.GameObject[] = [],
+): Phaser.GameObjects.GameObject[] {
+  for (const object of objects) {
+    if (!isVisible(object)) continue
+    result.push(object)
+    if (object instanceof Phaser.GameObjects.Container) collectVisible(object.list, result)
+  }
+  return result
+}
+
+function activeScene(game: Phaser.Game): Phaser.Scene | null {
+  const scenes = game.scene.getScenes(true)
+  return scenes[scenes.length - 1] ?? null
+}
+
+function boundsOf(object: Phaser.GameObjects.GameObject): Phaser.Geom.Rectangle | null {
+  const candidate = object as Phaser.GameObjects.GameObject & {
+    getBounds?: () => Phaser.Geom.Rectangle
+  }
+  return candidate.getBounds?.() ?? null
+}
+
+function toCssBounds(game: Phaser.Game, bounds: Phaser.Geom.Rectangle): CssBounds {
+  const canvas = game.canvas.getBoundingClientRect()
+  const gameWidth = Number(game.scale.gameSize.width)
+  const gameHeight = Number(game.scale.gameSize.height)
+  const scaleX = canvas.width / gameWidth
+  const scaleY = canvas.height / gameHeight
+  return {
+    x: canvas.left + bounds.x * scaleX,
+    y: canvas.top + bounds.y * scaleY,
+    width: bounds.width * scaleX,
+    height: bounds.height * scaleY,
+  }
+}
+
+function visibleObjects(game: Phaser.Game): Phaser.GameObjects.GameObject[] {
+  const scene = activeScene(game)
+  return scene ? collectVisible(scene.children.list) : []
+}
+
+function findTextBounds(game: Phaser.Game, text: string, exact: boolean): CssBounds | null {
+  const match = visibleObjects(game).find((object) => {
+    if (!(object instanceof Phaser.GameObjects.Text)) return false
+    return exact ? object.text === text : object.text.includes(text)
+  })
+  if (!match) return null
+  const bounds = boundsOf(match)
+  return bounds ? toCssBounds(game, bounds) : null
+}
+
+function findFirstUnitBounds(game: Phaser.Game): CssBounds | null {
+  const match = visibleObjects(game).find((object) => {
+    const candidate = object as Phaser.GameObjects.GameObject & { unitId?: unknown }
+    return typeof candidate.unitId === 'string'
+  })
+  if (!match) return null
+  const bounds = boundsOf(match)
+  return bounds ? toCssBounds(game, bounds) : null
+}
+
+function snapshot(game: Phaser.Game): E2ESnapshot {
+  const store = sharedStore().get()
+  const play = game.scene.getScene(KEYS.play) as unknown as PlaySceneInternals
+  const canvas = game.canvas.getBoundingClientRect()
+  return {
+    activeScenes: game.scene.getScenes(true).map((scene) => scene.scene.key),
+    day: store.state.day,
+    phase: store.state.phase,
+    historyLength: store.history.length,
+    menuOpen: play.menu?.isOpen ?? false,
+    confirmOpen: play.confirm?.isOpen ?? false,
+    unitDetailsOpen: play.unitDetails?.isOpen ?? false,
+    busy: play.playback?.current != null,
+    selectedUnitId: play.selectedUnitId ?? null,
+    deviceClass: deviceClassOf(window.innerWidth),
+    gameSize: {
+      width: Number(game.scale.gameSize.width),
+      height: Number(game.scale.gameSize.height),
+    },
+    canvas: {
+      width: game.canvas.width,
+      height: game.canvas.height,
+      cssWidth: canvas.width,
+      cssHeight: canvas.height,
+    },
+  }
+}
+
+export function installE2EBridge(game: Phaser.Game): void {
+  const target = window as E2EWindow
+  target.__TOZASARETA_MACHI_E2E__ = {
+    snapshot: () => snapshot(game),
+    textBounds: (text, exact = true) => findTextBounds(game, text, exact),
+    firstUnitBounds: () => findFirstUnitBounds(game),
+  }
+  game.events.once(Phaser.Core.Events.DESTROY, () => {
+    delete target.__TOZASARETA_MACHI_E2E__
+  })
+}

@@ -8,12 +8,11 @@ import { COLORS, colorCss } from './tokens'
 
 export function createGame(parent: HTMLElement): Phaser.Game {
   const design = designSizeOf(deviceClassOf(window.innerWidth))
-  const size = renderSize(design.width, design.height)
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
-    width: size.width,
-    height: size.height,
+    width: design.width,
+    height: design.height,
     pixelArt: true,
     roundPixels: true,
     backgroundColor: colorCss(COLORS.night900),
@@ -34,22 +33,13 @@ export function createGame(parent: HTMLElement): Phaser.Game {
   return game
 }
 
-function renderScale(): number {
-  return Math.min(window.devicePixelRatio || 1, 2)
-}
-
-function renderSize(width: number, height: number): { width: number; height: number } {
-  const rs = renderScale()
-  return { width: Math.round(width * rs), height: Math.round(height * rs) }
-}
-
 function watchDeviceClass(game: Phaser.Game): void {
   let current: DeviceClass = deviceClassOf(window.innerWidth)
   const apply = (): void => {
     const next = deviceClassOf(window.innerWidth)
     if (next === current) return
     current = next
-    const size = renderSize(designSizeOf(next).width, designSizeOf(next).height)
+    const size = designSizeOf(next)
     game.scale.setGameSize(size.width, size.height)
     game.events.emit(SCENE_EVENTS.deviceClass, next)
   }
