@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import type { GameState, Unit } from '../../game/types'
-import { COLORS, colorCss } from '../tokens'
+import { COLORS, TEXT_SIZE, colorCss } from '../tokens'
 import { expeditionUnits, unassignedUnits, type PlanState } from '../plan'
 import { TOKEN_HIT, reconcileTokens, type UnitToken } from '../ui/token'
 import { pixelText } from '../ui/pixel-text'
@@ -32,9 +32,9 @@ export class TrayLayer extends Phaser.GameObjects.Container {
     super(scene)
     this.callbacks = callbacks
     this.bg = scene.add.graphics()
-    this.header = pixelText(scene, '', { fontSize: 12, color: COLORS.inkDim })
+    this.header = pixelText(scene, '', { fontSize: TEXT_SIZE.labelWide, color: COLORS.inkDim })
     this.header.setPosition(8, 4)
-    this.awayHeader = pixelText(scene, '', { fontSize: 12, color: COLORS.inkDim })
+    this.awayHeader = pixelText(scene, '', { fontSize: TEXT_SIZE.labelWide, color: COLORS.inkDim })
     this.awayHeader.setPosition(8, 0)
     this.row = scene.add.container(8, HEADER_HEIGHT + ROW_HEIGHT / 2)
     this.awayRow = scene.add.container(8, 0)
@@ -171,7 +171,7 @@ export class TrayLayer extends Phaser.GameObjects.Container {
     let badge = this.awayBadges.get(id)
     if (!badge) {
       badge = pixelText(this.scene, '探', {
-        fontSize: 11,
+        fontSize: TEXT_SIZE.labelNarrow,
         color: COLORS.night900,
         backgroundColor: colorCss(COLORS.cyan),
       })

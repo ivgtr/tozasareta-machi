@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import type { GameState } from '../../game/types'
 import { reducedMotion } from '../../store'
-import { COLORS } from '../tokens'
+import { COLORS, TEXT_SIZE } from '../tokens'
 import type { PlanState } from '../plan'
 import type { FxEntry } from './fx-map'
 import { FACILITIES, type FacilityViewId } from './facilities'
@@ -71,7 +71,7 @@ export class TownLayer extends Phaser.GameObjects.Container {
       glyph.setPosition(p.x, p.y - 8)
       glyph.setOrigin(0.5)
       const label = pixelText(scene, meta.label, {
-        fontSize: 11,
+        fontSize: TEXT_SIZE.labelWide,
         color: COLORS.inkDim,
       })
       label.setPosition(p.x, p.y + 16)
@@ -215,7 +215,7 @@ export class TownLayer extends Phaser.GameObjects.Container {
     const x = anchor ? anchor.x : TOWN_BASE.width - 60
     const y = anchor ? anchor.y - 34 : 48
     const t = pixelText(this.scene, text, {
-      fontSize: 14,
+      fontSize: TEXT_SIZE.bodyWide,
       color,
     })
     t.setPosition(x, y)
