@@ -58,6 +58,7 @@ export const BUTTON = {
   shadowAlpha: 0.45,
   shadowColor: 0x000000,
   trackingEm: 0.08,
+  labelVPad: 10,
 } as const
 
 export const GAUGE = {

@@ -9,11 +9,12 @@ export interface PixelButtonOptions {
   primary?: boolean
   fontSize?: number
   onAction: () => void
+  wordWrapWidth?: number
 }
 
 export class PixelButton extends Phaser.GameObjects.Container {
   private innerWidth: number
-  private buttonHeight: number
+  private innerHeight: number
   private readonly primary: boolean
   private readonly onAction: () => void
   private readonly bg: Phaser.GameObjects.Graphics
@@ -25,22 +26,23 @@ export class PixelButton extends Phaser.GameObjects.Container {
   constructor(scene: Phaser.Scene, options: PixelButtonOptions) {
     super(scene)
     this.innerWidth = options.width
-    this.buttonHeight = options.height
     this.primary = options.primary ?? false
     this.onAction = options.onAction
     this.bg = scene.add.graphics()
     this.label = pixelText(scene, options.label, {
       fontSize: options.fontSize ?? TEXT_SIZE.bodyWide,
       trackingEm: BUTTON.trackingEm,
+      ...(options.wordWrapWidth !== undefined ? { wordWrapWidth: options.wordWrapWidth } : {}),
     })
+    this.innerHeight = Math.max(options.height, Math.ceil(this.label.height) + BUTTON.labelVPad * 2)
     this.label.setOrigin(0.5)
     this.add([this.bg, this.label])
     this.setInteractive(
       new Phaser.Geom.Rectangle(
         -options.width / 2,
-        -options.height / 2,
+        -this.innerHeight / 2,
         options.width,
-        options.height,
+        this.innerHeight,
       ),
       Phaser.Geom.Rectangle.Contains,
     )
@@ -82,9 +84,13 @@ export class PixelButton extends Phaser.GameObjects.Container {
     return this.innerWidth
   }
 
+  get buttonHeight(): number {
+    return this.innerHeight
+  }
+
   setSize(width: number, height: number): this {
     this.innerWidth = width
-    this.buttonHeight = height
+    this.innerHeight = height
     if (this.input) {
       this.input.hitArea = new Phaser.Geom.Rectangle(-width / 2, -height / 2, width, height)
     }
@@ -109,7 +115,7 @@ export class PixelButton extends Phaser.GameObjects.Container {
   private redraw(): void {
     const g = this.bg
     const w = this.innerWidth
-    const h = this.buttonHeight
+    const h = this.innerHeight
     const b = BUTTON.border
     const active = this.enabled && this.hovered
     const shift = this.enabled && this.pressed ? BUTTON.pressShift : 0
