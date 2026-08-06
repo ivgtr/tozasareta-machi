@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PlaybackController } from '../src/scene/playback/playback'
 import { UI_TIMING, buildBeats } from '../src/scene/playback/beats'
+import { restartGame } from '../src/scene/restart'
 import { createInitialState } from '../src/game/state'
 import type { Effect } from '../src/game/types'
 
@@ -116,6 +117,28 @@ describe('PlaybackController', () => {
     const c = new PlaybackController()
     c.start(createInitialState(1), flowEffects)
     c.skip()
+    expect(c.current).toBeNull()
+  })
+
+  it('新規ゲーム開始時は再生を停止してから状態をリセットする', () => {
+    stubMotion(false)
+    const c = new PlaybackController()
+    const dispatched: { type: 'newGame'; seed: number }[] = []
+    c.start(createInitialState(1), flowEffects)
+
+    restartGame(
+      c,
+      {
+        dispatch: (action) => {
+          expect(c.current).toBeNull()
+          dispatched.push(action)
+        },
+      },
+      7,
+    )
+
+    expect(dispatched).toEqual([{ type: 'newGame', seed: 7 }])
+    vi.advanceTimersByTime(UI_TIMING.effectMs * 3)
     expect(c.current).toBeNull()
   })
 

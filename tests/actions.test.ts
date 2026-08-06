@@ -101,6 +101,19 @@ describe('sanitizePlan', () => {
     expect(plan.placements).toHaveLength(0)
   })
 
+  it('予算不足で除外された任務はユニットを使用済みにしない', () => {
+    const poor: GameState = { ...base(), budget: 0 }
+    const plan = sanitizePlan(poor, {
+      placements: [
+        { task: 'repair_power', unitIds: ['engineer'] },
+        { task: 'restore_road', unitIds: ['engineer'] },
+      ],
+      ration: false,
+      procure: false,
+    })
+    expect(plan.placements).toEqual([{ task: 'restore_road', unitIds: ['engineer'] }])
+  })
+
   it('予算が足りなければ procure は取り下げられる', () => {
     const poor: GameState = { ...base(), budget: BALANCE.procure.budget - 1 }
     const plan = sanitizePlan(poor, { placements: [], ration: false, procure: true })
