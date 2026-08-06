@@ -395,9 +395,7 @@ export class PlayScene extends Phaser.Scene {
     this.log.update(view.report)
     this.overlays.update({ state, busy, beat: this.playback.beat })
     const pb = this.playback.current
-    this.skipButton.setVisible(
-      !!pb && !this.playback.waiting && pb.index < pb.beats.length - 1,
-    )
+    this.skipButton.setVisible(!!pb && !this.playback.waiting && pb.index < pb.beats.length - 1)
     this.ambience.update(view)
     this.triggerBeatFx()
   }
