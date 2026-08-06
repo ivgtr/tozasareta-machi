@@ -7,7 +7,7 @@ import { choiceOptions, findEvent } from '../game/events'
 import { EXPEDITION_RETURN_SOURCE } from '../game/settlement'
 import { artSpec } from './art/manifest'
 import { textureKey } from './art/assets'
-import { COLORS, PANEL_CONTENT_INSET, SPACING, TEXT_SIZE, colorNum } from './tokens'
+import { COLORS, PANEL_CONTENT_INSET, SPACING, TEXT_SIZE, colorNum, fitSize } from './tokens'
 import { PixelButton } from './ui/button'
 import { PixelPanel } from './ui/panel'
 import { pixelText } from './ui/pixel-text'
@@ -193,9 +193,14 @@ export class OverlayStack extends Phaser.GameObjects.Container {
     this.dynamic.add(kick)
     const key = textureKey('portrait', unit.portrait)
     const px = inset + 48
+    const boxW = unique ? 96 : 64
+    const boxH = unique ? 128 : 85
     if (this.scene.textures.exists(key)) {
       const img = this.scene.add.image(px, inset + 90, key)
-      img.setDisplaySize(unique ? 96 : 64, unique ? 128 : 85)
+      const src = img.texture.getSourceImage() as { width: number; height: number }
+      const fit = fitSize(src.width, src.height, boxW, boxH)
+      img.setDisplaySize(fit.width, fit.height)
+      img.setPosition(px, inset + 90 + (boxH - fit.height) / 2)
       this.dynamic.add(img)
     } else {
       const spec = artSpec('portrait', unit.portrait)

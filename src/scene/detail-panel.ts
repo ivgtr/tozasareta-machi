@@ -7,7 +7,15 @@ import { resolvePlacement, taskCost } from '../game/actions'
 import { isTaskDisabled } from '../game/modifiers'
 import { artSpec } from './art/manifest'
 import { textureKey } from './art/assets'
-import { COLORS, PANEL_CONTENT_INSET, SPACING, TEXT_SIZE, colorCss, colorNum } from './tokens'
+import {
+  COLORS,
+  PANEL_CONTENT_INSET,
+  SPACING,
+  TEXT_SIZE,
+  colorCss,
+  colorNum,
+  fitSize,
+} from './tokens'
 import { FACILITIES, type FacilityViewId } from './town/facilities'
 import type { FacilityId } from './town/layout'
 import { formatDelta } from './labels'
@@ -189,7 +197,10 @@ export class DetailPanel extends Phaser.GameObjects.Container {
     const key = textureKey('portrait', unit.portrait)
     if (this.scene.textures.exists(key)) {
       const img = this.scene.add.image(x + 24, y, key)
-      img.setDisplaySize(48, 64)
+      const src = img.texture.getSourceImage() as { width: number; height: number }
+      const fit = fitSize(src.width, src.height, 48, 64)
+      img.setDisplaySize(fit.width, fit.height)
+      img.setPosition(x + 24, y + (64 - fit.height) / 2)
       host.add(img)
     } else {
       const spec = artSpec('portrait', unit.portrait)
@@ -238,7 +249,10 @@ export class UnitDetailsOverlay extends Phaser.GameObjects.Container {
     const key = textureKey('portrait', unit.portrait)
     if (this.scene.textures.exists(key)) {
       const img = this.scene.add.image(inset + 32, y + 40, key)
-      img.setDisplaySize(64, 85)
+      const src = img.texture.getSourceImage() as { width: number; height: number }
+      const fit = fitSize(src.width, src.height, 64, 85)
+      img.setDisplaySize(fit.width, fit.height)
+      img.setPosition(inset + 32, y + 40 + (85 - fit.height) / 2)
       d.add(img)
     } else {
       const glyph = pixelText(this.scene, spec?.glyph ?? '人', {

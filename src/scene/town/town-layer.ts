@@ -20,13 +20,16 @@ import { UnitToken } from '../ui/token'
 
 const GROUND_TOP = 84
 const TOKEN_FAN: Array<{ x: number; y: number }> = [
-  { x: 0, y: 8 },
-  { x: 26, y: 14 },
-  { x: -26, y: 14 },
-  { x: 13, y: 22 },
-  { x: -13, y: 22 },
-  { x: 39, y: 20 },
-  { x: -39, y: 20 },
+  { x: -30, y: 12 },
+  { x: 0, y: 12 },
+  { x: 30, y: 12 },
+  { x: -45, y: 24 },
+  { x: -15, y: 24 },
+  { x: 15, y: 24 },
+  { x: 45, y: 24 },
+  { x: -30, y: 36 },
+  { x: 0, y: 36 },
+  { x: 30, y: 36 },
 ]
 
 export interface TownSelection {

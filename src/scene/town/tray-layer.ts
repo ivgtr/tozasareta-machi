@@ -91,6 +91,14 @@ export class TrayLayer extends Phaser.GameObjects.Container {
     }
   }
 
+  private pitchFor(count: number): number {
+    const avail = Math.max(TOKEN_HIT, this.trayWidth - 16)
+    return Math.max(
+      TOKEN_HIT,
+      Math.min(TOKEN_HIT + TOKEN_GAP, Math.floor(avail / Math.max(1, count))),
+    )
+  }
+
   private syncRow(
     host: Phaser.GameObjects.Container,
     state: GameState,
@@ -133,7 +141,7 @@ export class TrayLayer extends Phaser.GameObjects.Container {
         }
         host.add(token)
       }
-      token.setPosition(i * (TOKEN_HIT + TOKEN_GAP) + TOKEN_HIT / 2, 0)
+      token.setPosition(i * this.pitchFor(unitIds.length) + TOKEN_HIT / 2, 0)
       token.setSelected(selectedUnitId === id)
     })
   }

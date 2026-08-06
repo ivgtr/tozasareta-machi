@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import type { Aptitude, Unit } from '../../game/types'
 import { artSpec } from '../art/manifest'
 import { resolveToken } from '../town/token-resolve'
-import { COLORS, colorCss, colorNum } from '../tokens'
+import { COLORS, colorCss, colorNum, fitSize } from '../tokens'
 
 export const TOKEN_SCALE = 1.5
 export const TOKEN_SIZE = { width: 36, height: 48 } as const
@@ -40,7 +40,10 @@ export class UnitToken extends Phaser.GameObjects.Container {
     const resolution = resolveToken(unit.portrait, (k) => scene.textures.exists(k))
     if (resolution.kind === 'token' && resolution.key) {
       const img = scene.add.image(0, 0, resolution.key)
-      img.setDisplaySize(TOKEN_SIZE.width, TOKEN_SIZE.height)
+      const src = img.texture.getSourceImage() as { width: number; height: number }
+      const fit = fitSize(src.width, src.height, TOKEN_SIZE.width, TOKEN_SIZE.height)
+      img.setDisplaySize(fit.width, fit.height)
+      img.setPosition(0, (TOKEN_SIZE.height - fit.height) / 2)
       if (unit.condition === 'injured') img.setTint(COLORS.red)
       this.bodyView = img
       this.glyphText = null

@@ -24,6 +24,16 @@ export function colorNum(css: string): number {
   return Number.parseInt(css.slice(1), 16)
 }
 
+export function fitSize(
+  srcW: number,
+  srcH: number,
+  maxW: number,
+  maxH: number,
+): { width: number; height: number } {
+  const scale = Math.min(maxW / srcW, maxH / srcH)
+  return { width: Math.round(srcW * scale), height: Math.round(srcH * scale) }
+}
+
 export const FONT_BODY = 'DotGothic16'
 export const FONT_DISPLAY = '"Press Start 2P"'
 

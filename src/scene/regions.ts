@@ -18,8 +18,8 @@ export interface Regions {
 export const HUD_HEIGHT = { wide: 48, narrow: 44 } as const
 export const TOWN_HEIGHT = { wide: 460, narrow: 380 } as const
 export const STRIP_HEIGHT = 48
-export const STRIP_WIDTH_WIDE = 840
-export const TRAY_WIDTH_WIDE = 440
+export const STRIP_WIDTH_WIDE = 800
+export const TRAY_WIDTH_WIDE = 480
 export const DETAIL_HEIGHT = { wide: 164, narrow: 220 } as const
 
 function edge(value: number): number {
