@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import type { GameState } from '../../game/types'
 import { reducedMotion } from '../../store'
-import { COLORS, colorCss } from '../tokens'
+import { COLORS } from '../tokens'
 import type { PlanState } from '../plan'
 import type { FxEntry } from './fx-map'
 import { FACILITIES, type FacilityViewId } from './facilities'
@@ -17,6 +17,7 @@ import {
 } from './layout'
 import { textureKey } from '../art/assets'
 import { reconcileTokens } from '../ui/token'
+import { pixelText } from '../ui/pixel-text'
 
 const GROUND_TOP = 84
 const TOKEN_FAN: Array<{ x: number; y: number }> = [
@@ -63,17 +64,17 @@ export class TownLayer extends Phaser.GameObjects.Container {
     for (const p of FACILITY_PLOTS) {
       const meta = FACILITIES[p.id]
       const highlight = scene.add.graphics()
-      const glyph = scene.add.text(p.x, p.y - 8, meta.glyph, {
-        fontFamily: 'DotGothic16',
-        fontSize: '20px',
-        color: colorCss(meta.color),
+      const glyph = pixelText(scene, meta.glyph, {
+        fontSize: 20,
+        color: meta.color,
       })
+      glyph.setPosition(p.x, p.y - 8)
       glyph.setOrigin(0.5)
-      const label = scene.add.text(p.x, p.y + 16, meta.label, {
-        fontFamily: 'DotGothic16',
-        fontSize: '11px',
-        color: colorCss(COLORS.inkDim),
+      const label = pixelText(scene, meta.label, {
+        fontSize: 11,
+        color: COLORS.inkDim,
       })
+      label.setPosition(p.x, p.y + 16)
       label.setOrigin(0.5)
       const zone = scene.add.zone(p.x, p.y, FOOTPRINT.width, FOOTPRINT.height)
       zone.setInteractive(
@@ -213,11 +214,11 @@ export class TownLayer extends Phaser.GameObjects.Container {
       : null
     const x = anchor ? anchor.x : TOWN_BASE.width - 60
     const y = anchor ? anchor.y - 34 : 48
-    const t = this.scene.add.text(x, y, text, {
-      fontFamily: 'DotGothic16',
-      fontSize: '14px',
-      color: colorCss(color),
+    const t = pixelText(this.scene, text, {
+      fontSize: 14,
+      color,
     })
+    t.setPosition(x, y)
     t.setOrigin(0.5)
     this.add(t)
     this.scene.tweens.add({
@@ -238,11 +239,11 @@ export class TownLayer extends Phaser.GameObjects.Container {
     const road = FACILITY_PLOTS.find((p) => p.id === 'road')
     if (!road) return
     this.pulse(road)
-    const t = this.scene.add.text(road.x, road.y - 40, '到', {
-      fontFamily: 'DotGothic16',
-      fontSize: '18px',
-      color: colorCss(COLORS.gold),
+    const t = pixelText(this.scene, '到', {
+      fontSize: 18,
+      color: COLORS.gold,
     })
+    t.setPosition(road.x, road.y - 40)
     t.setOrigin(0.5)
     this.add(t)
     this.scene.tweens.add({

@@ -8,6 +8,7 @@ export interface PixelTextOptions {
   align?: 'left' | 'center' | 'right'
   wordWrapWidth?: number
   trackingEm?: number
+  backgroundColor?: string
 }
 
 export function pixelText(
@@ -23,5 +24,6 @@ export function pixelText(
     align: options.align ?? 'left',
     letterSpacing: options.trackingEm ? Math.round(fontSize * options.trackingEm) : 0,
     ...(options.wordWrapWidth !== undefined ? { wordWrap: { width: options.wordWrapWidth } } : {}),
+    ...(options.backgroundColor !== undefined ? { backgroundColor: options.backgroundColor } : {}),
   })
 }

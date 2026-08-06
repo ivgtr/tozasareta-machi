@@ -3,6 +3,7 @@ import type { GameState } from '../../game/types'
 import { COLORS, colorCss } from '../tokens'
 import { expeditionUnits, unassignedUnits, type PlanState } from '../plan'
 import { TOKEN_HIT, reconcileTokens, type UnitToken } from '../ui/token'
+import { pixelText } from '../ui/pixel-text'
 import type { DeviceClass } from '../layout'
 
 export interface TrayCallbacks {
@@ -31,16 +32,10 @@ export class TrayLayer extends Phaser.GameObjects.Container {
     super(scene)
     this.callbacks = callbacks
     this.bg = scene.add.graphics()
-    this.header = scene.add.text(8, 4, '', {
-      fontFamily: 'DotGothic16',
-      fontSize: '12px',
-      color: colorCss(COLORS.inkDim),
-    })
-    this.awayHeader = scene.add.text(8, 0, '', {
-      fontFamily: 'DotGothic16',
-      fontSize: '12px',
-      color: colorCss(COLORS.inkDim),
-    })
+    this.header = pixelText(scene, '', { fontSize: 12, color: COLORS.inkDim })
+    this.header.setPosition(8, 4)
+    this.awayHeader = pixelText(scene, '', { fontSize: 12, color: COLORS.inkDim })
+    this.awayHeader.setPosition(8, 0)
     this.row = scene.add.container(8, HEADER_HEIGHT + ROW_HEIGHT / 2)
     this.awayRow = scene.add.container(8, 0)
     this.add([this.bg, this.header, this.awayHeader, this.row, this.awayRow])
@@ -157,10 +152,9 @@ export class TrayLayer extends Phaser.GameObjects.Container {
   private ensureAwayBadge(host: Phaser.GameObjects.Container, id: string, token: UnitToken): void {
     let badge = this.awayBadges.get(id)
     if (!badge) {
-      badge = this.scene.add.text(0, 0, '探', {
-        fontFamily: 'DotGothic16',
-        fontSize: '11px',
-        color: colorCss(COLORS.night900),
+      badge = pixelText(this.scene, '探', {
+        fontSize: 11,
+        color: COLORS.night900,
         backgroundColor: colorCss(COLORS.cyan),
       })
       badge.setOrigin(1, 0)

@@ -3,6 +3,7 @@ import type { Aptitude, GameState, Unit } from '../../game/types'
 import { artSpec } from '../art/manifest'
 import { resolveToken } from '../town/token-resolve'
 import { COLORS, colorCss, colorNum, fitSize } from '../tokens'
+import { pixelText } from './pixel-text'
 
 export const TOKEN_SIZE = { width: 36, height: 48 } as const
 export const TOKEN_HIT = 44
@@ -62,20 +63,20 @@ export class UnitToken extends Phaser.GameObjects.Container {
       const g = scene.add.graphics()
       this.drawGlyphBody(g, unit, color, town)
       this.bodyView = g
-      this.glyphText = scene.add.text(0, 2, spec?.glyph ?? '人', {
-        fontFamily: 'DotGothic16',
-        fontSize: `${Math.round(20 * scale)}px`,
-        color: colorCss(unit.condition === 'injured' ? COLORS.red : color),
+      this.glyphText = pixelText(scene, spec?.glyph ?? '人', {
+        fontSize: Math.round(20 * scale),
+        color: unit.condition === 'injured' ? COLORS.red : color,
       })
+      this.glyphText.setPosition(0, 2)
       this.glyphText.setOrigin(0.5)
     }
     const top = topAptitude(unit)
-    this.badge = scene.add.text(this.displayW / 2 - 2, -this.displayH / 2 + 2, APT_SHORT[top], {
-      fontFamily: 'DotGothic16',
-      fontSize: `${Math.round(12 * scale)}px`,
-      color: colorCss(COLORS.night900),
+    this.badge = pixelText(scene, APT_SHORT[top], {
+      fontSize: Math.round(12 * scale),
+      color: COLORS.night900,
       backgroundColor: colorCss(APT_COLOR[top]),
     })
+    this.badge.setPosition(this.displayW / 2 - 2, -this.displayH / 2 + 2)
     this.badge.setOrigin(1, 0)
     this.outline = scene.add.graphics()
     const children: Phaser.GameObjects.GameObject[] = [this.outline, this.bodyView]
