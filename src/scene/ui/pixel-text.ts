@@ -17,7 +17,7 @@ export function pixelText(
   options: PixelTextOptions = {},
 ): Phaser.GameObjects.Text {
   const fontSize = options.fontSize ?? TEXT_SIZE.bodyWide
-  return scene.add.text(0, 0, text, {
+  const view = scene.add.text(0, 0, text, {
     fontFamily: options.fontFamily ?? FONT_BODY,
     fontSize: `${fontSize}px`,
     color: colorCss(options.color ?? COLORS.ink),
@@ -26,4 +26,6 @@ export function pixelText(
     ...(options.wordWrapWidth !== undefined ? { wordWrap: { width: options.wordWrapWidth } } : {}),
     ...(options.backgroundColor !== undefined ? { backgroundColor: options.backgroundColor } : {}),
   })
+  view.setResolution(Math.min(window.devicePixelRatio || 1, 2))
+  return view
 }

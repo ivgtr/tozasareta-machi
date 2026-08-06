@@ -20,6 +20,16 @@
 
 30日後に迎える結末は、町の復旧状況、住民の協力、そして払った犠牲によって変化します。
 
+## 開発
+
+```bash
+npm ci
+npm run playwright -- install chromium
+npm run test:e2e
+```
+
+ブラウザ回帰テストのスクリーンショットは `test-results/e2e` に出力されます。
+
 ## ライセンス
 
 このプロジェクトは [MIT License](LICENSE) のもとで公開されています。

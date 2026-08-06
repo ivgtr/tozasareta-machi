@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit",
     "playwright": "./scripts/playwright.sh",
     "test": "vitest run",
+    "test:e2e": "node ./scripts/e2e.mjs",
     "test:watch": "vitest",
     "sim": "vitest run --testNamePattern simulation"
   },
