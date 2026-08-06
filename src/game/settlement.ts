@@ -1,7 +1,7 @@
 import type { Effect, EffectTarget, GameState, TaskId } from './types'
 import { BALANCE } from './data/balance'
 import { APTITUDE_LABEL } from './data/units'
-import { TASK_APT } from './actions'
+import { TASK_APT, isOnExpedition } from './actions'
 import { clamp } from './state'
 import { nextRandom } from './rng'
 import { queryAdd, queryMult } from './modifiers'
@@ -60,17 +60,15 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
     eff('stockpile', B.procure.stockpile, '備蓄を調達した')
   }
 
-  const isAway = (u: { expedition?: number }) => u.expedition !== undefined
-
   for (const u of units) {
-    if (isAway(u)) continue
+    if (isOnExpedition(u)) continue
     if (u.traits.includes('popular'))
       addMorale(B.trait.popularMorale, `${u.name}の存在が人心を和ませた`)
     if (u.traits.includes('troublemaker'))
       addMorale(B.trait.troublemakerMorale, `${u.name}が揉め事を起こした`)
   }
 
-  const presentCount = units.filter((u) => !isAway(u)).length
+  const presentCount = units.filter((u) => !isOnExpedition(u)).length
   const consumeMult = queryMult(prev.modifiers, 'consume:food')
   const consume = Math.round(
     presentCount * B.unit.foodPerUnit * (input.ration ? 0.5 : 1) * consumeMult,
@@ -88,7 +86,7 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
   }
   if (food < 0) {
     food = 0
-    const present = units.filter((u) => !isAway(u))
+    const present = units.filter((u) => !isOnExpedition(u))
     if (present.length > 0) {
       const [di, r1] = nextRandom(rng)
       rng = r1
@@ -104,9 +102,10 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
   }
 
   for (const u of [...units]) {
-    if (u.expedition === undefined) continue
+    const awaySince = u.expedition
+    if (awaySince === undefined) continue
     const E = B.expedition
-    const daysAway = day - u.expedition
+    const daysAway = day - awaySince
     if (daysAway < E.minDays) continue
     const [retRoll, rr] = nextRandom(rng)
     rng = rr
@@ -182,7 +181,7 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
 
   if (medical >= B.unit.healMedicalAt) {
     for (const u of units) {
-      if (isAway(u)) continue
+      if (isOnExpedition(u)) continue
       if (u.condition === 'injured') {
         u.condition = 'healthy'
         eff('flag:heal', 0, `${u.name}の怪我が治った`)
@@ -242,7 +241,7 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
     eff('flag:cooperation', 1, '住民同士の協力が深まった')
   }
 
-  const presentForDesert = units.filter((u) => !isAway(u))
+  const presentForDesert = units.filter((u) => !isOnExpedition(u))
   if (morale < B.unit.desertionMoraleBelow && presentForDesert.length > 0) {
     const [lv, r3] = nextRandom(rng)
     rng = r3

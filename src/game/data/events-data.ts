@@ -3,6 +3,7 @@ import { BALANCE } from './balance'
 import { cloneUnit, makeRandomUnit, UNIQUE_UNITS } from './units'
 import { weightedPick, nextRandom } from '../rng'
 import { addModifier } from '../modifiers'
+import { isOnExpedition } from '../actions'
 
 function baseFx(
   state: GameState,
@@ -515,7 +516,7 @@ export const EVENTS: EventDef[] = [
     when: (c) => c.day >= 10,
     weight: () => 0.25,
     mutate: (state) => {
-      const present = state.units.filter((u) => u.expedition === undefined)
+      const present = state.units.filter((u) => !isOnExpedition(u))
       let units = state.units
       let rng = state.rng
       const injuryFx: Effect[] = []
@@ -649,9 +650,7 @@ export const EVENTS: EventDef[] = [
     when: (c) => c.day >= 12 && c.state.resources.medical < 25,
     weight: () => 0.35,
     mutate: (state) => {
-      const present = state.units.filter(
-        (u) => u.expedition === undefined && u.condition === 'healthy',
-      )
+      const present = state.units.filter((u) => !isOnExpedition(u) && u.condition === 'healthy')
       let units = state.units
       let rng = state.rng
       const injuryFx: Effect[] = []
@@ -809,7 +808,7 @@ export const EVENTS: EventDef[] = [
       c.day >= BALANCE.expedition.dayFrom &&
       c.state.stockpile >= BALANCE.expedition.cost &&
       c.state.units.length > 0 &&
-      c.state.units.every((u) => u.expedition === undefined),
+      c.state.units.every((u) => !isOnExpedition(u)),
     weight: () => BALANCE.expedition.weight,
     perUnit: (u) => {
       const aptMax = Math.max(u.apt.labor, u.apt.tech, u.apt.medical, u.apt.charm)
@@ -817,7 +816,7 @@ export const EVENTS: EventDef[] = [
         id: `send_${u.id}`,
         label: `${u.name}を行かせる`,
         desc: `最大適性 ${aptMax}`,
-        when: (c) => u.expedition === undefined && c.state.stockpile >= BALANCE.expedition.cost,
+        when: (c) => !isOnExpedition(u) && c.state.stockpile >= BALANCE.expedition.cost,
         mutate: (state) => {
           const E = BALANCE.expedition
           const units = state.units.map((x) =>

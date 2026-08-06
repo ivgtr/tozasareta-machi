@@ -1,5 +1,6 @@
 import type { GameState } from './types'
 import { BALANCE } from './data/balance'
+import { isOnExpedition } from './actions'
 
 export type ActId = 1 | 2 | 3
 
@@ -19,7 +20,7 @@ export interface SlackDetail {
 
 export function slackDetail(state: GameState): SlackDetail {
   const S = BALANCE.threat.slack
-  const present = state.units.filter((u) => u.expedition === undefined).length
+  const present = state.units.filter((u) => !isOnExpedition(u)).length
   return {
     food: state.resources.food >= present * BALANCE.unit.foodPerUnit * S.foodDays,
     power: state.resources.power >= S.powerAt,
