@@ -24,6 +24,10 @@ export interface SettleResult {
   effects: Effect[]
 }
 
+export function lowFoodThreshold(present: number): number {
+  return present * BALANCE.unit.foodPerUnit * BALANCE.morale.lowFoodDays
+}
+
 export function settle(prev: GameState, input: SettleInput): SettleResult {
   const B = BALANCE
   const day = prev.day
@@ -222,12 +226,12 @@ export function settle(prev: GameState, input: SettleInput): SettleResult {
 
   addMorale(-B.morale.decay, '孤立生活のストレスが蓄積した')
   if (input.ration) addMorale(B.morale.ration, '配給を絞ったため、不満が高まった')
-  if (food < presentCount * B.unit.foodPerUnit * B.morale.lowFoodDays)
+  if (food < lowFoodThreshold(presentCount))
     addMorale(B.morale.lowFood, '食料の残りが少なく、不安が広がった')
   if (medical < B.medical.neglectAt) addMorale(B.morale.lowMedical, '医療体制への不安が広がった')
   if (power < 30) addMorale(B.morale.lowPower, '暗闇への不満が広がった')
   if (
-    food >= presentCount * B.unit.foodPerUnit * B.morale.lowFoodDays &&
+    food >= lowFoodThreshold(presentCount) &&
     medical >= B.morale.calmMedicalAt &&
     power >= B.morale.calmPowerAt
   )

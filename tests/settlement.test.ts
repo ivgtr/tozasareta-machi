@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/game/state'
-import { EXPEDITION_RETURN_SOURCE, settle, type WorkEntry } from '../src/game/settlement'
+import {
+  EXPEDITION_RETURN_SOURCE,
+  lowFoodThreshold,
+  settle,
+  type WorkEntry,
+} from '../src/game/settlement'
 import { BALANCE } from '../src/game/data/balance'
 import type { GameState } from '../src/game/types'
 
@@ -72,6 +77,31 @@ describe('settlement', () => {
       resources: { ...base().resources, morale: 60, food: 1000 },
     }
     const { state } = settle(s, { ration: false, procure: false, worked: [] })
+    expect(state.resources.morale).toBe(60)
+  })
+
+  it('低食料の閾値は 在籍人員 × 1人あたり消費 × 日数', () => {
+    expect(lowFoodThreshold(4)).toBe(54)
+    expect(lowFoodThreshold(0)).toBe(0)
+  })
+
+  it('清算後 food が閾値未満なら低食料ペナルティが発火する', () => {
+    const s: GameState = {
+      ...base(),
+      resources: { ...base().resources, morale: 60, food: 74 },
+    }
+    const { state } = settle(s, { ration: false, procure: false, worked: [] })
+    expect(state.resources.food).toBe(53)
+    expect(state.resources.morale).toBe(60 - BALANCE.morale.decay + BALANCE.morale.lowFood)
+  })
+
+  it('清算後 food が閾値ちょうどなら低食料ではなく calm 側になる', () => {
+    const s: GameState = {
+      ...base(),
+      resources: { ...base().resources, morale: 60, food: 75 },
+    }
+    const { state } = settle(s, { ration: false, procure: false, worked: [] })
+    expect(state.resources.food).toBe(54)
     expect(state.resources.morale).toBe(60)
   })
 

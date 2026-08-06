@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import type { GameState } from '../game/types'
 import { BALANCE } from '../game/data/balance'
 import { isOnExpedition } from '../game/actions'
+import { lowFoodThreshold } from '../game/settlement'
 import { artSpec } from './art/manifest'
 import { textureKey } from './art/assets'
 import { COLORS, FONT_DISPLAY, SPACING, TEXT_SIZE, colorCss, colorNum } from './tokens'
@@ -20,8 +21,7 @@ export function deriveAlerts(state: GameState): HudAlert[] {
   const alerts: HudAlert[] = []
   const r = state.resources
   const present = state.units.filter((u) => !isOnExpedition(u))
-  const consume = present.length * BALANCE.unit.foodPerUnit
-  if (r.food < consume * BALANCE.morale.lowFoodDays)
+  if (r.food < lowFoodThreshold(present.length))
     alerts.push({ icon: 'alert_warning', text: '食料の残りが少ない', tone: 'warning' })
   if (r.medical < BALANCE.medical.neglectAt)
     alerts.push({ icon: 'alert_danger', text: '医療体制が逼迫', tone: 'danger' })
