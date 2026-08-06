@@ -3,6 +3,7 @@ import type { GameState } from '../../game/types'
 import { COLORS, colorCss } from '../tokens'
 import type { PlanState } from '../plan'
 import { FACILITIES, type FacilityViewId } from './facilities'
+import { facilityAssetId } from './facility-view'
 import {
   FACILITY_PLOTS,
   FOOTPRINT,
@@ -10,7 +11,9 @@ import {
   facilityAt,
   footprintDiamond,
   type FacilityId,
+  type FacilityPlot,
 } from './layout'
+import { textureKey } from '../art/assets'
 import { UnitToken } from '../ui/token'
 
 const GROUND_TOP = 84
@@ -37,6 +40,8 @@ export interface TownCallbacks {
 interface FacilityVisual {
   highlight: Phaser.GameObjects.Graphics
   tokens: Phaser.GameObjects.Container
+  sprite: Phaser.GameObjects.Image | null
+  glyph: Phaser.GameObjects.Text
 }
 
 export class TownLayer extends Phaser.GameObjects.Container {
@@ -72,7 +77,7 @@ export class TownLayer extends Phaser.GameObjects.Container {
       )
       zone.on('pointerdown', () => this.callbacks.onFacilityTap(p.id))
       const tokens = scene.add.container(p.x, p.y)
-      this.visuals.set(p.id, { highlight, tokens })
+      this.visuals.set(p.id, { highlight, tokens, sprite: null, glyph })
       this.add([highlight, tokens, glyph, label, zone])
     }
     scene.add.existing(this)
@@ -135,6 +140,27 @@ export class TownLayer extends Phaser.GameObjects.Container {
       }
       const unitIds = meta.tasks.flatMap((t) => plan.placements[t] ?? [])
       this.syncTokens(v.tokens, state, unitIds)
+      this.syncSprite(v, p, stateId)
+    }
+  }
+
+  private syncSprite(v: FacilityVisual, p: FacilityPlot, stateId: FacilityViewId): void {
+    const key = textureKey('facility', facilityAssetId(p.id, stateId))
+    if (this.scene.textures.exists(key)) {
+      if (!v.sprite || v.sprite.texture.key !== key) {
+        if (v.sprite) v.sprite.destroy()
+        const img = this.scene.add.image(p.x, p.y + FOOTPRINT.height / 2 - 56, key)
+        img.setDisplaySize(96, 112)
+        v.sprite = img
+        this.addAt(img, 1)
+      }
+      v.glyph.setVisible(false)
+    } else {
+      if (v.sprite) {
+        v.sprite.destroy()
+        v.sprite = null
+      }
+      v.glyph.setVisible(true)
     }
   }
 

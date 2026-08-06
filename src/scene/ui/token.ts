@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import type { Aptitude, Unit } from '../../game/types'
 import { artSpec } from '../art/manifest'
-import { textureKey } from '../art/assets'
+import { resolveToken } from '../town/token-resolve'
 import { COLORS, colorCss, colorNum } from '../tokens'
 
 export const TOKEN_SCALE = 1.5
@@ -37,9 +37,9 @@ export class UnitToken extends Phaser.GameObjects.Container {
     super(scene)
     this.unitId = unit.id
     const spec = artSpec('portrait', unit.portrait)
-    const key = textureKey('portrait', unit.portrait)
-    if (scene.textures.exists(key)) {
-      const img = scene.add.image(0, 0, key)
+    const resolution = resolveToken(unit.portrait, (k) => scene.textures.exists(k))
+    if (resolution.kind === 'token' && resolution.key) {
+      const img = scene.add.image(0, 0, resolution.key)
       img.setDisplaySize(TOKEN_SIZE.width, TOKEN_SIZE.height)
       if (unit.condition === 'injured') img.setTint(COLORS.red)
       this.bodyView = img
