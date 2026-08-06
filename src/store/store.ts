@@ -35,6 +35,7 @@ export function storeReducer(store: StoreState, action: StoreAction): StoreState
     }
     case 'resolveChoice': {
       const result = step(store.state, { type: 'resolveChoice', optionId: action.optionId })
+      if (result.state === store.state) return store
       return { state: result.state, history: store.history }
     }
     case 'undo': {

@@ -8,7 +8,7 @@ import {
 } from '../src/store'
 import { createInitialState } from '../src/game/state'
 import { RANDOM_PORTRAIT_IDS } from '../src/game/data/units'
-import type { DayPlan } from '../src/game/types'
+import type { DayPlan, GameState } from '../src/game/types'
 
 const fresh = (): StoreState =>
   storeReducer({ state: createInitialState(1), history: [] }, { type: 'newGame', seed: 1 })
@@ -18,6 +18,13 @@ const roadPlan: DayPlan = {
   ration: false,
   procure: false,
 }
+
+const choiceState = (): GameState => ({
+  ...createInitialState(1),
+  day: 9,
+  phase: 'choice',
+  pendingChoice: { eventId: 'stockpile_crisis', optionIds: ['distribute', 'reserve'] },
+})
 
 describe('storeReducer', () => {
   it('newGame は初期状態と空の履歴を返す', () => {
@@ -54,6 +61,49 @@ describe('storeReducer', () => {
       if (s.state.phase === 'ended') break
     }
     expect(s.history.length).toBeLessThanOrEqual(HISTORY_LIMIT)
+  })
+})
+
+describe('store の choice フェーズ契約', () => {
+  it('planning 中の resolveChoice は no-op（同一オブジェクト）', () => {
+    const s0 = fresh()
+    const r = storeReducer(s0, { type: 'resolveChoice', optionId: 'x' })
+    expect(r).toBe(s0)
+  })
+
+  it('choice 中の commitDay は no-op（同一オブジェクト）', () => {
+    const s0: StoreState = { state: choiceState(), history: [] }
+    const r = storeReducer(s0, { type: 'commitDay', plan: roadPlan })
+    expect(r).toBe(s0)
+  })
+
+  it('choice 中に undo すると確定前の planning 状態に戻る', () => {
+    const pre = createInitialState(1)
+    const s0: StoreState = { state: choiceState(), history: [pre] }
+    const r = storeReducer(s0, { type: 'undo' })
+    expect(r.state).toEqual(pre)
+    expect(r.state.phase).toBe('planning')
+    expect(r.history).toHaveLength(0)
+  })
+
+  it('resolveChoice は履歴に積まず、後の undo は確定前まで戻る', () => {
+    const pre = createInitialState(1)
+    const s0: StoreState = { state: choiceState(), history: [pre] }
+    const after = storeReducer(s0, { type: 'resolveChoice', optionId: 'reserve' })
+    expect(after.history).toHaveLength(1)
+    expect(after.state.phase).toBe('planning')
+    expect(after.state.day).toBe(10)
+    const undone = storeReducer(after, { type: 'undo' })
+    expect(undone.state).toEqual(pre)
+  })
+
+  it('choice 中に newGame すると初期状態にリセットされる', () => {
+    const s0: StoreState = { state: choiceState(), history: [createInitialState(1)] }
+    const r = storeReducer(s0, { type: 'newGame', seed: 7 })
+    expect(r.state.phase).toBe('planning')
+    expect(r.state.day).toBe(1)
+    expect(r.state.rng.seed).toBe(7)
+    expect(r.history).toHaveLength(0)
   })
 })
 
