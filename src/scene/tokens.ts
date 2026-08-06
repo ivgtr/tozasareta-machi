@@ -14,8 +14,6 @@ export const COLORS = {
   gold: 0xffd94a,
 } as const
 
-export type ColorToken = keyof typeof COLORS
-
 export function colorCss(color: number): string {
   return `#${color.toString(16).padStart(6, '0')}`
 }
@@ -75,8 +73,6 @@ export const SPACING = {
   md: 16,
   lg: 24,
 } as const
-
-export const SCREEN_MARGIN = 16
 
 export const TEXT_SIZE = {
   title: 32,

@@ -161,7 +161,3 @@ const LOOKUP = new Map(ART_SPECS.map((s) => [`${s.kind}:${s.id}`, s]))
 export function artSpec(kind: ArtKind, id: string): ArtSpec | undefined {
   return LOOKUP.get(`${kind}:${id}`)
 }
-
-export function specsByKind(kind: ArtKind): ArtSpec[] {
-  return ART_SPECS.filter((s) => s.kind === kind)
-}

@@ -34,10 +34,3 @@ export function createInitialState(seed: number): GameState {
     modifiers: [],
   }
 }
-
-export function moraleLabel(morale: number): string {
-  if (morale >= 80) return '住民は協力的'
-  if (morale >= 40) return '不安が広がっている'
-  if (morale >= 20) return '不満が表面化している'
-  return '暴動の危険がある'
-}

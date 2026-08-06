@@ -4,7 +4,6 @@ import { artSpec } from '../art/manifest'
 import { resolveToken } from '../town/token-resolve'
 import { COLORS, colorCss, colorNum, fitSize } from '../tokens'
 
-export const TOKEN_SCALE = 1.5
 export const TOKEN_SIZE = { width: 36, height: 48 } as const
 export const TOKEN_HIT = 44
 export const DRAG_THRESHOLD = 8

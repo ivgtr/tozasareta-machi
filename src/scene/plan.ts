@@ -39,13 +39,6 @@ export function spentOf(placements: Placements): { budget: number; stockpile: nu
   return spent
 }
 
-export function isAffordable(state: GameState, placements: Placements, task: TaskId): boolean {
-  if ((placements[task] ?? []).length > 0) return true
-  const c = taskCost(task)
-  const spent = spentOf(placements)
-  return state.budget - spent.budget >= c.budget && state.stockpile - spent.stockpile >= c.stockpile
-}
-
 function placementsAffordable(state: GameState, placements: Placements): boolean {
   const spent = spentOf(placements)
   return spent.budget <= state.budget && spent.stockpile <= state.stockpile
