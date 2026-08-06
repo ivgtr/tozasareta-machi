@@ -120,6 +120,35 @@ describe('sanitizePlan', () => {
     expect(plan.placements).toHaveLength(1)
     expect(plan.procure).toBe(false)
   })
+
+  it('探索中のユニットは配置から除外される', () => {
+    const away: GameState = {
+      ...base(),
+      units: base().units.map((u) => (u.id === 'farmer' ? { ...u, expedition: base().day } : u)),
+    }
+    const plan = sanitizePlan(away, {
+      placements: [
+        { task: 'restore_road', unitIds: ['farmer'] },
+        { task: 'repair_power', unitIds: ['engineer'] },
+      ],
+      ration: false,
+      procure: false,
+    })
+    expect(plan.placements).toEqual([{ task: 'repair_power', unitIds: ['engineer'] }])
+  })
+
+  it('探索中のユニットしかいない配置は空になる', () => {
+    const away: GameState = {
+      ...base(),
+      units: base().units.map((u) => (u.id === 'farmer' ? { ...u, expedition: base().day } : u)),
+    }
+    const plan = sanitizePlan(away, {
+      placements: [{ task: 'restore_road', unitIds: ['farmer'] }],
+      ration: false,
+      procure: false,
+    })
+    expect(plan.placements).toHaveLength(0)
+  })
 })
 
 describe('autoAssign', () => {

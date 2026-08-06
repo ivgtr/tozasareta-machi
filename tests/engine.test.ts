@@ -86,4 +86,23 @@ describe('engine', () => {
       `${e.source}|${e.target}|${e.delta}`
     expect(pv.map(key).sort()).toEqual(applied.map(key).sort())
   })
+
+  it('探索中のユニットは任務で働けない（産出・XP・負傷なし）', () => {
+    const s0 = createInitialState(5)
+    const s: GameState = {
+      ...s0,
+      units: s0.units.map((u) => (u.id === 'farmer' ? { ...u, expedition: s0.day } : u)),
+    }
+    const plan: DayPlan = {
+      placements: [{ task: 'restore_road', unitIds: ['farmer'] }],
+      ration: false,
+      procure: false,
+    }
+    const { state, effects } = step(s, { type: 'commitDay', plan })
+    expect(effects.filter((e) => e.source === 'task:restore_road')).toHaveLength(0)
+    const away = state.units.find((u) => u.id === 'farmer')
+    expect(away?.expedition).toBe(s0.day)
+    expect(away?.xp).toBe(0)
+    expect(away?.condition).toBe('healthy')
+  })
 })

@@ -125,7 +125,7 @@ export class TrayLayer extends Phaser.GameObjects.Container {
         away.map((u) => u.id),
         null,
         1,
-        [],
+        away.map((u) => u.id),
       )
     }
   }

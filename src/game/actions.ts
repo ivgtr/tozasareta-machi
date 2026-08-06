@@ -148,7 +148,8 @@ export function sanitizePlan(state: GameState, plan: DayPlan): DayPlan {
     const unitIds: string[] = []
     for (const id of p.unitIds) {
       if (used.has(id)) continue
-      if (!state.units.some((u) => u.id === id)) continue
+      const unit = state.units.find((u) => u.id === id)
+      if (!unit || isOnExpedition(unit)) continue
       used.add(id)
       unitIds.push(id)
     }
