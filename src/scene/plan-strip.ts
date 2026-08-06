@@ -165,10 +165,10 @@ export class PlanStrip extends Phaser.GameObjects.Container {
     this.procureButton.setLabel(
       narrow
         ? plan.procure
-          ? '調達:ON'
+          ? `調達:ON${procureOk ? '' : '!'}`
           : `調達${procureOk ? '' : '!'}`
         : plan.procure
-          ? '調達:ON'
+          ? `調達:ON${procureOk ? '' : '（不足）'}`
           : `調達:OFF${procureOk ? '' : '（不足）'}`,
     )
   }
