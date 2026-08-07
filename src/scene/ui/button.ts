@@ -2,11 +2,14 @@ import Phaser from 'phaser'
 import { BUTTON, COLORS, TEXT_SIZE, colorCss } from '../tokens'
 import { pixelText } from './pixel-text'
 
+export type PixelButtonVariant = 'default' | 'primary' | 'quiet' | 'toggle' | 'danger'
+
 export interface PixelButtonOptions {
   label: string
   width: number
   height: number
-  primary?: boolean
+  variant?: PixelButtonVariant
+  selected?: boolean
   fontSize?: number
   onAction: () => void
   wordWrapWidth?: number
@@ -15,7 +18,8 @@ export interface PixelButtonOptions {
 export class PixelButton extends Phaser.GameObjects.Container {
   private innerWidth: number
   private innerHeight: number
-  private readonly primary: boolean
+  private variant: PixelButtonVariant
+  private selected: boolean
   private readonly onAction: () => void
   private readonly bg: Phaser.GameObjects.Graphics
   private readonly label: Phaser.GameObjects.Text
@@ -26,7 +30,8 @@ export class PixelButton extends Phaser.GameObjects.Container {
   constructor(scene: Phaser.Scene, options: PixelButtonOptions) {
     super(scene)
     this.innerWidth = options.width
-    this.primary = options.primary ?? false
+    this.variant = options.variant ?? 'default'
+    this.selected = options.selected ?? false
     this.onAction = options.onAction
     this.bg = scene.add.graphics()
     this.label = pixelText(scene, options.label, {
@@ -112,6 +117,16 @@ export class PixelButton extends Phaser.GameObjects.Container {
     this.label.setText(text)
   }
 
+  setVariant(variant: PixelButtonVariant): void {
+    this.variant = variant
+    this.redraw()
+  }
+
+  setSelected(selected: boolean): void {
+    this.selected = selected
+    this.redraw()
+  }
+
   private redraw(): void {
     const g = this.bg
     const w = this.innerWidth
@@ -120,14 +135,7 @@ export class PixelButton extends Phaser.GameObjects.Container {
     const active = this.enabled && this.hovered
     const shift = this.enabled && this.pressed ? BUTTON.pressShift : 0
     const shadow = this.enabled && this.pressed ? BUTTON.shadowPressed : BUTTON.shadow
-    const body = this.primary
-      ? active
-        ? COLORS.gold
-        : COLORS.amber
-      : active
-        ? COLORS.frameHi
-        : COLORS.night600
-    const textColor = this.primary || active ? COLORS.night900 : COLORS.ink
+    const palette = this.palette(active)
     const x = -w / 2 + shift
     const y = -h / 2 + shift
     g.clear()
@@ -135,11 +143,54 @@ export class PixelButton extends Phaser.GameObjects.Container {
       g.fillStyle(BUTTON.shadowColor, BUTTON.shadowAlpha)
       g.fillRect(x + shadow, y + shadow, w, h)
     }
-    g.fillStyle(COLORS.frameHi)
+    g.fillStyle(palette.border)
     g.fillRect(x, y, w, h)
-    g.fillStyle(body)
+    g.fillStyle(palette.body)
     g.fillRect(x + b, y + b, w - b * 2, h - b * 2)
-    this.label.setColor(colorCss(textColor))
+    this.label.setColor(colorCss(palette.text))
     this.label.setPosition(shift, shift)
+  }
+
+  private palette(active: boolean): { border: number; body: number; text: number } {
+    if (this.variant === 'primary') {
+      return {
+        border: COLORS.gold,
+        body: active ? COLORS.gold : COLORS.amber,
+        text: COLORS.night900,
+      }
+    }
+    if (this.variant === 'danger') {
+      return {
+        border: COLORS.red,
+        body: active ? COLORS.red : COLORS.night700,
+        text: active ? COLORS.night900 : COLORS.red,
+      }
+    }
+    if (this.variant === 'toggle') {
+      if (this.selected) {
+        return {
+          border: COLORS.cyan,
+          body: active ? COLORS.gold : COLORS.cyan,
+          text: COLORS.night900,
+        }
+      }
+      return {
+        border: active ? COLORS.cyan : COLORS.frameLo,
+        body: active ? COLORS.night600 : COLORS.night800,
+        text: active ? COLORS.cyan : COLORS.inkDim,
+      }
+    }
+    if (this.variant === 'quiet') {
+      return {
+        border: active ? COLORS.frameHi : COLORS.frameLo,
+        body: active ? COLORS.night700 : COLORS.night900,
+        text: active ? COLORS.ink : COLORS.inkDim,
+      }
+    }
+    return {
+      border: COLORS.frameHi,
+      body: active ? COLORS.frameHi : COLORS.night600,
+      text: active ? COLORS.night900 : COLORS.ink,
+    }
   }
 }

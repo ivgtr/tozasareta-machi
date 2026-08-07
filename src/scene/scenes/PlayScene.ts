@@ -24,9 +24,10 @@ import { TownLayer } from '../town/town-layer'
 import { CharacterDeck } from '../character/character-deck'
 import { CharacterFocus } from '../character/character-focus'
 import { CharacterDragGhost } from '../character/character-drag-ghost'
-import { FacilityDetailPanel } from '../facility-detail'
+import { FacilityFocus } from '../planning/facility-focus'
+import { PlanningControls } from '../planning/planning-controls'
 import { HudBar } from '../hud'
-import { PlanStrip, TASK_LABEL } from '../plan-strip'
+import { TASK_LABEL } from '../task-presentation'
 import { LogDrawer } from '../log-drawer'
 import { ConfirmOverlay, MenuOverlay } from '../menu'
 import { OverlayStack } from '../overlays'
@@ -51,9 +52,9 @@ export class PlayScene extends Phaser.Scene {
   private town!: TownLayer
   private deck!: CharacterDeck
   private characterFocus!: CharacterFocus
-  private facilityDetail!: FacilityDetailPanel
+  private facilityFocus!: FacilityFocus
   private hud!: HudBar
-  private strip!: PlanStrip
+  private controls!: PlanningControls
   private log!: LogDrawer
   private menu!: MenuOverlay
   private confirm!: ConfirmOverlay
@@ -99,35 +100,41 @@ export class PlayScene extends Phaser.Scene {
         this.refresh()
       },
     })
-    this.facilityDetail = new FacilityDetailPanel(this, {
+    this.facilityFocus = new FacilityFocus(this, {
       onClose: () => {
         this.selectedFacility = null
         this.refresh()
       },
+      onSelectUnit: (unitId) => {
+        this.selectedFacility = null
+        this.selectedUnitId = unitId
+        this.refresh()
+      },
     })
     this.ambience = new TownAmbience(this)
+    this.log = new LogDrawer(this)
     this.hud = new HudBar(this, {
       onUndo: () => {
         if (this.busy) return
         this.store.dispatch({ type: 'undo' })
         this.clearPlan()
       },
+      onLog: () => this.log.toggle(),
       onMenu: () => this.menu.show(),
     })
-    this.strip = new PlanStrip(this, {
+    this.controls = new PlanningControls(this, {
       onAuto: () => {
         if (this.busy) return
         this.plan = fromAutoAssign(autoAssign(this.store.get().state))
         this.selectedUnitId = null
         this.refresh()
       },
-      onReset: () => {
-        if (this.busy) return
-        this.plan = emptyPlan()
-        this.selectedUnitId = null
+      onCommit: () => this.tryCommit(),
+      onUnassignSelected: () => {
+        if (this.busy || !this.selectedUnitId) return
+        this.plan = withRemove(this.plan, this.selectedUnitId)
         this.refresh()
       },
-      onCommit: () => this.tryCommit(),
       onToggleRation: () => {
         if (this.busy) return
         this.plan = { ...this.plan, ration: !this.plan.ration }
@@ -139,7 +146,6 @@ export class PlayScene extends Phaser.Scene {
         this.refresh()
       },
     })
-    this.log = new LogDrawer(this)
     this.menu = new MenuOverlay(this, {
       onClose: () => this.menu.hide(),
       onBackToTitle: () => {
@@ -168,6 +174,7 @@ export class PlayScene extends Phaser.Scene {
       label: 'スキップ ▶▶',
       width: 150,
       height: 40,
+      variant: 'quiet',
       onAction: () => this.playback.skip(),
     })
     this.skipButton.setVisible(false)
@@ -182,7 +189,11 @@ export class PlayScene extends Phaser.Scene {
         this.menu.hide()
         return
       }
-      if (this.characterFocus.isOpen || this.facilityDetail.isOpen) {
+      if (this.log.isOpen) {
+        this.log.hide()
+        return
+      }
+      if (this.characterFocus.isOpen || this.facilityFocus.isOpen) {
         this.selectedUnitId = null
         this.selectedFacility = null
         this.refresh()
@@ -258,9 +269,7 @@ export class PlayScene extends Phaser.Scene {
         return
       }
     }
-    if (this.deck.containsWorld(worldX, worldY)) {
-      this.plan = withRemove(this.plan, unitId)
-    }
+    if (this.deck.containsWorld(worldX, worldY)) this.plan = withRemove(this.plan, unitId)
   }
 
   private tryCommit(): void {
@@ -307,6 +316,12 @@ export class PlayScene extends Phaser.Scene {
     this.refresh()
   }
 
+  private selectedUnitAssigned(): boolean {
+    const selectedUnitId = this.selectedUnitId
+    if (!selectedUnitId) return false
+    return Object.values(this.plan.placements).some((ids) => ids?.includes(selectedUnitId))
+  }
+
   private layout(): void {
     this.applyLayout()
     this.refresh()
@@ -343,7 +358,7 @@ export class PlayScene extends Phaser.Scene {
       regions.town.y + (regions.town.height - TOWN_BASE.height * scale) / 2,
     )
     this.hud.setBounds(regions.hud, deviceClass)
-    this.strip.setBounds(regions.strip, deviceClass)
+    this.controls.setBounds(regions.controls, deviceClass)
     this.deck.setBounds(
       regions.deck.x,
       regions.deck.y,
@@ -352,7 +367,7 @@ export class PlayScene extends Phaser.Scene {
       deviceClass,
     )
     this.characterFocus.setBounds(regions.town, deviceClass)
-    this.facilityDetail.setBounds(regions.town, deviceClass)
+    this.facilityFocus.setBounds(regions.town, deviceClass)
     this.log.setAnchor(
       regions.hud.x + 8,
       regions.hud.y + regions.hud.height + 8,
@@ -399,7 +414,7 @@ export class PlayScene extends Phaser.Scene {
     const facilityView = deriveFacilityView(view, this.plan)
 
     this.hud.update(view, store.history.length > 0 && !busy)
-    this.strip.update(view, this.plan, unassignedUnits(view, this.plan).length, busy)
+    this.controls.update(view, this.plan, busy, this.selectedUnitAssigned())
     this.town.update(view, this.plan, facilityView, {
       selectedFacility: this.selectedFacility,
       placeableUnitId: this.selectedUnitId,
@@ -424,12 +439,12 @@ export class PlayScene extends Phaser.Scene {
     }
 
     if (frame.mode === 'facility-focus' && this.selectedFacility) {
-      this.facilityDetail.show(
+      this.facilityFocus.show(
         { state: view, plan: this.plan, view: facilityView },
         this.selectedFacility,
       )
     } else {
-      this.facilityDetail.hide()
+      this.facilityFocus.hide()
     }
 
     this.log.update(view.report)

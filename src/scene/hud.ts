@@ -15,56 +15,92 @@ export interface HudAlert {
   icon: string
   text: string
   tone: 'warning' | 'danger'
+  resource?: 'food' | 'power' | 'medical' | 'morale'
 }
 
 export function deriveAlerts(state: GameState): HudAlert[] {
   const alerts: HudAlert[] = []
   const r = state.resources
   const present = state.units.filter((u) => !isOnExpedition(u))
-  if (r.food < lowFoodThreshold(present.length))
-    alerts.push({ icon: 'alert_warning', text: '食料の残りが少ない', tone: 'warning' })
-  if (r.medical < BALANCE.medical.neglectAt)
-    alerts.push({ icon: 'alert_danger', text: '医療体制が逼迫', tone: 'danger' })
-  if (r.power < BALANCE.power.lowAt)
-    alerts.push({ icon: 'alert_warning', text: '電力不足', tone: 'warning' })
-  if (r.morale < BALANCE.morale.riotAt)
-    alerts.push({ icon: 'alert_danger', text: '暴動の危険', tone: 'danger' })
+  if (r.food < lowFoodThreshold(present.length)) {
+    alerts.push({
+      icon: 'alert_warning',
+      text: '食料の残りが少ない',
+      tone: 'warning',
+      resource: 'food',
+    })
+  }
+  if (r.medical < BALANCE.medical.neglectAt) {
+    alerts.push({
+      icon: 'alert_danger',
+      text: '医療体制が逼迫',
+      tone: 'danger',
+      resource: 'medical',
+    })
+  }
+  if (r.power < BALANCE.power.lowAt) {
+    alerts.push({
+      icon: 'alert_warning',
+      text: '電力不足',
+      tone: 'warning',
+      resource: 'power',
+    })
+  }
+  if (r.morale < BALANCE.morale.riotAt) {
+    alerts.push({
+      icon: 'alert_danger',
+      text: '暴動の危険',
+      tone: 'danger',
+      resource: 'morale',
+    })
+  }
   return alerts
 }
 
 export interface HudCallbacks {
   onUndo: () => void
+  onLog: () => void
   onMenu: () => void
 }
 
 export class HudBar extends Phaser.GameObjects.Container {
+  private readonly frame: Phaser.GameObjects.Graphics
   private readonly dynamic: Phaser.GameObjects.Container
   private readonly undoButton: PixelButton
+  private readonly logButton: PixelButton
   private readonly menuButton: PixelButton
-  private readonly callbacks: HudCallbacks
   private rect: Rect = { x: 0, y: 0, width: 0, height: 0 }
   private deviceClass: DeviceClass = 'wide'
 
   constructor(scene: Phaser.Scene, callbacks: HudCallbacks) {
     super(scene)
-    this.callbacks = callbacks
+    this.frame = scene.add.graphics()
     this.dynamic = scene.add.container()
-    this.add(this.dynamic)
     this.undoButton = new PixelButton(scene, {
       label: '一手戻る',
-      width: 96,
-      height: 36,
+      width: 82,
+      height: 34,
+      variant: 'quiet',
       fontSize: TEXT_SIZE.labelWide,
-      onAction: () => this.callbacks.onUndo(),
+      onAction: callbacks.onUndo,
+    })
+    this.logButton = new PixelButton(scene, {
+      label: '記録',
+      width: 64,
+      height: 34,
+      variant: 'quiet',
+      fontSize: TEXT_SIZE.labelWide,
+      onAction: callbacks.onLog,
     })
     this.menuButton = new PixelButton(scene, {
       label: 'メニュー',
-      width: 96,
-      height: 36,
+      width: 76,
+      height: 34,
+      variant: 'quiet',
       fontSize: TEXT_SIZE.labelWide,
-      onAction: () => this.callbacks.onMenu(),
+      onAction: callbacks.onMenu,
     })
-    this.add([this.undoButton, this.menuButton])
+    this.add([this.frame, this.dynamic, this.undoButton, this.logButton, this.menuButton])
     scene.add.existing(this)
   }
 
@@ -72,167 +108,168 @@ export class HudBar extends Phaser.GameObjects.Container {
     this.rect = rect
     this.deviceClass = deviceClass
     this.setPosition(rect.x, rect.y)
+    this.redrawFrame()
     if (deviceClass === 'wide') {
-      this.menuButton.setSize(96, 36)
+      this.menuButton.setSize(76, 34)
       this.menuButton.setLabel('メニュー')
-      this.menuButton.setPosition(rect.width - 96 - SPACING.sm, rect.height / 2)
-      this.menuButton.setVisible(true)
-      this.undoButton.setSize(96, 36)
-      this.undoButton.setPosition(rect.width - 96 * 2 - SPACING.sm * 2, rect.height / 2)
+      this.logButton.setSize(64, 34)
+      this.undoButton.setSize(82, 34)
       this.undoButton.setVisible(true)
+      let x = rect.width - SPACING.sm
+      for (const button of [this.menuButton, this.logButton, this.undoButton]) {
+        x -= button.buttonWidth
+        button.setPosition(x + button.buttonWidth / 2, rect.height / 2)
+        x -= SPACING.xs
+      }
     } else {
-      this.menuButton.setSize(64, 36)
-      this.menuButton.setLabel('メニュ')
-      this.menuButton.setPosition(rect.width - 64 - SPACING.xs, rect.height / 2)
-      this.menuButton.setVisible(true)
       this.undoButton.setVisible(false)
+      this.logButton.setSize(48, 32)
+      this.logButton.setLabel('記録')
+      this.menuButton.setSize(52, 32)
+      this.menuButton.setLabel('メニュ')
+      this.menuButton.setPosition(rect.width - 30, rect.height / 2)
+      this.logButton.setPosition(rect.width - 84, rect.height / 2)
     }
   }
 
   update(state: GameState, canUndo: boolean): void {
     this.undoButton.setEnabled(canUndo)
-    const wide = this.deviceClass === 'wide'
     const d = this.dynamic
     d.removeAll(true)
-    let cursor = this.renderDay(d, wide, state.day)
-    cursor = this.renderResources(d, cursor, wide, state)
-    cursor = this.renderStocks(d, cursor, wide, state)
-    cursor = this.renderAlerts(d, cursor, wide, state)
-    this.renderModifiers(d, cursor, wide, state)
+    const alerts = deriveAlerts(state)
+    if (this.deviceClass === 'wide') this.renderWide(d, state, alerts)
+    else this.renderNarrow(d, state, alerts)
   }
 
-  private renderDay(d: Phaser.GameObjects.Container, wide: boolean, day: number): number {
+  private redrawFrame(): void {
+    const g = this.frame
+    g.clear()
+    g.fillStyle(COLORS.night900, 0.98)
+    g.fillRect(0, 0, this.rect.width, this.rect.height)
+    g.lineStyle(1, COLORS.frameLo, 0.8)
+    g.lineBetween(0, this.rect.height - 1, this.rect.width, this.rect.height - 1)
+  }
+
+  private renderWide(
+    host: Phaser.GameObjects.Container,
+    state: GameState,
+    alerts: HudAlert[],
+  ): void {
+    let cursor = this.renderDay(host, state.day, true)
+    cursor = this.renderResources(host, cursor, state, alerts, true)
+    const stocks = pixelText(this.scene, `予算 ${state.budget}  備蓄 ${state.stockpile}`, {
+      fontSize: TEXT_SIZE.labelWide,
+      color: COLORS.inkDim,
+    })
+    stocks.setPosition(cursor + SPACING.sm, this.rect.height / 2)
+    stocks.setOrigin(0, 0.5)
+    host.add(stocks)
+    cursor += stocks.width + SPACING.md
+
+    const alert = alerts.find((candidate) => candidate.tone === 'danger') ?? alerts[0]
+    if (alert) {
+      cursor += this.addIcon(host, cursor, alert.icon, 18)
+      const text = pixelText(this.scene, alert.text, {
+        fontSize: TEXT_SIZE.labelWide,
+        color: alert.tone === 'danger' ? COLORS.red : COLORS.amber,
+      })
+      text.setPosition(cursor + 2, this.rect.height / 2)
+      text.setOrigin(0, 0.5)
+      host.add(text)
+      cursor += text.width + SPACING.md
+      if (alerts.length > 1) {
+        const more = pixelText(this.scene, `+${alerts.length - 1}`, {
+          fontSize: TEXT_SIZE.labelNarrow,
+          color: COLORS.inkDim,
+        })
+        more.setPosition(cursor, this.rect.height / 2)
+        more.setOrigin(0, 0.5)
+        host.add(more)
+        cursor += more.width + SPACING.sm
+      }
+    }
+
+    const actionLimit = this.undoButton.x - this.undoButton.buttonWidth / 2 - SPACING.md
+    if (cursor < actionLimit - 80) this.renderModifier(host, cursor, state, actionLimit - cursor)
+  }
+
+  private renderNarrow(
+    host: Phaser.GameObjects.Container,
+    state: GameState,
+    alerts: HudAlert[],
+  ): void {
+    const cursor = this.renderDay(host, state.day, false)
+    this.renderResources(host, cursor, state, alerts, false)
+  }
+
+  private renderDay(host: Phaser.GameObjects.Container, day: number, wide: boolean): number {
     const clamped = Math.min(day, BALANCE.days)
     const rescueIn = Math.max(1, BALANCE.days - clamped + 1)
+    if (wide) {
+      const dayLabel = pixelText(this.scene, 'DAY', {
+        fontSize: TEXT_SIZE.labelNarrow,
+        color: COLORS.inkDim,
+      })
+      dayLabel.setPosition(SPACING.sm, 8)
+      host.add(dayLabel)
+      const dayNum = pixelText(this.scene, String(clamped), {
+        fontFamily: FONT_DISPLAY,
+        fontSize: 24,
+        color: COLORS.gold,
+      })
+      dayNum.setPosition(SPACING.sm, 24)
+      host.add(dayNum)
+      const rescue = pixelText(this.scene, `救援まで ${rescueIn}日`, {
+        fontSize: TEXT_SIZE.labelWide,
+        color: rescueIn <= 5 ? COLORS.red : COLORS.inkDim,
+      })
+      rescue.setPosition(60, this.rect.height / 2)
+      rescue.setOrigin(0, 0.5)
+      host.add(rescue)
+      return 158
+    }
+
     const dayNum = pixelText(this.scene, String(clamped), {
       fontFamily: FONT_DISPLAY,
-      fontSize: wide ? TEXT_SIZE.dayCounterWide : TEXT_SIZE.dayCounterNarrow,
+      fontSize: 18,
       color: COLORS.gold,
     })
     dayNum.setPosition(SPACING.sm, this.rect.height / 2)
     dayNum.setOrigin(0, 0.5)
-    d.add(dayNum)
-    let cursor = SPACING.sm + dayNum.width + SPACING.sm
-    if (wide) {
-      const side = pixelText(this.scene, `/ ${BALANCE.days}  救援まで あと${rescueIn}日`, {
-        fontSize: TEXT_SIZE.labelWide,
-        color: rescueIn <= 5 ? COLORS.red : COLORS.inkDim,
-      })
-      side.setPosition(cursor, this.rect.height / 2)
-      side.setOrigin(0, 0.5)
-      d.add(side)
-      cursor += side.width + SPACING.lg
-    }
-    return cursor
+    host.add(dayNum)
+    const rescue = pixelText(this.scene, `あと${rescueIn}日`, {
+      fontSize: TEXT_SIZE.labelNarrow,
+      color: rescueIn <= 5 ? COLORS.red : COLORS.inkDim,
+    })
+    rescue.setPosition(42, this.rect.height / 2)
+    rescue.setOrigin(0, 0.5)
+    host.add(rescue)
+    return 92
   }
 
   private renderResources(
-    d: Phaser.GameObjects.Container,
-    cursor: number,
-    wide: boolean,
+    host: Phaser.GameObjects.Container,
+    start: number,
     state: GameState,
+    alerts: HudAlert[],
+    wide: boolean,
   ): number {
-    const items: Array<[string, number]> = [
+    const alertByResource = new Map<NonNullable<HudAlert['resource']>, HudAlert>()
+    for (const alert of alerts) {
+      if (alert.resource) alertByResource.set(alert.resource, alert)
+    }
+    const items: Array<['food' | 'power' | 'medical' | 'morale', number]> = [
       ['food', state.resources.food],
       ['power', state.resources.power],
       ['medical', state.resources.medical],
       ['morale', state.resources.morale],
     ]
+    let cursor = start
     for (const [id, value] of items) {
-      cursor += this.addResource(d, cursor, id, value, wide)
+      const alert = alertByResource.get(id)
+      cursor += this.addResource(host, cursor, id, value, wide, alert?.tone)
     }
     return cursor
-  }
-
-  private renderStocks(
-    d: Phaser.GameObjects.Container,
-    cursor: number,
-    wide: boolean,
-    state: GameState,
-  ): number {
-    if (wide) {
-      const stocks = pixelText(this.scene, `予算${state.budget} 備蓄${state.stockpile}`, {
-        fontSize: TEXT_SIZE.labelWide,
-        color: COLORS.inkDim,
-      })
-      stocks.setPosition(cursor + SPACING.sm, this.rect.height / 2)
-      stocks.setOrigin(0, 0.5)
-      d.add(stocks)
-      return cursor + stocks.width + SPACING.lg
-    }
-    const budget = pixelText(this.scene, `予${state.budget}`, {
-      fontSize: TEXT_SIZE.labelNarrow,
-      color: COLORS.inkDim,
-    })
-    budget.setPosition(cursor, this.rect.height / 2)
-    budget.setOrigin(0, 0.5)
-    d.add(budget)
-    cursor += budget.width + SPACING.sm
-    const stock = pixelText(this.scene, `備${state.stockpile}`, {
-      fontSize: TEXT_SIZE.labelNarrow,
-      color: COLORS.inkDim,
-    })
-    stock.setPosition(cursor, this.rect.height / 2)
-    stock.setOrigin(0, 0.5)
-    d.add(stock)
-    return cursor + stock.width + SPACING.sm
-  }
-
-  private renderAlerts(
-    d: Phaser.GameObjects.Container,
-    cursor: number,
-    wide: boolean,
-    state: GameState,
-  ): number {
-    const alerts = deriveAlerts(state)
-    for (const a of alerts) {
-      const color = a.tone === 'danger' ? COLORS.red : COLORS.amber
-      cursor += this.addIcon(d, cursor, a.icon)
-      const text = pixelText(this.scene, wide ? a.text : '', {
-        fontSize: TEXT_SIZE.labelNarrow,
-        color,
-      })
-      text.setPosition(cursor + 2, this.rect.height / 2)
-      text.setOrigin(0, 0.5)
-      d.add(text)
-      cursor += text.width + SPACING.md
-    }
-    if (alerts.length === 0 && wide) {
-      cursor += this.addIcon(d, cursor, 'status_ok')
-      const ok = pixelText(this.scene, '平穏を保っている', {
-        fontSize: TEXT_SIZE.labelNarrow,
-        color: COLORS.green,
-      })
-      ok.setPosition(cursor + 2, this.rect.height / 2)
-      ok.setOrigin(0, 0.5)
-      d.add(ok)
-      cursor += ok.width + SPACING.md
-    }
-    return cursor
-  }
-
-  private renderModifiers(
-    d: Phaser.GameObjects.Container,
-    cursor: number,
-    wide: boolean,
-    state: GameState,
-  ): void {
-    if (!wide) return
-    for (const m of state.modifiers) {
-      const spec = artSpec('event', m.id)
-      const badge = pixelText(
-        this.scene,
-        `${spec?.glyph ?? '状'}${spec?.label ?? m.id} あと${m.daysLeft}日`,
-        {
-          fontSize: TEXT_SIZE.labelNarrow,
-          color: spec ? colorNum(spec.color) : COLORS.inkDim,
-        },
-      )
-      badge.setPosition(cursor, this.rect.height / 2)
-      badge.setOrigin(0, 0.5)
-      d.add(badge)
-      cursor += badge.width + SPACING.md
-    }
   }
 
   private addResource(
@@ -241,27 +278,49 @@ export class HudBar extends Phaser.GameObjects.Container {
     id: string,
     value: number,
     wide: boolean,
+    tone?: HudAlert['tone'],
   ): number {
+    const iconSize = wide ? 20 : 16
     let cursor = x
-    cursor += this.addIcon(host, cursor, id)
+    cursor += this.addIcon(host, cursor, id, iconSize)
+    const color = tone === 'danger' ? COLORS.red : tone === 'warning' ? COLORS.amber : COLORS.inkDim
     const num = pixelText(this.scene, String(Math.round(value)), {
-      fontSize: wide ? TEXT_SIZE.bodyWide : TEXT_SIZE.bodyNarrow,
-      color: COLORS.ink,
+      fontSize: tone && wide ? 18 : wide ? TEXT_SIZE.bodyWide : TEXT_SIZE.bodyNarrow,
+      color,
     })
     num.setPosition(cursor + 2, this.rect.height / 2)
     num.setOrigin(0, 0.5)
     host.add(num)
-    return num.width + SPACING.md + 20
+    return iconSize + num.width + (wide ? SPACING.md : SPACING.sm)
   }
 
-  private addIcon(host: Phaser.GameObjects.Container, x: number, id: string): number {
-    const size = 18
+  private addIcon(host: Phaser.GameObjects.Container, x: number, id: string, size: number): number {
     drawArtSlot(this.scene, host, 'icon', id, x + size / 2, this.rect.height / 2, {
       width: size,
       height: size,
-      glyphSize: 14,
+      glyphSize: Math.max(12, size - 4),
       fallbackGlyph: '・',
     })
     return size + 2
+  }
+
+  private renderModifier(
+    host: Phaser.GameObjects.Container,
+    x: number,
+    state: GameState,
+    available: number,
+  ): void {
+    const modifier = state.modifiers[0]
+    if (!modifier) return
+    const spec = artSpec('event', modifier.id)
+    const label = `${spec?.glyph ?? '状'} ${spec?.label ?? modifier.id} ${modifier.daysLeft}日`
+    const badge = pixelText(this.scene, label, {
+      fontSize: TEXT_SIZE.labelNarrow,
+      color: spec ? colorNum(spec.color) : COLORS.inkDim,
+      wordWrapWidth: available,
+    })
+    badge.setPosition(x, this.rect.height / 2)
+    badge.setOrigin(0, 0.5)
+    host.add(badge)
   }
 }

@@ -33,7 +33,7 @@ export class MenuOverlay extends ModalCard {
       label: 'ゲームに戻る',
       width: 200,
       height: 44,
-      primary: true,
+      variant: 'primary',
       onAction: callbacks.onClose,
     })
     close.setPosition(180, 130)
@@ -104,7 +104,7 @@ export class ConfirmOverlay extends ModalCard {
       label: 'このまま開始',
       width: 150,
       height: 44,
-      primary: true,
+      variant: 'primary',
       onAction: callbacks.onConfirm,
     })
     confirmButton.setPosition(120, 176)

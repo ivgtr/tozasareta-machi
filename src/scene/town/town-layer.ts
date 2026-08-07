@@ -48,12 +48,15 @@ interface FacilityVisual {
   tokens: Phaser.GameObjects.Container
   sprite: Phaser.GameObjects.Image | null
   glyph: Phaser.GameObjects.Text
+  label: Phaser.GameObjects.Text
 }
 
 export class TownLayer extends Phaser.GameObjects.Container {
   private readonly ground: Phaser.GameObjects.Graphics
   private readonly visuals = new Map<FacilityId, FacilityVisual>()
   private readonly callbacks: TownCallbacks
+  private readonly persistentLabels = new Set<FacilityId>()
+  private hoveredFacility: FacilityId | null = null
 
   constructor(scene: Phaser.Scene, callbacks: TownCallbacks) {
     super(scene)
@@ -72,18 +75,28 @@ export class TownLayer extends Phaser.GameObjects.Container {
       glyph.setOrigin(0.5)
       const label = pixelText(scene, meta.label, {
         fontSize: TEXT_SIZE.labelWide,
-        color: COLORS.inkDim,
+        color: COLORS.ink,
+        backgroundColor: '#0a0e24',
       })
-      label.setPosition(p.x, p.y + 16)
+      label.setPosition(p.x, p.y + 18)
       label.setOrigin(0.5)
+      label.setVisible(false)
       const zone = scene.add.zone(p.x, p.y, FOOTPRINT.width, FOOTPRINT.height)
       zone.setInteractive(
-        new Phaser.Geom.Polygon(footprintDiamond(0, 0)),
+        new Phaser.Geom.Polygon(footprintDiamond(FOOTPRINT.width / 2, FOOTPRINT.height / 2)),
         Phaser.Geom.Polygon.Contains,
       )
       zone.on('pointerdown', () => this.callbacks.onFacilityTap(p.id))
+      zone.on('pointerover', () => {
+        this.hoveredFacility = p.id
+        label.setVisible(true)
+      })
+      zone.on('pointerout', () => {
+        if (this.hoveredFacility === p.id) this.hoveredFacility = null
+        label.setVisible(this.persistentLabels.has(p.id))
+      })
       const tokens = scene.add.container(p.x, p.y)
-      this.visuals.set(p.id, { highlight, tokens, sprite: null, glyph })
+      this.visuals.set(p.id, { highlight, tokens, sprite: null, glyph, label })
       this.add([highlight, tokens, glyph, label, zone])
     }
     scene.add.existing(this)
@@ -133,9 +146,7 @@ export class TownLayer extends Phaser.GameObjects.Container {
       [240, 168, 288, 144],
       [288, 216, 470, 240],
     ]
-    for (const [x1, y1, x2, y2] of paths) {
-      g.lineBetween(x1, y1, x2, y2)
-    }
+    for (const [x1, y1, x2, y2] of paths) g.lineBetween(x1, y1, x2, y2)
     for (const p of FACILITY_PLOTS) {
       const plot = pointsToGeom(footprintDiamond(p.x, p.y))
       g.fillStyle(COLORS.night700, 0.85)
@@ -177,6 +188,7 @@ export class TownLayer extends Phaser.GameObjects.Container {
     view: Record<FacilityId, FacilityViewId>,
     selection: TownSelection,
   ): void {
+    this.persistentLabels.clear()
     for (const p of FACILITY_PLOTS) {
       const meta = FACILITIES[p.id]
       const v = this.visuals.get(p.id)
@@ -185,23 +197,21 @@ export class TownLayer extends Phaser.GameObjects.Container {
       const h = v.highlight
       h.clear()
       const diamond = pointsToGeom(footprintDiamond(p.x, p.y))
-      h.lineStyle(
-        2,
-        stateId === 'working'
-          ? meta.color
-          : stateId === 'low' || stateId === 'collapsed'
-            ? COLORS.red
-            : COLORS.frameLo,
-      )
+      const danger = stateId === 'low' || stateId === 'collapsed' || stateId === 'damaged'
+      const selected = selection.selectedFacility === p.id
+      const placeable = Boolean(selection.placeableUnitId && meta.tasks.length > 0)
+      h.lineStyle(2, stateId === 'working' ? meta.color : danger ? COLORS.red : COLORS.frameLo)
       h.strokePoints(diamond, true)
-      if (selection.selectedFacility === p.id) {
+      if (selected) {
         h.lineStyle(3, COLORS.gold)
         h.strokePoints(diamond, true)
-      } else if (selection.placeableUnitId && meta.tasks.length > 0) {
+      } else if (placeable) {
         h.lineStyle(2, COLORS.green)
         h.strokePoints(diamond, true)
       }
-      const unitIds = meta.tasks.flatMap((t) => plan.placements[t] ?? [])
+      if (danger || selected || placeable) this.persistentLabels.add(p.id)
+      v.label.setVisible(this.hoveredFacility === p.id || this.persistentLabels.has(p.id))
+      const unitIds = meta.tasks.flatMap((task) => plan.placements[task] ?? [])
       this.syncTokens(v.tokens, state, unitIds)
       this.syncSprite(v, p, stateId)
     }
@@ -309,7 +319,7 @@ export class TownLayer extends Phaser.GameObjects.Container {
       token.setPosition(slot.x, slot.y)
     }
     const sorted = [...tokens].sort((a, b) => a.y - b.y)
-    sorted.forEach((c, i) => c.setDepth(i))
+    sorted.forEach((component, index) => component.setDepth(index))
   }
 }
 

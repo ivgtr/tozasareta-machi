@@ -124,7 +124,7 @@ export class OverlayStack extends ModalCard {
       label,
       width,
       height: 44,
-      primary: true,
+      variant: 'primary',
       onAction: this.callbacks.onConfirm,
     })
     btn.setPosition(this.cardW / 2, this.cardH - 40)
@@ -323,7 +323,7 @@ export class OverlayStack extends ModalCard {
       label: 'もう一度',
       width: 150,
       height: 44,
-      primary: true,
+      variant: 'primary',
       onAction: this.callbacks.onEndingRestart,
     })
     restart.setPosition(cardW / 2 - 90, this.cardH - 60)

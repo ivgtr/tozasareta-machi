@@ -37,21 +37,21 @@ describe('safe-area conversion', () => {
 })
 
 describe('computeRegions', () => {
-  it('wide は町・キャラクターデッキ・計画操作を明確な3層に分ける', () => {
+  it('wide は町を拡大し、人物デッキと計画操作を同じ下段に置く', () => {
     const r = computeRegions('wide', 1280, 720, NO_INSETS)
-    expect(r.hud).toEqual({ x: 0, y: 0, width: 1280, height: 48 })
-    expect(r.town).toEqual({ x: 0, y: 48, width: 1280, height: 512 })
-    expect(r.deck).toEqual({ x: 0, y: 560, width: 1280, height: 112 })
-    expect(r.strip).toEqual({ x: 0, y: 672, width: 1280, height: 48 })
-    expect(r.hud.height + r.town.height + r.deck.height + r.strip.height).toBe(720)
+    expect(r.hud).toEqual({ x: 0, y: 0, width: 1280, height: 56 })
+    expect(r.town).toEqual({ x: 0, y: 56, width: 1280, height: 536 })
+    expect(r.deck).toEqual({ x: 0, y: 592, width: 912, height: 128 })
+    expect(r.controls).toEqual({ x: 920, y: 592, width: 360, height: 128 })
+    expect(r.deck.y).toBe(r.controls.y)
   })
 
-  it('narrow でも人物カードを確保しつつ町を主領域にする', () => {
+  it('narrow は町・人物デッキ・計画操作を縦に積む', () => {
     const r = computeRegions('narrow', 480, 854, NO_INSETS)
-    expect(r.hud.height).toBe(44)
-    expect(r.town).toEqual({ x: 0, y: 44, width: 480, height: 644 })
-    expect(r.deck).toEqual({ x: 0, y: 688, width: 480, height: 118 })
-    expect(r.strip).toEqual({ x: 0, y: 806, width: 480, height: 48 })
+    expect(r.hud).toEqual({ x: 0, y: 0, width: 480, height: 52 })
+    expect(r.town).toEqual({ x: 0, y: 52, width: 480, height: 620 })
+    expect(r.deck).toEqual({ x: 0, y: 672, width: 480, height: 118 })
+    expect(r.controls).toEqual({ x: 0, y: 790, width: 480, height: 64 })
   })
 
   it('基本領域はpresentation modeに依存せず安定する', () => {
@@ -70,8 +70,8 @@ describe('computeRegions', () => {
       left: 0,
     })
     expect(notched.hud.y).toBe(20)
-    expect(notched.strip.y + notched.strip.height + 12).toBe(720)
-    expect(notched.deck.y + notched.deck.height).toBe(notched.strip.y)
+    expect(notched.controls.y + notched.controls.height + 12).toBe(720)
+    expect(notched.deck.y).toBe(notched.controls.y)
     const tiny = computeRegions('wide', 1280, 720, { top: 4, right: 0, bottom: 0, left: 0 })
     expect(tiny.hud.y).toBe(8)
   })

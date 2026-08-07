@@ -145,14 +145,10 @@ async function startNewGame(page) {
 }
 
 async function commitWithAutoAssign(page) {
-  const wideAuto = await optionalTextBounds(page, 'おまかせ')
-  await clickText(page, wideAuto ? 'おまかせ' : '自動')
-  const wideCommit = await optionalTextBounds(page, '本日の対応を確定')
-  await clickText(page, wideCommit ? '本日の対応を確定' : '確定')
+  await clickText(page, '自動配置')
+  await clickText(page, '今日を終える ▶')
   const confirm = await optionalTextBounds(page, 'このまま開始')
-  if (confirm) {
-    await page.mouse.click(confirm.x + confirm.width / 2, confirm.y + confirm.height / 2)
-  }
+  if (confirm) await page.mouse.click(confirm.x + confirm.width / 2, confirm.y + confirm.height / 2)
 }
 
 async function capture(page, name) {
@@ -187,7 +183,7 @@ async function test(name, run) {
   process.stdout.write(`• ${name}\n`)
   try {
     await run()
-    process.stdout.write(`  ✓ passed\n`)
+    process.stdout.write('  ✓ passed\n')
   } catch (error) {
     failures.push({ name, error })
     process.stderr.write(`  ✗ ${error.stack ?? error}\n`)
@@ -220,6 +216,25 @@ try {
     })
   })
 
+  await test('計画操作と施設フォーカスがPlanning画面で機能する', async () => {
+    await withGame('planning-facility', {}, async (page) => {
+      await startNewGame(page)
+      assert.ok(await optionalTextBounds(page, '配給 通常'))
+      assert.ok(await optionalTextBounds(page, '調達 OFF'))
+      assert.ok(await optionalTextBounds(page, '自動配置'))
+      assert.ok(await optionalTextBounds(page, '今日を終える ▶'))
+      await capture(page, 'planning-ui')
+
+      await clickText(page, '崩落地点')
+      await page.waitForFunction(
+        (name) => globalThis[name]?.snapshot().presentationMode === 'facility-focus',
+        BRIDGE,
+      )
+      assert.ok(await optionalTextBounds(page, '道路復旧'))
+      await capture(page, 'facility-focus-road')
+    })
+  })
+
   await test('演出中の新規ゲームで旧再生状態を残さない', async () => {
     await withGame('restart-playback', { animations: true }, async (page) => {
       await startNewGame(page)
@@ -244,18 +259,28 @@ try {
       await commitWithAutoAssign(page)
       await page.waitForFunction((name) => {
         const value = globalThis[name]?.snapshot()
-        return value && value.day >= 2 && !value.busy
+        return (
+          value &&
+          value.historyLength > 0 &&
+          !value.busy &&
+          (value.phase === 'planning' || value.phase === 'choice')
+        )
       }, BRIDGE)
       const before = await snapshot(page)
       await page.reload({ waitUntil: 'domcontentloaded' })
       await page.waitForFunction((name) => Boolean(globalThis[name]), BRIDGE)
       await clickText(page, '▶ 続きから')
       await page.waitForFunction(
-        ({ name, day }) => {
+        ({ name, day, phase }) => {
           const value = globalThis[name]?.snapshot()
-          return value && value.activeScenes.includes('Play') && value.day === day
+          return (
+            value &&
+            value.activeScenes.includes('Play') &&
+            value.day === day &&
+            value.phase === phase
+          )
         },
-        { name: BRIDGE, day: before.day },
+        { name: BRIDGE, day: before.day, phase: before.phase },
       )
       await capture(page, 'resume-after-reload')
     })

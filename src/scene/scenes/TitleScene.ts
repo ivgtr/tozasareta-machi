@@ -74,7 +74,7 @@ export class TitleScene extends Phaser.Scene {
       label: '▶ 続きから',
       width: 200,
       height: 48,
-      primary: true,
+      variant: 'primary',
       onAction: () => {
         sessionStarted = true
         this.scene.start(KEYS.play)
@@ -85,11 +85,9 @@ export class TitleScene extends Phaser.Scene {
       label: canResume ? '最初から' : '▶ 指揮所へ',
       width: 200,
       height: 48,
-      primary: !canResume,
+      variant: canResume ? 'default' : 'primary',
       onAction: () => {
-        if (hasProgress && !window.confirm(CONFIRM_NEW_GAME)) {
-          return
-        }
+        if (hasProgress && !window.confirm(CONFIRM_NEW_GAME)) return
         store.dispatch({ type: 'newGame', seed: randomSeed() })
         sessionStarted = true
         this.scene.start(KEYS.play)
@@ -125,9 +123,7 @@ export class TitleScene extends Phaser.Scene {
         width: 130,
         height: 36,
         fontSize: TEXT_SIZE.labelWide,
-        onAction: () => {
-          this.completeBriefing()
-        },
+        onAction: () => this.completeBriefing(),
       })
       this.layout()
     } else {
@@ -165,8 +161,6 @@ export class TitleScene extends Phaser.Scene {
       this.newButton.setPosition(width / 2, actionsY)
     }
     this.motionButton.setPosition(width / 2, actionsY + 64)
-    if (this.skipButton) {
-      this.skipButton.setPosition(width / 2 + 180, height * 0.72)
-    }
+    if (this.skipButton) this.skipButton.setPosition(width / 2 + 180, height * 0.72)
   }
 }
