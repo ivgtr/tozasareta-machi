@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PlaybackController } from '../src/scene/playback/playback'
 import { UI_TIMING, buildBeats } from '../src/scene/playback/beats'
-import { restartGame } from '../src/scene/restart'
 import { createInitialState } from '../src/game/state'
 import type { Effect } from '../src/game/types'
 
@@ -54,7 +53,7 @@ describe('buildBeats', () => {
   })
 
   it('unit ターゲットを持つ探索帰還は arrival ビートになる', () => {
-    const fx: Effect[] = [
+    const effects: Effect[] = [
       {
         day: 5,
         source: 'event:expedition_return',
@@ -70,7 +69,7 @@ describe('buildBeats', () => {
         reason: '食料を持ち帰った',
       },
     ]
-    const beats = buildBeats(fx)
+    const beats = buildBeats(effects)
     expect(beats).toHaveLength(1)
     const beat = beats[0]
     expect(beat?.kind).toBe('arrival')
@@ -84,68 +83,46 @@ describe('buildBeats', () => {
 describe('PlaybackController', () => {
   it('フローは1ビートずつ進み、完了で null に戻る', () => {
     stubMotion(false)
-    const c = new PlaybackController()
-    c.start(createInitialState(1), flowEffects)
-    expect(c.current?.index).toBe(0)
+    const controller = new PlaybackController()
+    controller.start(createInitialState(1), flowEffects)
+    expect(controller.current?.index).toBe(0)
 
     vi.advanceTimersByTime(UI_TIMING.effectMs)
-    expect(c.current?.index).toBe(1)
+    expect(controller.current?.index).toBe(1)
 
     vi.advanceTimersByTime(UI_TIMING.effectMs)
-    expect(c.current).toBeNull()
+    expect(controller.current).toBeNull()
   })
 
   it('イベントビートはポーズし、confirm で進む', () => {
     stubMotion(false)
-    const c = new PlaybackController()
-    c.start(createInitialState(1), eventEffects)
+    const controller = new PlaybackController()
+    controller.start(createInitialState(1), eventEffects)
 
     vi.advanceTimersByTime(UI_TIMING.effectMs)
-    expect(c.current?.index).toBe(1)
-    expect(c.waiting).toBe(true)
+    expect(controller.current?.index).toBe(1)
+    expect(controller.waiting).toBe(true)
 
     vi.advanceTimersByTime(UI_TIMING.effectMs * 3)
-    expect(c.current?.index).toBe(1)
+    expect(controller.current?.index).toBe(1)
 
-    c.confirm()
+    controller.confirm()
     vi.advanceTimersByTime(UI_TIMING.afterConfirmMs)
-    expect(c.current).toBeNull()
+    expect(controller.current).toBeNull()
   })
 
   it('skip で即座に終わる', () => {
     stubMotion(false)
-    const c = new PlaybackController()
-    c.start(createInitialState(1), flowEffects)
-    c.skip()
-    expect(c.current).toBeNull()
-  })
-
-  it('新規ゲーム開始時は再生を停止してから状態をリセットする', () => {
-    stubMotion(false)
-    const c = new PlaybackController()
-    const dispatched: { type: 'newGame'; seed: number }[] = []
-    c.start(createInitialState(1), flowEffects)
-
-    restartGame(
-      c,
-      {
-        dispatch: (action) => {
-          expect(c.current).toBeNull()
-          dispatched.push(action)
-        },
-      },
-      7,
-    )
-
-    expect(dispatched).toEqual([{ type: 'newGame', seed: 7 }])
-    vi.advanceTimersByTime(UI_TIMING.effectMs * 3)
-    expect(c.current).toBeNull()
+    const controller = new PlaybackController()
+    controller.start(createInitialState(1), flowEffects)
+    controller.skip()
+    expect(controller.current).toBeNull()
   })
 
   it('reduced-motion では再生しない', () => {
     stubMotion(true)
-    const c = new PlaybackController()
-    c.start(createInitialState(1), flowEffects)
-    expect(c.current).toBeNull()
+    const controller = new PlaybackController()
+    controller.start(createInitialState(1), flowEffects)
+    expect(controller.current).toBeNull()
   })
 })

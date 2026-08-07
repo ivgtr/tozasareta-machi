@@ -5,7 +5,6 @@ import type {
   GameState,
   Modifier,
   ModifierEffect,
-  NumericFlag,
   Phase,
   StepResult,
 } from './types'
@@ -22,54 +21,9 @@ import {
 import { checkCollapse, evaluate } from './ending'
 import { addModifier, tickModifiers } from './modifiers'
 import { actOf } from './threat'
+import { applyEffects } from './effects'
 
-const NUMERIC_FLAGS: NumericFlag[] = [
-  'daysWithoutMedical',
-  'daysFoodCut',
-  'casualties',
-  'refugeesAccepted',
-  'cooperation',
-]
-
-export function applyEffects(prev: GameState, effects: Effect[]): GameState {
-  let { food, power, medical, morale } = prev.resources
-  let { budget, stockpile } = prev
-  const flags = { ...prev.flags, fired: [...prev.flags.fired] }
-
-  for (const e of effects) {
-    const t = e.target
-    switch (t) {
-      case 'food':
-        food = Math.max(0, food + e.delta)
-        break
-      case 'power':
-        power = Math.max(0, Math.min(100, power + e.delta))
-        break
-      case 'medical':
-        medical = Math.max(0, Math.min(100, medical + e.delta))
-        break
-      case 'morale':
-        morale = Math.max(0, Math.min(100, morale + e.delta))
-        break
-      case 'budget':
-        budget = Math.max(0, budget + e.delta)
-        break
-      case 'stockpile':
-        stockpile = Math.max(0, stockpile + e.delta)
-        break
-      default: {
-        if (t.startsWith('flag:')) {
-          const key = t.slice('flag:'.length)
-          if ((NUMERIC_FLAGS as readonly string[]).includes(key)) {
-            const k = key as NumericFlag
-            flags[k] = flags[k] + e.delta
-          }
-        }
-      }
-    }
-  }
-  return { ...prev, resources: { food, power, medical, morale }, budget, stockpile, flags }
-}
+export { applyEffects } from './effects'
 
 function actTransition(
   mods: Modifier[],

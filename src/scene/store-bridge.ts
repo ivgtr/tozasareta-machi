@@ -1,5 +1,5 @@
-import type { StoreAction, StoreState } from '../store'
-import { clearSave, loadStore, randomSeed, saveStore, storeReducer } from '../store'
+import type { StoreAction, StoreState, StoreTransition } from '../store'
+import { clearSave, loadStore, randomSeed, saveStore, transitionStore } from '../store'
 import { createInitialState } from '../game/state'
 
 export class SceneStore {
@@ -14,13 +14,14 @@ export class SceneStore {
     return this.store
   }
 
-  dispatch(action: StoreAction): void {
-    const next = storeReducer(this.store, action)
-    if (next === this.store) return
-    this.store = next
-    if (next.state.phase === 'ended') clearSave()
-    else saveStore(next)
-    this.listeners.forEach((l) => l())
+  dispatch(action: StoreAction): StoreTransition {
+    const transition = transitionStore(this.store, action)
+    if (!transition.changed) return transition
+    this.store = transition.store
+    if (transition.store.state.phase === 'ended') clearSave()
+    else saveStore(transition.store)
+    this.listeners.forEach((listener) => listener())
+    return transition
   }
 
   subscribe(listener: () => void): () => void {
