@@ -22,6 +22,15 @@ export interface SafeInsets {
   left: number
 }
 
+export interface CssBounds {
+  left: number
+  top: number
+  right: number
+  bottom: number
+  width: number
+  height: number
+}
+
 export const NO_INSETS: SafeInsets = { top: 0, right: 0, bottom: 0, left: 0 }
 
 export const SCREEN_EDGE_GUARD = 8
@@ -44,4 +53,27 @@ export function readSafeInsets(): SafeInsets {
   }
   document.body.removeChild(probe)
   return insets
+}
+
+export function toLogicalSafeInsets(
+  insets: SafeInsets,
+  viewportWidth: number,
+  viewportHeight: number,
+  canvas: CssBounds,
+  logicalWidth: number,
+  logicalHeight: number,
+): SafeInsets {
+  if (canvas.width <= 0 || canvas.height <= 0) return NO_INSETS
+  const scaleX = logicalWidth / canvas.width
+  const scaleY = logicalHeight / canvas.height
+  const leftMargin = Math.max(0, canvas.left)
+  const topMargin = Math.max(0, canvas.top)
+  const rightMargin = Math.max(0, viewportWidth - canvas.right)
+  const bottomMargin = Math.max(0, viewportHeight - canvas.bottom)
+  return {
+    left: Math.max(0, insets.left - leftMargin) * scaleX,
+    right: Math.max(0, insets.right - rightMargin) * scaleX,
+    top: Math.max(0, insets.top - topMargin) * scaleY,
+    bottom: Math.max(0, insets.bottom - bottomMargin) * scaleY,
+  }
 }

@@ -3,7 +3,6 @@ import { BALANCE } from './data/balance'
 import { EVENTS } from './data/events-data'
 import { chance, weightedPick } from './rng'
 import { threatWeightMult } from './threat'
-import { applyEffects } from './effects'
 
 export interface RunEventsResult {
   state: GameState
@@ -61,25 +60,6 @@ export function determineChoiceEvent(prev: GameState): EventPickResult {
   return picked ? { eventId: picked[0].id, rng: picked[1] } : { rng: afterChance }
 }
 
-export function determineDayEvents(prev: GameState): { eventIds: string[]; rng: RngState } {
-  const eventIds: string[] = []
-  const auto = determineAutoEvent(prev)
-  let state = { ...prev, rng: auto.rng }
-
-  if (auto.eventId) {
-    eventIds.push(auto.eventId)
-    const event = findEvent(auto.eventId)
-    if (event) {
-      const result = applyAutoEvent(state, event)
-      state = applyEffects(result.state, result.effects)
-    }
-  }
-
-  const choice = determineChoiceEvent(state)
-  if (choice.eventId) eventIds.push(choice.eventId)
-  return { eventIds, rng: choice.rng }
-}
-
 export function applyAutoEvent(prev: GameState, event: EventDef): RunEventsResult {
   const ctx = makeCtx(prev)
   let state = prev
@@ -125,14 +105,4 @@ export function applyChoiceOption(
     state = { ...state, flags: { ...state.flags, fired: [...state.flags.fired, event.id] } }
   }
   return { state, effects }
-}
-
-export function runEvents(prev: GameState): RunEventsResult {
-  const ctx = makeCtx(prev)
-  const candidates = EVENTS.filter((e) => !isChoice(e) && eligible(e, prev, ctx))
-  if (candidates.length === 0) return { state: prev, effects: [] }
-  const picked = weightedPick(candidates, (e) => e.weight(ctx), prev.rng)
-  if (!picked) return { state: prev, effects: [] }
-  const [event, rng] = picked
-  return applyAutoEvent({ ...prev, rng }, event)
 }

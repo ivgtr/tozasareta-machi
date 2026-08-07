@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/game/state'
-import { choiceOptions, runEvents } from '../src/game/events'
+import { choiceOptions, determineAutoEvent } from '../src/game/events'
 import { EVENTS } from '../src/game/data/events-data'
 import { UNIQUE_UNITS } from '../src/game/data/units'
 import { BALANCE } from '../src/game/data/balance'
@@ -9,9 +9,9 @@ import type { GameState } from '../src/game/types'
 const base = (): GameState => createInitialState(3)
 
 describe('events', () => {
-  it('同じ状態なら同じ結果（決定性）', () => {
+  it('同じ状態なら同じ自動イベント抽選結果（決定性）', () => {
     const s: GameState = { ...base(), day: 15 }
-    expect(runEvents(s)).toEqual(runEvents(s))
+    expect(determineAutoEvent(s)).toEqual(determineAutoEvent(s))
   })
 
   it('到着イベントはユニットを1人追加し、unit: 効果を持つ', () => {
@@ -57,10 +57,9 @@ describe('events', () => {
       day: 20,
       flags: { ...base().flags, fired: ['rescue_contact'] },
     }
-    // 何回回しても rescue_contact の効果は出ない
     for (let i = 0; i < 20; i++) {
-      const r = runEvents({ ...s, rng: { seed: 500 + i, counter: 0 } })
-      expect(r.effects.some((e) => e.source === 'event:rescue_contact')).toBe(false)
+      const pick = determineAutoEvent({ ...s, rng: { seed: 500 + i, counter: 0 } })
+      expect(pick.eventId).not.toBe('rescue_contact')
     }
   })
 

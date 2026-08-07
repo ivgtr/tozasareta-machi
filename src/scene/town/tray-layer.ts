@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import type { GameState, Unit } from '../../game/types'
 import { COLORS, TEXT_SIZE, colorCss } from '../tokens'
 import { expeditionUnits, unassignedUnits, type PlanState } from '../plan'
-import { TOKEN_HIT, reconcileTokens, type UnitToken } from '../ui/token'
+import { TOKEN_HIT, reconcileTokens } from '../ui/token'
 import { pixelText } from '../ui/pixel-text'
 import type { DeviceClass } from '../layout'
 
@@ -21,8 +21,9 @@ export class TrayLayer extends Phaser.GameObjects.Container {
   private readonly header: Phaser.GameObjects.Text
   private readonly awayHeader: Phaser.GameObjects.Text
   private readonly row: Phaser.GameObjects.Container
+  private readonly rowBadges: Phaser.GameObjects.Container
   private readonly awayRow: Phaser.GameObjects.Container
-  private readonly awayBadges = new Map<string, Phaser.GameObjects.Text>()
+  private readonly awayRowBadges: Phaser.GameObjects.Container
   private readonly callbacks: TrayCallbacks
   private trayWidth = 0
   private trayHeight = 0
@@ -37,8 +38,18 @@ export class TrayLayer extends Phaser.GameObjects.Container {
     this.awayHeader = pixelText(scene, '', { fontSize: TEXT_SIZE.labelWide, color: COLORS.inkDim })
     this.awayHeader.setPosition(8, 0)
     this.row = scene.add.container(8, HEADER_HEIGHT + ROW_HEIGHT / 2)
+    this.rowBadges = scene.add.container(8, HEADER_HEIGHT + ROW_HEIGHT / 2)
     this.awayRow = scene.add.container(8, 0)
-    this.add([this.bg, this.header, this.awayHeader, this.row, this.awayRow])
+    this.awayRowBadges = scene.add.container(8, 0)
+    this.add([
+      this.bg,
+      this.header,
+      this.awayHeader,
+      this.row,
+      this.rowBadges,
+      this.awayRow,
+      this.awayRowBadges,
+    ])
     scene.add.existing(this)
   }
 
@@ -83,10 +94,14 @@ export class TrayLayer extends Phaser.GameObjects.Container {
     this.header.setVisible(false)
     this.awayHeader.setVisible(false)
     this.row.setPosition(8, this.trayHeight / 2)
+    this.rowBadges.setPosition(8, this.trayHeight / 2)
     this.awayRow.removeAll(true)
+    this.awayRowBadges.removeAll(true)
     this.awayRow.setVisible(false)
+    this.awayRowBadges.setVisible(false)
     this.syncRow(
       this.row,
+      this.rowBadges,
       state,
       [...unassigned.map((u) => u.id), ...away.map((u) => u.id)],
       selectedUnitId,
@@ -104,8 +119,10 @@ export class TrayLayer extends Phaser.GameObjects.Container {
     this.header.setVisible(true)
     this.header.setText(`待機中の人員（${unassigned.length}）`)
     this.row.setPosition(8, HEADER_HEIGHT + ROW_HEIGHT / 2)
+    this.rowBadges.setPosition(8, HEADER_HEIGHT + ROW_HEIGHT / 2)
     this.syncRow(
       this.row,
+      this.rowBadges,
       state,
       unassigned.map((u) => u.id),
       selectedUnitId,
@@ -115,18 +132,26 @@ export class TrayLayer extends Phaser.GameObjects.Container {
     const showAway = away.length > 0
     this.awayHeader.setVisible(showAway)
     this.awayRow.setVisible(showAway)
+    this.awayRowBadges.setVisible(showAway)
     if (showAway) {
       this.awayHeader.setText(`探索中（${away.length}）`)
-      this.awayHeader.setY(HEADER_HEIGHT + ROW_HEIGHT + 4)
-      this.awayRow.setY(HEADER_HEIGHT + ROW_HEIGHT + 4 + HEADER_HEIGHT + ROW_HEIGHT / 2)
+      const headerY = HEADER_HEIGHT + ROW_HEIGHT + 4
+      const rowY = headerY + HEADER_HEIGHT + ROW_HEIGHT / 2
+      this.awayHeader.setY(headerY)
+      this.awayRow.setY(rowY)
+      this.awayRowBadges.setY(rowY)
       this.syncRow(
         this.awayRow,
+        this.awayRowBadges,
         state,
         away.map((u) => u.id),
         null,
         1,
         away.map((u) => u.id),
       )
+    } else {
+      this.awayRow.removeAll(true)
+      this.awayRowBadges.removeAll(true)
     }
   }
 
@@ -137,18 +162,19 @@ export class TrayLayer extends Phaser.GameObjects.Container {
   }
 
   private syncRow(
-    host: Phaser.GameObjects.Container,
+    tokenHost: Phaser.GameObjects.Container,
+    badgeHost: Phaser.GameObjects.Container,
     state: GameState,
     unitIds: string[],
     selectedUnitId: string | null,
     scale: number,
     awayIds: string[],
   ): void {
-    const { tokens } = reconcileTokens(this.scene, host, state, unitIds, {
+    const { tokens } = reconcileTokens(this.scene, tokenHost, state, unitIds, {
       unitOptions: { scale },
       onPointerDown: (id, x, y) => this.callbacks.onTokenPointerDown(id, x, y),
-      onRemoved: (id) => this.removeAwayBadge(host, id),
     })
+    badgeHost.removeAll(true)
     const awaySet = new Set(awayIds)
     const pitch = this.pitchFor(unitIds.length)
     tokens.forEach((token, i) => {
@@ -162,32 +188,18 @@ export class TrayLayer extends Phaser.GameObjects.Container {
       }
       token.setPosition(i * pitch + TOKEN_HIT / 2, 0)
       token.setSelected(selectedUnitId === id)
-      if (awaySet.has(id)) this.ensureAwayBadge(host, id, token)
-      else this.removeAwayBadge(host, id)
+      if (awaySet.has(id)) this.addAwayBadge(badgeHost, token.x, token.y)
     })
   }
 
-  private ensureAwayBadge(host: Phaser.GameObjects.Container, id: string, token: UnitToken): void {
-    let badge = this.awayBadges.get(id)
-    if (!badge) {
-      badge = pixelText(this.scene, '探', {
-        fontSize: TEXT_SIZE.labelNarrow,
-        color: COLORS.night900,
-        backgroundColor: colorCss(COLORS.cyan),
-      })
-      badge.setOrigin(1, 0)
-      this.awayBadges.set(id, badge)
-      host.add(badge)
-    }
-    badge.setPosition(token.x + 17, token.y - 17)
-  }
-
-  private removeAwayBadge(host: Phaser.GameObjects.Container, id: string): void {
-    const badge = this.awayBadges.get(id)
-    if (badge) {
-      host.remove(badge)
-      badge.destroy()
-      this.awayBadges.delete(id)
-    }
+  private addAwayBadge(host: Phaser.GameObjects.Container, x: number, y: number): void {
+    const badge = pixelText(this.scene, '探', {
+      fontSize: TEXT_SIZE.labelNarrow,
+      color: COLORS.night900,
+      backgroundColor: colorCss(COLORS.cyan),
+    })
+    badge.setOrigin(1, 0)
+    badge.setPosition(x + 17, y - 17)
+    host.add(badge)
   }
 }

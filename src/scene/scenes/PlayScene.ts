@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { KEYS, SCENE_EVENTS } from '../keys'
 import { COLORS } from '../tokens'
-import { deviceClassOf, readSafeInsets, type SafeInsets } from '../layout'
+import { deviceClassOf, readSafeInsets, toLogicalSafeInsets } from '../layout'
 import { computeRegions, type Regions } from '../regions'
 import { randomSeed } from '../../store'
 import { sharedStore, type SceneStore } from '../store-bridge'
@@ -44,7 +44,6 @@ export class PlayScene extends Phaser.Scene {
   private plan: PlanState = emptyPlan()
   private selectedUnitId: string | null = null
   private selectedFacility: FacilityId | null = null
-  private insets: SafeInsets = readSafeInsets()
   private regions!: Regions
   private town!: TownLayer
   private tray!: TrayLayer
@@ -295,7 +294,23 @@ export class PlayScene extends Phaser.Scene {
   private layout(): void {
     const { width, height } = this.scale.gameSize
     const deviceClass = deviceClassOf(window.innerWidth)
-    this.regions = computeRegions(deviceClass, width, height, this.insets)
+    const canvas = this.game.canvas.getBoundingClientRect()
+    const insets = toLogicalSafeInsets(
+      readSafeInsets(),
+      window.innerWidth,
+      window.innerHeight,
+      {
+        left: canvas.left,
+        top: canvas.top,
+        right: canvas.right,
+        bottom: canvas.bottom,
+        width: canvas.width,
+        height: canvas.height,
+      },
+      width,
+      height,
+    )
+    this.regions = computeRegions(deviceClass, width, height, insets)
     const regions = this.regions
     const scale = Math.min(
       regions.town.width / TOWN_BASE.width,

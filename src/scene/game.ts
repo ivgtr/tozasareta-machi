@@ -37,10 +37,11 @@ function watchDeviceClass(game: Phaser.Game): void {
   let current: DeviceClass = deviceClassOf(window.innerWidth)
   const apply = (): void => {
     const next = deviceClassOf(window.innerWidth)
-    if (next === current) return
-    current = next
-    const size = designSizeOf(next)
-    game.scale.setGameSize(size.width, size.height)
+    if (next !== current) {
+      current = next
+      const size = designSizeOf(next)
+      game.scale.setGameSize(size.width, size.height)
+    }
     game.events.emit(SCENE_EVENTS.deviceClass, next)
   }
   window.addEventListener('resize', apply)

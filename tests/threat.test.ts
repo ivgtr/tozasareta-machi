@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/game/state'
-import { determineDayEvents } from '../src/game/events'
+import { determineAutoEvent } from '../src/game/events'
 import { EVENTS } from '../src/game/data/events-data'
 import { BALANCE } from '../src/game/data/balance'
 import { actOf, slackCount, threatLevel, threatWeightMult } from '../src/game/threat'
@@ -186,10 +186,10 @@ describe('threatLevel / threatWeightMult', () => {
   })
 })
 
-describe('determineDayEvents のスケーリング', () => {
+describe('自動イベント抽選のスケーリング', () => {
   it('同じ状態なら同じ抽選結果（決定性）', () => {
     const s: GameState = { ...base(), day: 15 }
-    expect(determineDayEvents(s)).toEqual(determineDayEvents(s))
+    expect(determineAutoEvent(s)).toEqual(determineAutoEvent(s))
   })
 
   it('脅威度が高いほど threat トーンの発火割合が上がる', () => {
@@ -204,12 +204,10 @@ describe('determineDayEvents のスケーリング', () => {
       let threat = 0
       let total = 0
       for (let i = 0; i < 400; i++) {
-        const { eventIds } = determineDayEvents({ ...root, rng: { seed: 5000 + i, counter: 0 } })
-        const auto = eventIds.filter((id) => toneOf(id) !== undefined)
-        for (const id of auto) {
-          total += 1
-          if (toneOf(id) === 'threat') threat += 1
-        }
+        const { eventId } = determineAutoEvent({ ...root, rng: { seed: 5000 + i, counter: 0 } })
+        if (!eventId || toneOf(eventId) === undefined) continue
+        total += 1
+        if (toneOf(eventId) === 'threat') threat += 1
       }
       return threat / total
     }

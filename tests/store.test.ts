@@ -119,11 +119,12 @@ describe('persistence', () => {
     const uniqueUnit = { ...s.state.units[0]!, unique: true }
     const uniqueState: GameState = {
       ...s.state,
+      day: 2,
       units: [uniqueUnit, ...s.state.units.slice(1)],
     }
     const store: StoreState = {
       state: uniqueState,
-      history: [{ ...uniqueState, day: uniqueState.day - 1 }],
+      history: [{ ...uniqueState, day: 1 }],
     }
     const parsed = parseStore(serializeStore(store))
     expect(parsed?.state.units[0]?.unique).toBe(true)
@@ -148,6 +149,25 @@ describe('persistence', () => {
     delete raw.store.state.resources
     expect(parseStore(JSON.stringify(raw))).toBeNull()
   })
+
+  it('resource範囲を外れたstateは拒否する', () => {
+    const s = fresh()
+    const invalid: StoreState = {
+      ...s,
+      state: { ...s.state, resources: { ...s.state.resources, power: 101 } },
+    }
+    expect(parseStore(serializeStore(invalid))).toBeNull()
+  })
+
+  it('重複したunit IDを持つstateは拒否する', () => {
+    const s = fresh()
+    const duplicate = { ...s.state.units[1]!, id: s.state.units[0]!.id }
+    const invalid: StoreState = {
+      ...s,
+      state: { ...s.state, units: [s.state.units[0]!, duplicate, ...s.state.units.slice(2)] },
+    }
+    expect(parseStore(serializeStore(invalid))).toBeNull()
+  })
 })
 
 describe('portrait normalization', () => {
@@ -157,13 +177,14 @@ describe('portrait normalization', () => {
     const s = fresh()
     const state = {
       ...s.state,
+      day: 2,
       units: [
         ...s.state.units,
         { ...s.state.units[0]!, id: 'recruit_5', name: 'テスト', portrait: 'recruit_5' },
         { ...s.state.units[0]!, id: 'recruit_8', name: 'テスト2', portrait: 'recruit_8' },
       ],
     }
-    const history = [{ ...state, day: state.day - 1 }]
+    const history = [{ ...state, day: 1 }]
     return JSON.stringify({ version: state.version, store: { state, history } })
   }
 

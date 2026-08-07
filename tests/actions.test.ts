@@ -165,7 +165,7 @@ describe('sanitizePlan', () => {
 })
 
 describe('autoAssign', () => {
-  it('全ユニットを重複なく配置する', () => {
+  it('ユニットを重複なく配置する', () => {
     const s = base()
     const plan = autoAssign(s)
     const ids = plan.placements.flatMap((p) => p.unitIds)
@@ -174,5 +174,24 @@ describe('autoAssign', () => {
     for (const id of ids) {
       expect(s.units.some((u) => u.id === id)).toBe(true)
     }
+  })
+
+  it('既に上限100の資源へTaskを割り当てない', () => {
+    const s: GameState = {
+      ...base(),
+      resources: { food: 100, power: 100, medical: 100, morale: 100 },
+    }
+    const plan = autoAssign(s)
+    expect(plan.placements.every((placement) => placement.task === 'restore_road')).toBe(true)
+  })
+
+  it('電力が不足しているとき技術者を発電設備へ優先配置する', () => {
+    const s: GameState = {
+      ...base(),
+      resources: { food: 100, power: 0, medical: 100, morale: 100 },
+    }
+    const plan = autoAssign(s)
+    const repair = plan.placements.find((placement) => placement.task === 'repair_power')
+    expect(repair?.unitIds).toContain('engineer')
   })
 })
