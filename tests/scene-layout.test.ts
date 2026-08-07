@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { NO_INSETS, deviceClassOf, designSizeOf } from '../src/scene/layout'
+import { NO_INSETS, deviceClassOf, designSizeOf, toLogicalSafeInsets } from '../src/scene/layout'
 import { computeRegions } from '../src/scene/regions'
 import { colorCss, colorNum } from '../src/scene/tokens'
 
@@ -16,6 +16,23 @@ describe('designSizeOf', () => {
   it('docs/22 §4.4 の設計サイズ', () => {
     expect(designSizeOf('wide')).toEqual({ width: 1280, height: 720 })
     expect(designSizeOf('narrow')).toEqual({ width: 480, height: 854 })
+  })
+})
+
+describe('safe-area conversion', () => {
+  it('canvas外の余白を差し引いてlogical座標へ変換する', () => {
+    const insets = toLogicalSafeInsets(
+      { top: 30, right: 20, bottom: 10, left: 30 },
+      400,
+      800,
+      { left: 20, top: 10, right: 380, bottom: 790, width: 360, height: 780 },
+      480,
+      854,
+    )
+    expect(insets.left).toBeCloseTo((10 * 480) / 360)
+    expect(insets.right).toBe(0)
+    expect(insets.top).toBeCloseTo((20 * 854) / 780)
+    expect(insets.bottom).toBe(0)
   })
 })
 

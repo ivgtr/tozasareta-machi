@@ -37,6 +37,8 @@ jobs:
         run: npm run build
       - name: Install Chromium
         run: npm run playwright -- install --with-deps chromium
+      - name: Production build smoke test
+        run: npm run test:prod
       - name: Browser regression tests
         run: npm run test:e2e
       - name: Upload browser test artifacts

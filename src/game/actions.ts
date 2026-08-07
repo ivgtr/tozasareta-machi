@@ -139,6 +139,12 @@ export function isOnExpedition(u: Unit): boolean {
   return u.expedition !== undefined
 }
 
+function isResourceAtCap(state: GameState, task: TaskId): boolean {
+  const output = TASK_DEFS[task].output
+  if (!output || output.resource === 'food') return false
+  return state.resources[output.resource] >= 100
+}
+
 export function autoAssign(state: GameState): DayPlan {
   const buckets = Object.fromEntries(TASK_IDS.map((task) => [task, [] as string[]])) as Record<
     TaskId,
@@ -153,14 +159,14 @@ export function autoAssign(state: GameState): DayPlan {
     let bestTask: TaskId | null = null
     let bestVal = 0
     for (const t of PHYSICAL_TASKS) {
-      if (isTaskDisabled(state.modifiers, t)) continue
+      if (isTaskDisabled(state.modifiers, t) || isResourceAtCap(state, t)) continue
       const cost = taskCost(t)
-      const wouldExceed = budget - cost.budget < 0 || stockpile - cost.stockpile < 0
       const alreadyPaid = buckets[t].length > 0
+      const wouldExceed = budget - cost.budget < 0 || stockpile - cost.stockpile < 0
       if (!alreadyPaid && wouldExceed) continue
+      const before: Placement = { task: t, unitIds: buckets[t] }
       const trial: Placement = { task: t, unitIds: [...buckets[t], u.id] }
-      const gain =
-        placementValue(state, trial) - placementValue(state, { task: t, unitIds: buckets[t] })
+      const gain = placementValue(state, trial) - placementValue(state, before)
       if (gain > bestVal) {
         bestVal = gain
         bestTask = t

@@ -5,6 +5,7 @@ import { PHYSICAL_TASKS, autoAssign, taskCost } from '../src/game/actions'
 import { nextRandom } from '../src/game/rng'
 import { actOf, slackCount } from '../src/game/threat'
 import { findEvent } from '../src/game/events'
+import { isGameStateSemanticallyValid } from '../src/game/invariants'
 import type { DayPlan, Effect, Ending, GameState, RngState, TaskId } from '../src/game/types'
 
 function shuffle<T>(arr: T[], rng: RngState): { list: T[]; rng: RngState } {
@@ -56,30 +57,7 @@ function randomPlan(state: GameState, rng: RngState): { plan: DayPlan; rng: RngS
 }
 
 function assertInvariants(s: GameState) {
-  const nums = [
-    s.resources.food,
-    s.resources.power,
-    s.resources.medical,
-    s.resources.morale,
-    s.budget,
-    s.stockpile,
-    s.flags.casualties,
-    s.units.length,
-  ]
-  for (const n of nums) expect(Number.isNaN(n)).toBe(false)
-  expect(s.resources.morale).toBeGreaterThanOrEqual(0)
-  expect(s.resources.morale).toBeLessThanOrEqual(100)
-  expect(s.resources.power).toBeGreaterThanOrEqual(0)
-  expect(s.resources.power).toBeLessThanOrEqual(100)
-  expect(s.resources.medical).toBeGreaterThanOrEqual(0)
-  expect(s.resources.medical).toBeLessThanOrEqual(100)
-  expect(s.resources.food).toBeGreaterThanOrEqual(0)
-  expect(s.budget).toBeGreaterThanOrEqual(0)
-  expect(s.stockpile).toBeGreaterThanOrEqual(0)
-  expect(s.flags.casualties).toBeGreaterThanOrEqual(0)
-  expect(s.units.length).toBeGreaterThanOrEqual(0)
-  expect(s.day).toBeLessThanOrEqual(31)
-  expect(new Set(s.flags.fired).size).toBe(s.flags.fired.length)
+  expect(isGameStateSemanticallyValid(s)).toBe(true)
 }
 
 type PlanStrategy = (state: GameState, rng: RngState) => { plan: DayPlan; rng: RngState }
@@ -266,6 +244,7 @@ describe('simulation', () => {
     )
     logStats('random', GAMES, stats)
     expectSlackInvariant(stats)
+    expect(survived).toBeLessThanOrEqual(10)
   })
 
   it('おまかせ配置（熟練）で不変条件が保たれ、必ず終了する', () => {
@@ -278,5 +257,7 @@ describe('simulation', () => {
     )
     logStats('skilled', GAMES, stats)
     expectSlackInvariant(stats)
+    expect(survived).toBeGreaterThanOrEqual(20)
+    expect(survived).toBeLessThanOrEqual(45)
   })
 })

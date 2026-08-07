@@ -5,6 +5,7 @@ import { recoverInvalidChoice, step } from '../game/engine'
 import { choiceOptions, findEvent, isEventEligible } from '../game/events'
 import { SAVE_VERSION } from '../game/data/balance'
 import { RANDOM_PORTRAIT_IDS, selectRandomPortrait } from '../game/data/units'
+import { isGameStateSemanticallyValid } from '../game/invariants'
 
 export interface StoreState {
   state: GameState
@@ -272,7 +273,11 @@ export function parseStore(json: string): StoreState | null {
     }
     const parsed = SaveDataSchema.safeParse(raw)
     if (!parsed.success || parsed.data.version !== SAVE_VERSION) return null
-    return normalizeStateIntegrity(normalizePortraits(parsed.data.store))
+    const store = normalizeStateIntegrity(normalizePortraits(parsed.data.store))
+    if (store.history.length > HISTORY_LIMIT) return null
+    if (!isGameStateSemanticallyValid(store.state)) return null
+    if (store.history.some((state) => !isGameStateSemanticallyValid(state))) return null
+    return store
   } catch {
     return null
   }

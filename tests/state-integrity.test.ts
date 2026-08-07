@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { applyEffects } from '../src/game/effects'
-import { applyAutoEvent, determineDayEvents, isEventEligible } from '../src/game/events'
+import { applyAutoEvent, isEventEligible } from '../src/game/events'
 import { EVENTS } from '../src/game/data/events-data'
 import { step } from '../src/game/engine'
 import { createInitialState } from '../src/game/state'
 import { parseStore, serializeStore, type StoreState } from '../src/store'
-import type { GameState } from '../src/game/types'
+import type { DayPlan, GameState } from '../src/game/types'
+
+const emptyPlan: DayPlan = { placements: [], ration: false, procure: false }
 
 function lowPowerState(seed = 1): GameState {
   const initial = createInitialState(seed)
@@ -51,15 +53,22 @@ describe('event sequencing', () => {
     expect(isEventEligible(after, crisis)).toBe(false)
   })
 
-  it('power_restored が選ばれた日は power_crisis を同時に予約しない', () => {
+  it('productionのstep経路でもpower_restored後にpower_crisisを予約しない', () => {
     const root = lowPowerState()
+    const prepared: GameState = {
+      ...root,
+      resources: { ...root.resources, power: 30 },
+    }
     let restoredCount = 0
 
     for (let seed = 1; seed <= 1000; seed++) {
-      const { eventIds } = determineDayEvents({ ...root, rng: { seed, counter: 0 } })
-      if (eventIds[0] !== 'power_restored') continue
+      const result = step(
+        { ...prepared, rng: { seed, counter: 0 } },
+        { type: 'commitDay', plan: emptyPlan },
+      )
+      if (!result.effects.some((effect) => effect.source === 'event:power_restored')) continue
       restoredCount += 1
-      expect(eventIds).not.toContain('power_crisis')
+      expect(result.state.pendingChoice?.eventId).not.toBe('power_crisis')
     }
 
     expect(restoredCount).toBeGreaterThan(0)
