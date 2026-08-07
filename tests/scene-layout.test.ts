@@ -37,40 +37,27 @@ describe('safe-area conversion', () => {
 })
 
 describe('computeRegions', () => {
-  it('wide planning は詳細欄を予約せず町を下端操作列まで広げる', () => {
+  it('wide は町・キャラクターデッキ・計画操作を明確な3層に分ける', () => {
     const r = computeRegions('wide', 1280, 720, NO_INSETS)
     expect(r.hud).toEqual({ x: 0, y: 0, width: 1280, height: 48 })
-    expect(r.town.height).toBe(624)
-    expect(r.strip.height).toBe(48)
-    expect(r.tray.width).toBe(480)
-    expect(r.strip.width).toBe(800)
-    expect(r.detail).toBeNull()
-    expect(r.hud.height + r.town.height + r.strip.height).toBe(720)
-    expect(r.tray.x).toBe(r.strip.x + r.strip.width)
+    expect(r.town).toEqual({ x: 0, y: 48, width: 1280, height: 512 })
+    expect(r.deck).toEqual({ x: 0, y: 560, width: 1280, height: 112 })
+    expect(r.strip).toEqual({ x: 0, y: 672, width: 1280, height: 48 })
+    expect(r.hud.height + r.town.height + r.deck.height + r.strip.height).toBe(720)
   })
 
-  it('wide focus は詳細欄を確保し既存の操作密度を維持する', () => {
-    const r = computeRegions('wide', 1280, 720, NO_INSETS, 'unit-focus')
-    expect(r.town.height).toBe(460)
-    expect(r.detail).toEqual({ x: 0, y: 556, width: 1280, height: 164 })
-    expect(r.strip.y + r.strip.height).toBe(r.detail?.y)
-    expect(r.hud.height + r.town.height + r.strip.height + (r.detail?.height ?? 0)).toBe(720)
+  it('narrow でも人物カードを確保しつつ町を主領域にする', () => {
+    const r = computeRegions('narrow', 480, 854, NO_INSETS)
+    expect(r.hud.height).toBe(44)
+    expect(r.town).toEqual({ x: 0, y: 44, width: 480, height: 644 })
+    expect(r.deck).toEqual({ x: 0, y: 688, width: 480, height: 118 })
+    expect(r.strip).toEqual({ x: 0, y: 806, width: 480, height: 48 })
   })
 
-  it('narrow は通常時に詳細を持たず、focus時だけトレイ上へ重ねる', () => {
-    const planning = computeRegions('narrow', 480, 854, NO_INSETS)
-    expect(planning.hud.height).toBe(44)
-    expect(planning.town.height).toBe(380)
-    expect(planning.strip.height).toBe(48)
-    expect(planning.strip.y + planning.strip.height).toBe(854)
-    expect(planning.tray.y).toBe(planning.town.y + planning.town.height)
-    expect(planning.detail).toBeNull()
-
-    const focus = computeRegions('narrow', 480, 854, NO_INSETS, 'facility-focus')
-    expect(focus.detail?.height).toBe(220)
-    expect((focus.detail?.y ?? 0) + (focus.detail?.height ?? 0)).toBe(focus.strip.y)
-    expect(focus.town).toEqual(planning.town)
-    expect(focus.tray).toEqual(planning.tray)
+  it('基本領域はpresentation modeに依存せず安定する', () => {
+    const first = computeRegions('wide', 1280, 720, NO_INSETS)
+    const second = computeRegions('wide', 1280, 720, NO_INSETS)
+    expect(second).toEqual(first)
   })
 
   it('セーフエリア inset があるときのみ 8px ガードが効く', () => {
@@ -84,14 +71,7 @@ describe('computeRegions', () => {
     })
     expect(notched.hud.y).toBe(20)
     expect(notched.strip.y + notched.strip.height + 12).toBe(720)
-    const focused = computeRegions(
-      'wide',
-      1280,
-      720,
-      { top: 20, right: 0, bottom: 12, left: 0 },
-      'unit-focus',
-    )
-    expect((focused.detail?.y ?? 0) + (focused.detail?.height ?? 0) + 12).toBe(720)
+    expect(notched.deck.y + notched.deck.height).toBe(notched.strip.y)
     const tiny = computeRegions('wide', 1280, 720, { top: 4, right: 0, bottom: 0, left: 0 })
     expect(tiny.hud.y).toBe(8)
   })

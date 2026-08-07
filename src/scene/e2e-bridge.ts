@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { KEYS } from './keys'
 import { deviceClassOf } from './layout'
 import { sharedStore } from './store-bridge'
+import type { PresentationMode } from './presentation'
 
 interface CssBounds {
   x: number
@@ -13,8 +14,9 @@ interface CssBounds {
 interface PlaySceneInternals {
   menu?: { isOpen: boolean }
   confirm?: { isOpen: boolean }
-  unitDetails?: { isOpen: boolean }
+  characterFocus?: { isOpen: boolean }
   playback?: { current: unknown | null }
+  presentation?: { mode: PresentationMode }
   selectedUnitId?: string | null
 }
 
@@ -25,7 +27,8 @@ interface E2ESnapshot {
   historyLength: number
   menuOpen: boolean
   confirmOpen: boolean
-  unitDetailsOpen: boolean
+  characterFocusOpen: boolean
+  presentationMode: PresentationMode
   busy: boolean
   selectedUnitId: string | null
   deviceClass: 'wide' | 'narrow'
@@ -130,7 +133,8 @@ function snapshot(game: Phaser.Game): E2ESnapshot {
     historyLength: store.history.length,
     menuOpen: play.menu?.isOpen ?? false,
     confirmOpen: play.confirm?.isOpen ?? false,
-    unitDetailsOpen: play.unitDetails?.isOpen ?? false,
+    characterFocusOpen: play.characterFocus?.isOpen ?? false,
+    presentationMode: play.presentation?.mode ?? 'planning',
     busy: play.playback?.current != null,
     selectedUnitId: play.selectedUnitId ?? null,
     deviceClass: deviceClassOf(window.innerWidth),

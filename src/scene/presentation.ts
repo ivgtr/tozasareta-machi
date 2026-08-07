@@ -25,11 +25,6 @@ export interface PresentationInput {
 export interface PresentationFrame {
   mode: PresentationMode
   changed: boolean
-  showDetail: boolean
-}
-
-export function isFocusPresentation(mode: PresentationMode): boolean {
-  return mode === 'unit-focus' || mode === 'facility-focus'
 }
 
 export function derivePresentationMode(input: PresentationInput): PresentationMode {
@@ -50,11 +45,7 @@ export class PresentationDirector {
     const mode = derivePresentationMode(input)
     const changed = mode !== this.currentMode
     this.currentMode = mode
-    return {
-      mode,
-      changed,
-      showDetail: isFocusPresentation(mode),
-    }
+    return { mode, changed }
   }
 
   get mode(): PresentationMode {

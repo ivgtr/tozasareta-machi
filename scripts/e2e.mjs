@@ -201,19 +201,22 @@ try {
   await startServer()
   browser = await chromium.launch({ headless: true })
 
-  await test('ユニット詳細を閉じた後に再表示できる', async () => {
-    await withGame('unit-details', {}, async (page) => {
+  await test('人物フォーカスを閉じた後に再表示できる', async () => {
+    await withGame('character-focus', {}, async (page) => {
       await startNewGame(page)
       await clickFirstUnit(page)
-      await clickText(page, '詳細')
-      await page.waitForFunction((name) => globalThis[name]?.snapshot().unitDetailsOpen, BRIDGE)
-      await capture(page, 'unit-details-first-open')
+      await page.waitForFunction((name) => globalThis[name]?.snapshot().characterFocusOpen, BRIDGE)
+      await page.waitForFunction(
+        (name) => globalThis[name]?.snapshot().presentationMode === 'unit-focus',
+        BRIDGE,
+      )
+      await capture(page, 'character-focus-first-open')
 
       await clickText(page, '閉じる')
-      await page.waitForFunction((name) => !globalThis[name]?.snapshot().unitDetailsOpen, BRIDGE)
-      await clickText(page, '詳細')
-      await page.waitForFunction((name) => globalThis[name]?.snapshot().unitDetailsOpen, BRIDGE)
-      await capture(page, 'unit-details-second-open')
+      await page.waitForFunction((name) => !globalThis[name]?.snapshot().characterFocusOpen, BRIDGE)
+      await clickFirstUnit(page)
+      await page.waitForFunction((name) => globalThis[name]?.snapshot().characterFocusOpen, BRIDGE)
+      await capture(page, 'character-focus-second-open')
     })
   })
 

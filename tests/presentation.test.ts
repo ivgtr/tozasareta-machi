@@ -58,24 +58,21 @@ describe('derivePresentationMode', () => {
 })
 
 describe('PresentationDirector', () => {
-  it('mode変更と詳細表示を一箇所で管理する', () => {
+  it('表示モードの変更だけを一箇所で管理する', () => {
     const director = new PresentationDirector()
 
     expect(director.resolve(input())).toEqual({
       mode: 'planning',
       changed: false,
-      showDetail: false,
     })
     expect(director.resolve(input({ selectedUnitId: 'u1' }))).toEqual({
       mode: 'unit-focus',
       changed: true,
-      showDetail: true,
     })
     expect(director.mode).toBe('unit-focus')
     expect(director.resolve(input({ beat: beat('event') }))).toEqual({
       mode: 'event',
       changed: true,
-      showDetail: false,
     })
   })
 })
