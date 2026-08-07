@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
-import type { GameState, TaskId } from '../game/types'
+import type { GameState } from '../game/types'
 import { BALANCE } from '../game/data/balance'
-import { PHYSICAL_TASKS } from '../game/actions'
+import { PHYSICAL_TASKS } from '../game/data/tasks'
 import { COLORS, SPACING, TEXT_SIZE, colorCss } from './tokens'
 import { spentOf, type PlanState } from './plan'
 import { PixelButton } from './ui/button'
@@ -10,13 +10,7 @@ import { drawArtSlot } from './ui/art-slot'
 import type { Rect } from './regions'
 import type { DeviceClass } from './layout'
 
-export const TASK_LABEL: Record<TaskId, string> = {
-  repair_power: '発電所の修理',
-  restore_road: '道路復旧',
-  reinforce_medical: '医療班増員',
-  soup_kitchen: '炊き出し',
-  ration: '節約配給',
-}
+export { TASK_LABEL } from './task-presentation'
 
 export interface StripCallbacks {
   onAuto: () => void

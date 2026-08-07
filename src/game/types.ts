@@ -1,5 +1,12 @@
-export type TaskId =
-  'repair_power' | 'restore_road' | 'reinforce_medical' | 'soup_kitchen' | 'ration'
+export const TASK_IDS = [
+  'repair_power',
+  'restore_road',
+  'reinforce_medical',
+  'soup_kitchen',
+  'ration',
+] as const
+
+export type TaskId = (typeof TASK_IDS)[number]
 
 export type Aptitude = 'labor' | 'tech' | 'medical' | 'charm'
 
@@ -22,6 +29,8 @@ export interface Unit {
   expedition?: number
 }
 
+export type UnitChange = { kind: 'sync'; unit: Unit } | { kind: 'remove'; unitId: string }
+
 export type NumericFlag =
   'daysWithoutMedical' | 'daysFoodCut' | 'casualties' | 'refugeesAccepted' | 'cooperation'
 
@@ -39,6 +48,7 @@ export interface Effect {
   target: EffectTarget
   delta: number
   reason: string
+  unitChanges?: UnitChange[]
 }
 
 export interface StateEffect extends Effect {

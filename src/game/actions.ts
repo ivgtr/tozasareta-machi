@@ -1,62 +1,25 @@
-import type { Aptitude, DayPlan, Effect, GameState, Placement, TaskId, Unit } from './types'
+import {
+  TASK_IDS,
+  type Aptitude,
+  type DayPlan,
+  type Effect,
+  type GameState,
+  type Placement,
+  type TaskId,
+  type Unit,
+} from './types'
 import { BALANCE } from './data/balance'
+import { PHYSICAL_TASKS, TASK_DEFS } from './data/tasks'
 import { isTaskDisabled, queryMult } from './modifiers'
 
-export const PHYSICAL_TASKS: TaskId[] = [
-  'repair_power',
-  'restore_road',
-  'reinforce_medical',
-  'soup_kitchen',
-]
+export { PHYSICAL_TASKS } from './data/tasks'
 
-export const TASK_APT: Record<TaskId, Aptitude | null> = {
-  repair_power: 'tech',
-  restore_road: 'labor',
-  reinforce_medical: 'medical',
-  soup_kitchen: 'charm',
-  ration: null,
-}
-
-const TASK_RES: Record<
-  TaskId,
-  { res: 'food' | 'power' | 'medical' | 'morale'; base: number; coef: number } | null
-> = {
-  repair_power: {
-    res: 'power',
-    base: BALANCE.effect.repair.base,
-    coef: BALANCE.effect.repair.coef,
-  },
-  restore_road: { res: 'food', base: BALANCE.effect.road.base, coef: BALANCE.effect.road.coef },
-  reinforce_medical: {
-    res: 'medical',
-    base: BALANCE.effect.medical.base,
-    coef: BALANCE.effect.medical.coef,
-  },
-  soup_kitchen: { res: 'morale', base: BALANCE.effect.soup.base, coef: BALANCE.effect.soup.coef },
-  ration: null,
-}
-
-const TASK_REASON: Record<TaskId, string> = {
-  repair_power: '発電設備を修理し、電力が回復した',
-  restore_road: '道路を復旧し、食料を搬入した',
-  reinforce_medical: '医療班を増員した',
-  soup_kitchen: '炊き出しを行い、住民が元気を取り戻した',
-  ration: '',
-}
+export const TASK_APT = Object.fromEntries(
+  Object.entries(TASK_DEFS).map(([task, def]) => [task, def.aptitude]),
+) as Record<TaskId, Aptitude | null>
 
 export function taskCost(task: TaskId): { budget: number; stockpile: number } {
-  const t = BALANCE.tasks
-  return {
-    budget:
-      task === 'repair_power'
-        ? t.repair_power.budget
-        : task === 'reinforce_medical'
-          ? t.reinforce_medical.budget
-          : task === 'soup_kitchen'
-            ? t.soup_kitchen.budget
-            : 0,
-    stockpile: 0,
-  }
+  return TASK_DEFS[task].cost
 }
 
 export function effectMult(unit: Unit): number {
@@ -84,8 +47,9 @@ function unitsOnTask(state: GameState, placement: Placement): Unit[] {
 }
 
 export function placementValue(state: GameState, placement: Placement): number {
-  const spec = TASK_RES[placement.task]
-  const apt = TASK_APT[placement.task]
+  const definition = TASK_DEFS[placement.task]
+  const spec = definition.output
+  const apt = definition.aptitude
   if (!spec || !apt) return 0
   const onTask = unitsOnTask(state, placement)
   if (onTask.length === 0) return 0
@@ -105,13 +69,14 @@ export function placementValue(state: GameState, placement: Placement): number {
 }
 
 export function resolvePlacement(state: GameState, placement: Placement): Effect[] {
-  const spec = TASK_RES[placement.task]
+  const definition = TASK_DEFS[placement.task]
+  const spec = definition.output
   if (!spec) return []
   const onTask = unitsOnTask(state, placement)
   if (onTask.length === 0) return []
   const day = state.day
   const effects: Effect[] = []
-  const cost = taskCost(placement.task)
+  const cost = definition.cost
   if (cost.budget > 0)
     effects.push({
       day,
@@ -131,9 +96,9 @@ export function resolvePlacement(state: GameState, placement: Placement): Effect
   effects.push({
     day,
     source: `task:${placement.task}`,
-    target: spec.res,
+    target: spec.resource,
     delta: placementValue(state, placement),
-    reason: TASK_REASON[placement.task],
+    reason: definition.reason,
   })
   return effects
 }
@@ -175,13 +140,10 @@ export function isOnExpedition(u: Unit): boolean {
 }
 
 export function autoAssign(state: GameState): DayPlan {
-  const buckets: Record<TaskId, string[]> = {
-    repair_power: [],
-    restore_road: [],
-    reinforce_medical: [],
-    soup_kitchen: [],
-    ration: [],
-  }
+  const buckets = Object.fromEntries(TASK_IDS.map((task) => [task, [] as string[]])) as Record<
+    TaskId,
+    string[]
+  >
   let budget = state.budget
   let stockpile = state.stockpile
   const sorted = [...state.units]
