@@ -30,7 +30,7 @@ import { HudBar } from '../hud'
 import { TASK_LABEL } from '../task-presentation'
 import { LogDrawer } from '../log-drawer'
 import { ConfirmOverlay, MenuOverlay } from '../menu'
-import { OverlayStack } from '../overlays'
+import { StoryPresentations, isStoryPresentation } from '../story/story-presentations'
 import { PlaybackController } from '../playback/playback'
 import { TurnCoordinator } from '../turn-coordinator'
 import { UnitDragController } from '../unit-drag-controller'
@@ -58,7 +58,7 @@ export class PlayScene extends Phaser.Scene {
   private log!: LogDrawer
   private menu!: MenuOverlay
   private confirm!: ConfirmOverlay
-  private overlays!: OverlayStack
+  private story!: StoryPresentations
   private ambience!: TownAmbience
   private skipButton!: PixelButton
   private lastBeatKey: string | null = null
@@ -164,8 +164,8 @@ export class PlayScene extends Phaser.Scene {
       },
       onCancel: () => this.confirm.hide(),
     })
-    this.overlays = new OverlayStack(this, {
-      onConfirm: () => this.playback.confirm(),
+    this.story = new StoryPresentations(this, {
+      onConfirmBeat: () => this.playback.confirm(),
       onChoose: (optionId) => this.resolveChoice(optionId),
       onEndingRestart: () => this.startNewGame(),
       onEndingTitle: () => this.scene.start(KEYS.title),
@@ -376,6 +376,7 @@ export class PlayScene extends Phaser.Scene {
     this.skipButton.setPosition(width - 100, regions.town.y + regions.town.height - 24)
     this.ambience.setPosition(regions.town.x, regions.town.y)
     this.ambience.setArea(regions.town.width, regions.town.height)
+    this.story.setViewport(width, height, deviceClass)
   }
 
   private triggerBeatFx(): void {
@@ -412,6 +413,12 @@ export class PlayScene extends Phaser.Scene {
       selectedFacility: this.selectedFacility,
     })
     const facilityView = deriveFacilityView(view, this.plan)
+    const storyMode = isStoryPresentation(frame.mode)
+
+    if (storyMode && this.log.isOpen) this.log.hide()
+    this.hud.setVisible(!storyMode)
+    this.controls.setVisible(!storyMode)
+    this.deck.setVisible(!storyMode)
 
     this.hud.update(view, store.history.length > 0 && !busy)
     this.controls.update(view, this.plan, busy, this.selectedUnitAssigned())
@@ -448,10 +455,13 @@ export class PlayScene extends Phaser.Scene {
     }
 
     this.log.update(view.report)
-    this.overlays.update({ state, busy, beat: this.playback.beat })
+    this.story.update(frame.mode, state, this.playback.beat)
     const playback = this.playback.current
     this.skipButton.setVisible(
-      !!playback && !this.playback.waiting && playback.index < playback.beats.length - 1,
+      !storyMode &&
+        !!playback &&
+        !this.playback.waiting &&
+        playback.index < playback.beats.length - 1,
     )
     this.ambience.update(view)
     this.triggerBeatFx()
