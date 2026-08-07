@@ -39,24 +39,21 @@ describe('derivePresentationMode', () => {
   })
 
   it('ゲームphaseは通常の選択状態より優先する', () => {
-    expect(
-      derivePresentationMode(input({ state: { phase: 'choice' }, selectedUnitId: 'u1' })),
-    ).toBe('choice')
-    expect(
-      derivePresentationMode(input({ state: { phase: 'ended' }, selectedFacility: 'power' })),
-    ).toBe('ending')
+    const choice = input({ state: { phase: 'choice' }, selectedUnitId: 'u1' })
+    const ending = input({ state: { phase: 'ended' }, selectedFacility: 'power' })
+
+    expect(derivePresentationMode(choice)).toBe('choice')
+    expect(derivePresentationMode(ending)).toBe('ending')
   })
 
   it('再生beatはphaseより優先して現在の演出を表す', () => {
-    expect(derivePresentationMode(input({ state: { phase: 'choice' }, beat: beat('flow') }))).toBe(
-      'flow',
-    )
-    expect(derivePresentationMode(input({ state: { phase: 'ended' }, beat: beat('event') }))).toBe(
-      'event',
-    )
-    expect(derivePresentationMode(input({ state: { phase: 'choice' }, beat: beat('arrival') }))).toBe(
-      'arrival',
-    )
+    const flow = input({ state: { phase: 'choice' }, beat: beat('flow') })
+    const event = input({ state: { phase: 'ended' }, beat: beat('event') })
+    const arrival = input({ state: { phase: 'choice' }, beat: beat('arrival') })
+
+    expect(derivePresentationMode(flow)).toBe('flow')
+    expect(derivePresentationMode(event)).toBe('event')
+    expect(derivePresentationMode(arrival)).toBe('arrival')
   })
 })
 
