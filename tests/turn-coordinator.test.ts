@@ -22,7 +22,7 @@ function transition(changed = true): StoreTransition {
 }
 
 describe('TurnCoordinator', () => {
-  it('commit はStore遷移を一度だけ実行し、その結果を再生へ渡す', () => {
+  it('commit はStore遷移を一度だけ実行し、その表示契約を再生へ渡す', () => {
     const result = transition()
     const dispatch = vi.fn((action: StoreAction): StoreTransition => {
       expect(action.type).toBe('commitDay')
@@ -34,7 +34,7 @@ describe('TurnCoordinator', () => {
     expect(coordinator.commit(idle)).toBe(result)
     expect(dispatch).toHaveBeenCalledTimes(1)
     expect(dispatch).toHaveBeenCalledWith({ type: 'commitDay', plan: idle })
-    expect(start).toHaveBeenCalledWith(result.previousState, result.effects, result.store.state)
+    expect(start).toHaveBeenCalledWith(result.previousState, result.effects)
   })
 
   it('no-op遷移ではPlaybackを開始しない', () => {

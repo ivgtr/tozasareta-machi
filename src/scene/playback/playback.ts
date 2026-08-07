@@ -6,7 +6,6 @@ import { projectPlaybackState } from './project-state'
 export interface Playback {
   prev: GameState
   base: GameState
-  final: GameState
   beats: Beat[]
   index: number
   confirmed: boolean
@@ -30,14 +29,14 @@ export class PlaybackController {
     return this.pb !== null && beat !== undefined && beat.kind !== 'flow' && !this.pb.confirmed
   }
 
-  start(prev: GameState, effects: Effect[], final: GameState = prev): void {
+  start(prev: GameState, effects: Effect[]): void {
     this.clearTimer()
     if (effects.length === 0 || reducedMotion()) {
       this.pb = null
       this.onChange()
       return
     }
-    this.pb = { prev, base: prev, final, beats: buildBeats(effects), index: 0, confirmed: false }
+    this.pb = { prev, base: prev, beats: buildBeats(effects), index: 0, confirmed: false }
     this.syncProjection()
     this.schedule()
     this.onChange()
@@ -87,7 +86,7 @@ export class PlaybackController {
     const pb = this.pb
     if (!pb) return
     const effects = pb.beats.slice(0, pb.index + 1).flatMap((beat) => beat.effects)
-    const projected = projectPlaybackState(pb.base, pb.final, effects)
+    const projected = projectPlaybackState(pb.base, effects)
     this.pb = { ...pb, prev: { ...pb.base, units: projected.units } }
   }
 

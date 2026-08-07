@@ -1,6 +1,9 @@
+import { isTaskId, TASK_IDS } from '../../game/data/tasks'
+import type { TaskId } from '../../game/types'
+import { TASK_PRESENTATION, type TaskFxKind } from '../task-presentation'
 import type { FacilityId } from './layout'
 
-export type FxKind = 'work' | 'float' | 'pulse' | 'weather' | 'act' | 'arrival'
+export type FxKind = TaskFxKind | 'float' | 'weather' | 'act' | 'arrival'
 
 export interface FxEntry {
   facility: FacilityId | null
@@ -10,14 +13,14 @@ export interface FxEntry {
 
 const GENERIC: FxEntry = { facility: null, kind: 'float' }
 
-const TASK_FX: Record<string, FxEntry> = {
-  'task:repair_power': { facility: 'power', kind: 'work' },
-  'task:restore_road': { facility: 'road', kind: 'work' },
-  'task:reinforce_medical': { facility: 'clinic', kind: 'work' },
-  'task:soup_kitchen': { facility: 'plaza', kind: 'work' },
-  'task:ration': { facility: 'warehouse', kind: 'pulse' },
-  'task:procure': { facility: 'warehouse', kind: 'pulse' },
-}
+const TASK_FX = Object.fromEntries(
+  TASK_IDS.map((task) => {
+    const presentation = TASK_PRESENTATION[task]
+    return [task, { facility: presentation.facility, kind: presentation.fxKind }]
+  }),
+) as Record<TaskId, FxEntry>
+
+const PROCURE_FX: FxEntry = { facility: 'warehouse', kind: 'pulse' }
 
 const EVENT_FX: Record<string, FxEntry> = {
   elderly_illness: { facility: 'clinic', kind: 'pulse' },
@@ -72,6 +75,12 @@ const EVENT_FX: Record<string, FxEntry> = {
 
 const ACT_SOURCES = new Set(['act_stalemate', 'act_final'])
 
+function taskFx(source: string): FxEntry | undefined {
+  const id = source.slice('task:'.length)
+  if (id === 'procure') return PROCURE_FX
+  return isTaskId(id) ? TASK_FX[id] : undefined
+}
+
 function settlementFx(target: string): FxEntry {
   switch (target) {
     case 'food':
@@ -92,7 +101,7 @@ function settlementFx(target: string): FxEntry {
 }
 
 export function resolveFx(source: string, target: string): FxEntry {
-  if (source.startsWith('task:')) return TASK_FX[source] ?? GENERIC
+  if (source.startsWith('task:')) return taskFx(source) ?? GENERIC
   if (source === 'settlement') return settlementFx(target)
   if (ACT_SOURCES.has(source)) return { facility: null, kind: 'act' }
   if (target.startsWith('unit:')) return { facility: 'road', kind: 'arrival' }
@@ -101,7 +110,7 @@ export function resolveFx(source: string, target: string): FxEntry {
 }
 
 export function hasExplicitFx(source: string): boolean {
-  if (source.startsWith('task:')) return source in TASK_FX
+  if (source.startsWith('task:')) return taskFx(source) !== undefined
   if (source === 'settlement') return true
   if (ACT_SOURCES.has(source)) return true
   const id = source.startsWith('event:') ? source.slice('event:'.length) : source

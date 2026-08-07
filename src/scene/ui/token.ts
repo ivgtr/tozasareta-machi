@@ -3,6 +3,7 @@ import type { Aptitude, GameState, Unit } from '../../game/types'
 import { artSpec } from '../art/manifest'
 import { resolveToken } from '../town/token-resolve'
 import { COLORS, colorCss, colorNum, fitSize } from '../tokens'
+import { unitVisualState } from '../unit-visual'
 import { pixelText } from './pixel-text'
 
 export const TOKEN_SIZE = { width: 36, height: 48 } as const
@@ -14,20 +15,12 @@ export interface UnitTokenOptions {
   variant?: 'tray' | 'town'
 }
 
-const APT_ORDER: Aptitude[] = ['labor', 'tech', 'medical', 'charm']
 const APT_SHORT: Record<Aptitude, string> = { labor: '労', tech: '技', medical: '医', charm: '魅' }
 const APT_COLOR: Record<Aptitude, number> = {
   labor: COLORS.amber,
   tech: COLORS.cyan,
   medical: COLORS.green,
   charm: COLORS.gold,
-}
-
-export function topAptitude(unit: Unit): Aptitude {
-  return APT_ORDER.reduce(
-    (best, a) => (unit.apt[a] > unit.apt[best] ? a : best),
-    APT_ORDER[0] as Aptitude,
-  )
 }
 
 export class UnitToken extends Phaser.GameObjects.Container {
@@ -38,16 +31,19 @@ export class UnitToken extends Phaser.GameObjects.Container {
   private readonly outline: Phaser.GameObjects.Graphics
   private readonly displayW: number
   private readonly displayH: number
+  private readonly bodyColor: number
+  private readonly town: boolean
   private selected = false
 
   constructor(scene: Phaser.Scene, unit: Unit, options: UnitTokenOptions = {}) {
     super(scene)
     const scale = options.scale ?? 1
-    const town = options.variant === 'town'
+    this.town = options.variant === 'town'
     this.displayW = TOKEN_SIZE.width * scale
     this.displayH = TOKEN_SIZE.height * scale
     this.unitId = unit.id
     const spec = artSpec('portrait', unit.portrait)
+    this.bodyColor = spec ? colorNum(spec.color) : COLORS.inkDim
     const resolution = resolveToken(unit.portrait, (k) => scene.textures.exists(k))
     if (resolution.kind === 'token' && resolution.key) {
       const img = scene.add.image(0, 0, resolution.key)
@@ -55,26 +51,22 @@ export class UnitToken extends Phaser.GameObjects.Container {
       const fit = fitSize(src.width, src.height, this.displayW, this.displayH)
       img.setDisplaySize(fit.width, fit.height)
       img.setPosition(0, (this.displayH - fit.height) / 2)
-      if (unit.condition === 'injured') img.setTint(COLORS.red)
       this.bodyView = img
       this.glyphText = null
     } else {
-      const color = spec ? colorNum(spec.color) : COLORS.inkDim
       const g = scene.add.graphics()
-      this.drawGlyphBody(g, unit, color, town)
       this.bodyView = g
       this.glyphText = pixelText(scene, spec?.glyph ?? '人', {
         fontSize: Math.round(20 * scale),
-        color: unit.condition === 'injured' ? COLORS.red : color,
+        color: this.bodyColor,
       })
       this.glyphText.setPosition(0, 2)
       this.glyphText.setOrigin(0.5)
     }
-    const top = topAptitude(unit)
-    this.badge = pixelText(scene, APT_SHORT[top], {
+    this.badge = pixelText(scene, '', {
       fontSize: Math.round(12 * scale),
       color: COLORS.night900,
-      backgroundColor: colorCss(APT_COLOR[top]),
+      backgroundColor: colorCss(COLORS.frameLo),
     })
     this.badge.setPosition(this.displayW / 2 - 2, -this.displayH / 2 + 2)
     this.badge.setOrigin(1, 0)
@@ -86,29 +78,41 @@ export class UnitToken extends Phaser.GameObjects.Container {
     this.setSize(TOKEN_HIT, TOKEN_HIT)
     this.setInteractive()
     scene.add.existing(this)
+    this.updateUnit(unit)
   }
 
-  private drawGlyphBody(
-    g: Phaser.GameObjects.Graphics,
-    unit: Unit,
-    color: number,
-    town: boolean,
-  ): void {
+  private drawGlyphBody(g: Phaser.GameObjects.Graphics, unit: Unit): void {
     const w = this.displayW
     const h = this.displayH
-    const border = town ? 1 : 2
-    const edge = unit.condition === 'injured' ? COLORS.red : color
-    if (town) {
-      g.fillStyle(color, 0.12)
+    const border = this.town ? 1 : 2
+    const edge = unit.condition === 'injured' ? COLORS.red : this.bodyColor
+    if (this.town) {
+      g.fillStyle(this.bodyColor, 0.12)
       g.fillRect(-w / 2, -h / 2, w, h)
       g.lineStyle(border, edge, 0.8)
       g.strokeRect(-w / 2 + 1, -h / 2 + 1, w - 2, h - 2)
     } else {
-      g.fillStyle(color, 0.25)
+      g.fillStyle(this.bodyColor, 0.25)
       g.fillRect(-w / 2, -h / 2, w, h)
       g.lineStyle(border, edge)
       g.strokeRect(-w / 2 + 1, -h / 2 + 1, w - 2, h - 2)
     }
+  }
+
+  updateUnit(unit: Unit): void {
+    const visual = unitVisualState(unit)
+    if (this.bodyView instanceof Phaser.GameObjects.Image) {
+      if (visual.condition === 'injured') this.bodyView.setTint(COLORS.red)
+      else this.bodyView.clearTint()
+    } else {
+      this.bodyView.clear()
+      this.drawGlyphBody(this.bodyView, unit)
+      this.glyphText?.setColor(
+        colorCss(visual.condition === 'injured' ? COLORS.red : this.bodyColor),
+      )
+    }
+    this.badge.setText(APT_SHORT[visual.topAptitude])
+    this.badge.setBackgroundColor(colorCss(APT_COLOR[visual.topAptitude]))
   }
 
   setSelected(value: boolean): void {
@@ -156,13 +160,14 @@ export function reconcileTokens(
   const tokens: UnitToken[] = []
   const created: UnitToken[] = []
   for (const id of unitIds) {
+    const unit = state.units.find((candidate) => candidate.id === id)
+    if (!unit) continue
     const existing = have.get(id)
     if (existing) {
+      existing.updateUnit(unit)
       tokens.push(existing)
       continue
     }
-    const unit = state.units.find((u) => u.id === id)
-    if (!unit) continue
     const token = new UnitToken(scene, unit, options.unitOptions)
     token.on(
       'pointerdown',

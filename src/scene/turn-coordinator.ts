@@ -1,12 +1,13 @@
 import type { DayPlan, Effect, GameState } from '../game/types'
 import type { StoreAction, StoreTransition } from '../store'
+import { buildPlaybackEffects } from './playback/contract'
 
 interface TurnStore {
   dispatch(action: StoreAction): StoreTransition
 }
 
 interface TurnPlayback {
-  start(previousState: GameState, effects: Effect[], finalState: GameState): void
+  start(previousState: GameState, effects: Effect[]): void
   skip(): void
 }
 
@@ -32,7 +33,12 @@ export class TurnCoordinator {
 
   private play(transition: StoreTransition): StoreTransition {
     if (transition.changed) {
-      this.playback.start(transition.previousState, transition.effects, transition.store.state)
+      const effects = buildPlaybackEffects(
+        transition.previousState,
+        transition.store.state,
+        transition.effects,
+      )
+      this.playback.start(transition.previousState, effects)
     }
     return transition
   }

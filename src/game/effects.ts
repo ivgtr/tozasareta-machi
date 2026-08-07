@@ -5,6 +5,8 @@ import type {
   NoticeEffect,
   NumericFlag,
   StateEffect,
+  Unit,
+  UnitChange,
 } from './types'
 
 const RESOURCE_TARGETS = new Set(['food', 'power', 'medical', 'morale', 'budget', 'stockpile'])
@@ -15,6 +17,98 @@ const NUMERIC_FLAGS = new Set<NumericFlag>([
   'refugeesAccepted',
   'cooperation',
 ])
+
+function cloneUnit(unit: Unit): Unit {
+  return { ...unit, apt: { ...unit.apt }, traits: [...unit.traits] }
+}
+
+function sameUnit(a: Unit, b: Unit): boolean {
+  return (
+    a.id === b.id &&
+    a.name === b.name &&
+    a.alias === b.alias &&
+    a.unique === b.unique &&
+    a.flavor === b.flavor &&
+    a.portrait === b.portrait &&
+    a.condition === b.condition &&
+    a.xp === b.xp &&
+    a.expedition === b.expedition &&
+    a.apt.labor === b.apt.labor &&
+    a.apt.tech === b.apt.tech &&
+    a.apt.medical === b.apt.medical &&
+    a.apt.charm === b.apt.charm &&
+    a.traits.length === b.traits.length &&
+    a.traits.every((trait, index) => trait === b.traits[index])
+  )
+}
+
+function changeUnitId(change: UnitChange): string {
+  return change.kind === 'sync' ? change.unit.id : change.unitId
+}
+
+export function syncUnitChange(unit: Unit): UnitChange {
+  return { kind: 'sync', unit: cloneUnit(unit) }
+}
+
+export function removeUnitChange(unitId: string): UnitChange {
+  return { kind: 'remove', unitId }
+}
+
+export function unitChangesBetween(previous: readonly Unit[], next: readonly Unit[]): UnitChange[] {
+  const previousById = new Map(previous.map((unit) => [unit.id, unit]))
+  const nextById = new Map(next.map((unit) => [unit.id, unit]))
+  const changes: UnitChange[] = []
+
+  for (const unit of next) {
+    const before = previousById.get(unit.id)
+    if (!before || !sameUnit(before, unit)) changes.push(syncUnitChange(unit))
+  }
+  for (const unit of previous) {
+    if (!nextById.has(unit.id)) changes.push(removeUnitChange(unit.id))
+  }
+  return changes
+}
+
+export function attachUnitChanges(
+  effects: readonly Effect[],
+  changes: readonly UnitChange[],
+): Effect[] {
+  if (effects.length === 0 || changes.length === 0) return [...effects]
+  let remaining = [...changes]
+  const annotated = effects.map((effect) => {
+    if (!effect.target.startsWith('unit:')) return effect
+    const unitId = effect.target.slice('unit:'.length)
+    const matched = remaining.filter((change) => changeUnitId(change) === unitId)
+    if (matched.length === 0) return effect
+    remaining = remaining.filter((change) => changeUnitId(change) !== unitId)
+    return { ...effect, unitChanges: [...(effect.unitChanges ?? []), ...matched] }
+  })
+
+  if (remaining.length > 0) {
+    const lastIndex = annotated.length - 1
+    const last = annotated[lastIndex]!
+    annotated[lastIndex] = {
+      ...last,
+      unitChanges: [...(last.unitChanges ?? []), ...remaining],
+    }
+  }
+  return annotated
+}
+
+export function attachUnitChangesToLast(
+  effects: readonly Effect[],
+  changes: readonly UnitChange[],
+): Effect[] {
+  if (effects.length === 0 || changes.length === 0) return [...effects]
+  const annotated = [...effects]
+  const lastIndex = annotated.length - 1
+  const last = annotated[lastIndex]!
+  annotated[lastIndex] = {
+    ...last,
+    unitChanges: [...(last.unitChanges ?? []), ...changes],
+  }
+  return annotated
+}
 
 export function isStateEffect(effect: Effect): effect is StateEffect {
   if (RESOURCE_TARGETS.has(effect.target)) return true
