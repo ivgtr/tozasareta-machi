@@ -1,9 +1,12 @@
 import type { Effect, GameState } from '../../game/types'
 import { reducedMotion } from '../../store'
 import { UI_TIMING, buildBeats, type Beat } from './beats'
+import { projectPlaybackState } from './project-state'
 
 export interface Playback {
   prev: GameState
+  base: GameState
+  final: GameState
   beats: Beat[]
   index: number
   confirmed: boolean
@@ -27,14 +30,15 @@ export class PlaybackController {
     return this.pb !== null && beat !== undefined && beat.kind !== 'flow' && !this.pb.confirmed
   }
 
-  start(prev: GameState, effects: Effect[]): void {
+  start(prev: GameState, effects: Effect[], final: GameState = prev): void {
     this.clearTimer()
     if (effects.length === 0 || reducedMotion()) {
       this.pb = null
       this.onChange()
       return
     }
-    this.pb = { prev, beats: buildBeats(effects), index: 0, confirmed: false }
+    this.pb = { prev, base: prev, final, beats: buildBeats(effects), index: 0, confirmed: false }
+    this.syncProjection()
     this.schedule()
     this.onChange()
   }
@@ -71,9 +75,20 @@ export class PlaybackController {
       if (!cur) return
       const next = cur.index + 1
       this.pb = next >= cur.beats.length ? null : { ...cur, index: next, confirmed: false }
-      if (this.pb) this.schedule()
+      if (this.pb) {
+        this.syncProjection()
+        this.schedule()
+      }
       this.onChange()
     }, delay)
+  }
+
+  private syncProjection(): void {
+    const pb = this.pb
+    if (!pb) return
+    const effects = pb.beats.slice(0, pb.index + 1).flatMap((beat) => beat.effects)
+    const projected = projectPlaybackState(pb.base, pb.final, effects)
+    this.pb = { ...pb, prev: { ...pb.base, units: projected.units } }
   }
 
   private clearTimer(): void {

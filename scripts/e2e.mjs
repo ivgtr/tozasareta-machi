@@ -225,13 +225,10 @@ try {
       await clickText(page, 'メニュー')
       await page.waitForFunction((name) => globalThis[name]?.snapshot().menuOpen, BRIDGE)
       await clickText(page, '最初から')
-      await page.waitForFunction(
-        (name) => {
-          const value = globalThis[name]?.snapshot()
-          return value && value.day === 1 && value.phase === 'planning' && !value.busy
-        },
-        BRIDGE,
-      )
+      await page.waitForFunction((name) => {
+        const value = globalThis[name]?.snapshot()
+        return value && value.day === 1 && value.phase === 'planning' && !value.busy
+      }, BRIDGE)
       const state = await snapshot(page)
       assert.equal(state.historyLength, 0)
       await capture(page, 'restart-during-playback')
@@ -242,13 +239,10 @@ try {
     await withGame('reload-save', {}, async (page) => {
       await startNewGame(page)
       await commitWithAutoAssign(page)
-      await page.waitForFunction(
-        (name) => {
-          const value = globalThis[name]?.snapshot()
-          return value && value.day >= 2 && !value.busy
-        },
-        BRIDGE,
-      )
+      await page.waitForFunction((name) => {
+        const value = globalThis[name]?.snapshot()
+        return value && value.day >= 2 && !value.busy
+      }, BRIDGE)
       const before = await snapshot(page)
       await page.reload({ waitUntil: 'domcontentloaded' })
       await page.waitForFunction((name) => Boolean(globalThis[name]), BRIDGE)
@@ -288,13 +282,10 @@ try {
       ])
       await Promise.all(
         [dpr1.page, dpr2.page].map((page) =>
-          page.waitForFunction(
-            (name) => {
-              const value = globalThis[name]?.snapshot()
-              return value && value.deviceClass === 'narrow' && value.gameSize.width === 480
-            },
-            BRIDGE,
-          ),
+          page.waitForFunction((name) => {
+            const value = globalThis[name]?.snapshot()
+            return value && value.deviceClass === 'narrow' && value.gameSize.width === 480
+          }, BRIDGE),
         ),
       )
       const narrow1 = await snapshot(dpr1.page)

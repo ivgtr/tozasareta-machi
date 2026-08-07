@@ -15,8 +15,10 @@ import {
   applyAutoEvent,
   applyChoiceOption,
   choiceOptions,
-  determineDayEvents,
+  determineAutoEvent,
+  determineChoiceEvent,
   findEvent,
+  isEventEligible,
 } from './events'
 import { checkCollapse, evaluate } from './ending'
 import { addModifier, tickModifiers } from './modifiers'
@@ -110,7 +112,7 @@ function processQueue(input: GameState): StepResult {
       continue
     }
     const event = findEvent(eventId)
-    if (!event) {
+    if (!event || !isEventEligible(s, event)) {
       s = { ...s, pendingEvents: rest }
       continue
     }
@@ -155,12 +157,39 @@ function commitDayStep(prev: GameState, plan: DayPlan): StepResult {
   const settled = settle(s, { ration: sanitized.ration, procure: sanitized.procure, worked })
   s = settled.state
   produced.push(...settled.effects)
+  s = {
+    ...s,
+    pendingEvents: undefined,
+    pendingChoice: undefined,
+    report: [...produced],
+  }
 
-  const { eventIds, rng } = determineDayEvents(s)
-  s = { ...s, rng, pendingEvents: eventIds, pendingChoice: undefined, report: [...produced] }
+  const autoPick = determineAutoEvent(s)
+  s = { ...s, rng: autoPick.rng }
+  if (autoPick.eventId) {
+    const event = findEvent(autoPick.eventId)
+    if (event && isEventEligible(s, event)) {
+      const res = applyAutoEvent(s, event)
+      const applied = applyEffects(res.state, res.effects)
+      produced.push(...res.effects)
+      s = appendReport(applied, res.effects)
+    }
+  }
+
+  const choicePick = determineChoiceEvent(s)
+  s = {
+    ...s,
+    rng: choicePick.rng,
+    pendingEvents: choicePick.eventId ? [choicePick.eventId] : [],
+  }
 
   const result = processQueue(s)
   return { state: result.state, effects: [...produced, ...result.effects] }
+}
+
+export function recoverInvalidChoice(prev: GameState): StepResult {
+  if (prev.phase !== 'choice') return { state: prev, effects: [] }
+  return processQueue({ ...prev, phase: 'planning', pendingChoice: undefined })
 }
 
 function resolveChoiceStep(prev: GameState, optionId: string): StepResult {
@@ -168,11 +197,14 @@ function resolveChoiceStep(prev: GameState, optionId: string): StepResult {
   if (!prev.pendingChoice) {
     return { state: { ...prev, phase: 'planning', pendingChoice: undefined }, effects: [] }
   }
+
   const event = findEvent(prev.pendingChoice.eventId)
-  if (!event) {
-    return { state: { ...prev, phase: 'planning', pendingChoice: undefined }, effects: [] }
-  }
-  const option = choiceOptions(prev, event).find((o) => o.id === optionId)
+  if (!event || event.kind !== 'choice') return recoverInvalidChoice(prev)
+
+  const option = choiceOptions(prev, event).find(
+    (candidate) =>
+      prev.pendingChoice?.optionIds.includes(candidate.id) && candidate.id === optionId,
+  )
   if (!option) return { state: prev, effects: [] }
 
   const res = applyChoiceOption(prev, event, option)

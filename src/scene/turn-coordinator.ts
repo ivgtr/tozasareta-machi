@@ -6,7 +6,7 @@ interface TurnStore {
 }
 
 interface TurnPlayback {
-  start(previousState: GameState, effects: Effect[]): void
+  start(previousState: GameState, effects: Effect[], finalState: GameState): void
   skip(): void
 }
 
@@ -32,7 +32,7 @@ export class TurnCoordinator {
 
   private play(transition: StoreTransition): StoreTransition {
     if (transition.changed) {
-      this.playback.start(transition.previousState, transition.effects)
+      this.playback.start(transition.previousState, transition.effects, transition.store.state)
     }
     return transition
   }

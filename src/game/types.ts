@@ -25,8 +25,7 @@ export interface Unit {
 export type NumericFlag =
   'daysWithoutMedical' | 'daysFoodCut' | 'casualties' | 'refugeesAccepted' | 'cooperation'
 
-export type ResourceEffectTarget =
-  'food' | 'power' | 'medical' | 'morale' | 'budget' | 'stockpile'
+export type ResourceEffectTarget = 'food' | 'power' | 'medical' | 'morale' | 'budget' | 'stockpile'
 
 export type NumericFlagEffectTarget = `flag:${NumericFlag}`
 

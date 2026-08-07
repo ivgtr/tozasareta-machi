@@ -8,9 +8,7 @@ const idle: DayPlan = { placements: [], ration: false, procure: false }
 
 function transition(changed = true): StoreTransition {
   const previousState = createInitialState(1)
-  const effects: Effect[] = [
-    { day: 1, source: 'test', target: 'food', delta: 1, reason: 'test' },
-  ]
+  const effects: Effect[] = [{ day: 1, source: 'test', target: 'food', delta: 1, reason: 'test' }]
   const store: StoreState = {
     state: changed ? { ...previousState, day: 2 } : previousState,
     history: changed ? [previousState] : [],
@@ -26,26 +24,23 @@ function transition(changed = true): StoreTransition {
 describe('TurnCoordinator', () => {
   it('commit はStore遷移を一度だけ実行し、その結果を再生へ渡す', () => {
     const result = transition()
-    const dispatch = vi.fn((_action: StoreAction): StoreTransition => result)
+    const dispatch = vi.fn((action: StoreAction): StoreTransition => {
+      expect(action.type).toBe('commitDay')
+      return result
+    })
     const start = vi.fn()
-    const coordinator = new TurnCoordinator(
-      { dispatch },
-      { start, skip: vi.fn() },
-    )
+    const coordinator = new TurnCoordinator({ dispatch }, { start, skip: vi.fn() })
 
     expect(coordinator.commit(idle)).toBe(result)
     expect(dispatch).toHaveBeenCalledTimes(1)
     expect(dispatch).toHaveBeenCalledWith({ type: 'commitDay', plan: idle })
-    expect(start).toHaveBeenCalledWith(result.previousState, result.effects)
+    expect(start).toHaveBeenCalledWith(result.previousState, result.effects, result.store.state)
   })
 
   it('no-op遷移ではPlaybackを開始しない', () => {
     const result = transition(false)
     const start = vi.fn()
-    const coordinator = new TurnCoordinator(
-      { dispatch: () => result },
-      { start, skip: vi.fn() },
-    )
+    const coordinator = new TurnCoordinator({ dispatch: () => result }, { start, skip: vi.fn() })
 
     coordinator.resolveChoice('invalid')
     expect(start).not.toHaveBeenCalled()
