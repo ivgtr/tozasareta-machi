@@ -18,7 +18,7 @@ export abstract class PresentationSurface extends Phaser.GameObjects.Container {
   protected viewportHeight = 720
   protected panel: PresentationRect = { x: 64, y: 48, width: 1152, height: 624 }
   private openFlag = false
-  private accent = COLORS.cyan
+  private accent: number = COLORS.cyan
 
   constructor(scene: Phaser.Scene) {
     super(scene)
