@@ -96,7 +96,13 @@ export abstract class PresentationSurface extends Phaser.GameObjects.Container {
     this.frame.fillRect(p.x + 8, p.y + 8, p.width - 16, 6)
   }
 
-  protected drawArtFrame(x: number, y: number, width: number, height: number, accent: number): void {
+  protected drawArtFrame(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    accent: number,
+  ): void {
     const g = this.scene.add.graphics()
     g.fillStyle(COLORS.night800)
     g.fillRect(x, y, width, height)

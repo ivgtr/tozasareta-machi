@@ -92,11 +92,15 @@ export class ArrivalPresentation extends PresentationSurface {
     width: number,
     compact: boolean,
   ): void {
-    const kicker = pixelText(this.scene, returning ? '探索から帰還した' : '新たな仲間が辿り着いた', {
-      fontSize: compact ? TEXT_SIZE.labelNarrow : TEXT_SIZE.labelWide,
-      color: returning ? COLORS.cyan : COLORS.gold,
-      wordWrapWidth: width,
-    })
+    const kicker = pixelText(
+      this.scene,
+      returning ? '探索から帰還した' : '新たな仲間が辿り着いた',
+      {
+        fontSize: compact ? TEXT_SIZE.labelNarrow : TEXT_SIZE.labelWide,
+        color: returning ? COLORS.cyan : COLORS.gold,
+        wordWrapWidth: width,
+      },
+    )
     kicker.setPosition(x, y)
     this.content.add(kicker)
 

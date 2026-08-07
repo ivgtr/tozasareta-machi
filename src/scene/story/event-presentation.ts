@@ -45,16 +45,11 @@ export class EventPresentation extends PresentationSurface {
 
     const textX = this.deviceClass === 'wide' ? artX + artW + 32 : p.x + pad
     const textY = this.deviceClass === 'wide' ? artY : artY + artH + 18
-    const textW =
-      this.deviceClass === 'wide' ? p.x + p.width - pad - textX : p.width - pad * 2
+    const textW = this.deviceClass === 'wide' ? p.x + p.width - pad - textX : p.width - pad * 2
 
     const kicker = pixelText(
       this.scene,
-      event?.tone === 'threat'
-        ? '緊急報告'
-        : event?.tone === 'boon'
-          ? '町からの報告'
-          : '状況報告',
+      event?.tone === 'threat' ? '緊急報告' : event?.tone === 'boon' ? '町からの報告' : '状況報告',
       {
         fontSize: TEXT_SIZE.labelWide,
         color: accent,

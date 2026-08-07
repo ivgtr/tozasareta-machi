@@ -94,7 +94,9 @@ export class ChoicePresentation extends PresentationSurface {
       this.eventId = event.id
       this.page = 0
     }
-    const options = choiceOptions(state, event).filter((option) => pending.optionIds.includes(option.id))
+    const options = choiceOptions(state, event).filter((option) =>
+      pending.optionIds.includes(option.id),
+    )
     this.render(state, options)
   }
 

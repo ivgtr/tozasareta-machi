@@ -42,13 +42,7 @@ export class EndingPresentation extends PresentationSurface {
     const artH = this.deviceClass === 'wide' ? Math.min(330, p.height - 150) : 220
     const artX = p.x + pad
     const artY = p.y + pad + 16
-    this.drawArtFrame(
-      artX,
-      artY,
-      artW,
-      artH,
-      ending === 'collapse' ? COLORS.red : COLORS.gold,
-    )
+    this.drawArtFrame(artX, artY, artW, artH, ending === 'collapse' ? COLORS.red : COLORS.gold)
     drawArtSlot(this.scene, this.content, 'ending', ending, artX + artW / 2, artY + artH / 2, {
       width: artW - 16,
       height: artH - 16,
@@ -58,8 +52,7 @@ export class EndingPresentation extends PresentationSurface {
 
     const textX = this.deviceClass === 'wide' ? artX + artW + 34 : p.x + pad
     const textY = this.deviceClass === 'wide' ? artY + 12 : artY + artH + 18
-    const textW =
-      this.deviceClass === 'wide' ? p.x + p.width - pad - textX : p.width - pad * 2
+    const textW = this.deviceClass === 'wide' ? p.x + p.width - pad - textX : p.width - pad * 2
     const spec = artSpec('ending', ending)
     const title = pixelText(this.scene, spec?.label ?? ending, {
       fontSize: this.deviceClass === 'wide' ? 30 : TEXT_SIZE.heading,
