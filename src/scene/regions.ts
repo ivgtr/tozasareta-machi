@@ -1,4 +1,5 @@
 import { SCREEN_EDGE_GUARD, type DeviceClass, type SafeInsets } from './layout'
+import { isFocusPresentation, type PresentationMode } from './presentation'
 
 export interface Rect {
   x: number
@@ -12,7 +13,7 @@ export interface Regions {
   town: Rect
   strip: Rect
   tray: Rect
-  detail: Rect
+  detail: Rect | null
 }
 
 export const HUD_HEIGHT = { wide: 48, narrow: 44 } as const
@@ -31,6 +32,7 @@ export function computeRegions(
   width: number,
   height: number,
   insets: SafeInsets,
+  mode: PresentationMode = 'planning',
 ): Regions {
   const left = edge(insets.left)
   const right = edge(insets.right)
@@ -41,16 +43,21 @@ export function computeRegions(
   const innerH = height - top - bottom
   const hudH = HUD_HEIGHT[deviceClass]
   const hud: Rect = { x: innerX, y: top, width: innerW, height: hudH }
+  const focus = isFocusPresentation(mode)
+
   if (deviceClass === 'wide') {
-    const detail: Rect = {
-      x: innerX,
-      y: top + innerH - DETAIL_HEIGHT.wide,
-      width: innerW,
-      height: DETAIL_HEIGHT.wide,
-    }
+    const detail: Rect | null = focus
+      ? {
+          x: innerX,
+          y: top + innerH - DETAIL_HEIGHT.wide,
+          width: innerW,
+          height: DETAIL_HEIGHT.wide,
+        }
+      : null
+    const bottomY = detail?.y ?? top + innerH
     const strip: Rect = {
       x: innerX,
-      y: detail.y - STRIP_HEIGHT,
+      y: bottomY - STRIP_HEIGHT,
       width: Math.min(STRIP_WIDTH_WIDE, innerW - TRAY_WIDTH_WIDE),
       height: STRIP_HEIGHT,
     }
@@ -63,6 +70,7 @@ export function computeRegions(
     const town: Rect = { x: innerX, y: top + hudH, width: innerW, height: strip.y - (top + hudH) }
     return { hud, town, strip, tray, detail }
   }
+
   const strip: Rect = {
     x: innerX,
     y: top + innerH - STRIP_HEIGHT,
@@ -76,11 +84,13 @@ export function computeRegions(
     width: innerW,
     height: strip.y - (town.y + town.height),
   }
-  const detail: Rect = {
-    x: innerX,
-    y: strip.y - DETAIL_HEIGHT.narrow,
-    width: innerW,
-    height: DETAIL_HEIGHT.narrow,
-  }
+  const detail: Rect | null = focus
+    ? {
+        x: innerX,
+        y: strip.y - DETAIL_HEIGHT.narrow,
+        width: innerW,
+        height: DETAIL_HEIGHT.narrow,
+      }
+    : null
   return { hud, town, strip, tray, detail }
 }

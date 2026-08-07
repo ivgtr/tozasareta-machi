@@ -3,6 +3,7 @@ import { KEYS, SCENE_EVENTS } from '../keys'
 import { COLORS } from '../tokens'
 import { deviceClassOf, readSafeInsets, toLogicalSafeInsets } from '../layout'
 import { computeRegions, type Regions } from '../regions'
+import { PresentationDirector, type PresentationMode } from '../presentation'
 import { randomSeed } from '../../store'
 import { sharedStore, type SceneStore } from '../store-bridge'
 import {
@@ -59,6 +60,7 @@ export class PlayScene extends Phaser.Scene {
   private skipButton!: PixelButton
   private lastBeatKey: string | null = null
   private readonly playback = new PlaybackController()
+  private readonly presentation = new PresentationDirector()
   private unsubscribe: (() => void) | null = null
 
   constructor() {
@@ -292,6 +294,11 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private layout(): void {
+    this.applyLayout(this.presentation.mode)
+    this.refresh()
+  }
+
+  private applyLayout(mode: PresentationMode): void {
     const { width, height } = this.scale.gameSize
     const deviceClass = deviceClassOf(window.innerWidth)
     const canvas = this.game.canvas.getBoundingClientRect()
@@ -310,7 +317,7 @@ export class PlayScene extends Phaser.Scene {
       width,
       height,
     )
-    this.regions = computeRegions(deviceClass, width, height, insets)
+    this.regions = computeRegions(deviceClass, width, height, insets, mode)
     const regions = this.regions
     const scale = Math.min(
       regions.town.width / TOWN_BASE.width,
@@ -330,7 +337,7 @@ export class PlayScene extends Phaser.Scene {
       regions.tray.height,
       deviceClass,
     )
-    this.detail.setBounds(regions.detail)
+    if (regions.detail) this.detail.setBounds(regions.detail)
     this.log.setAnchor(
       regions.hud.x + 8,
       regions.hud.y + regions.hud.height + 8,
@@ -339,7 +346,6 @@ export class PlayScene extends Phaser.Scene {
     this.skipButton.setPosition(width - 100, regions.town.y + regions.town.height - 24)
     this.ambience.setPosition(regions.town.x, regions.town.y)
     this.ambience.setArea(regions.town.width, regions.town.height)
-    this.refresh()
   }
 
   private triggerBeatFx(): void {
@@ -368,8 +374,14 @@ export class PlayScene extends Phaser.Scene {
     const store = this.store.get()
     const state = store.state
     const view = this.view()
-    const narrow = deviceClassOf(window.innerWidth) === 'narrow'
     const busy = this.busy
+    const frame = this.presentation.resolve({
+      state,
+      beat: this.playback.beat,
+      selectedUnitId: this.selectedUnitId,
+      selectedFacility: this.selectedFacility,
+    })
+    if (frame.changed) this.applyLayout(frame.mode)
     const facilityView = deriveFacilityView(view, this.plan)
     this.hud.update(view, store.history.length > 0 && !busy)
     this.strip.update(view, this.plan, unassignedUnits(view, this.plan).length, busy)
@@ -378,9 +390,8 @@ export class PlayScene extends Phaser.Scene {
       placeableUnitId: this.selectedUnitId,
     })
     this.tray.update(view, this.plan, this.selectedUnitId)
-    const hasSelection = this.selectedFacility !== null || this.selectedUnitId !== null
-    this.detail.setVisible(!narrow || hasSelection)
-    if (this.detail.visible) {
+    this.detail.setVisible(frame.showDetail)
+    if (frame.showDetail) {
       this.detail.update({
         state: view,
         plan: this.plan,
