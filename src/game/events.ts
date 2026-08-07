@@ -3,10 +3,16 @@ import { BALANCE } from './data/balance'
 import { EVENTS } from './data/events-data'
 import { chance, weightedPick } from './rng'
 import { threatWeightMult } from './threat'
+import { applyEffects } from './effects'
 
 export interface RunEventsResult {
   state: GameState
   effects: Effect[]
+}
+
+export interface EventPickResult {
+  eventId?: string
+  rng: RngState
 }
 
 function makeCtx(state: GameState): EvalContext {
@@ -25,39 +31,53 @@ export function findEvent(id: string): EventDef | undefined {
   return EVENTS.find((e) => e.id === id)
 }
 
-export function determineDayEvents(prev: GameState): { eventIds: string[]; rng: RngState } {
+export function isEventEligible(state: GameState, event: EventDef): boolean {
+  return eligible(event, state, makeCtx(state))
+}
+
+export function determineAutoEvent(prev: GameState): EventPickResult {
   const ctx = makeCtx(prev)
-  let rng = prev.rng
+  const candidates = EVENTS.filter((event) => !isChoice(event) && eligible(event, prev, ctx))
+  if (candidates.length === 0) return { rng: prev.rng }
+
+  const mult = threatWeightMult(prev)
+  const picked = weightedPick(
+    candidates,
+    (event) => (event.tone === 'threat' ? event.weight(ctx) * mult : event.weight(ctx)),
+    prev.rng,
+  )
+  return picked ? { eventId: picked[0].id, rng: picked[1] } : { rng: prev.rng }
+}
+
+export function determineChoiceEvent(prev: GameState): EventPickResult {
+  const ctx = makeCtx(prev)
+  const candidates = EVENTS.filter((event) => isChoice(event) && eligible(event, prev, ctx))
+  if (candidates.length === 0) return { rng: prev.rng }
+
+  const [fires, afterChance] = chance(prev.rng, BALANCE.event.choiceChance)
+  if (!fires) return { rng: afterChance }
+
+  const picked = weightedPick(candidates, (event) => event.weight(ctx), afterChance)
+  return picked ? { eventId: picked[0].id, rng: picked[1] } : { rng: afterChance }
+}
+
+export function determineDayEvents(prev: GameState): { eventIds: string[]; rng: RngState } {
   const eventIds: string[] = []
+  const auto = determineAutoEvent(prev)
+  let state = { ...prev, rng: auto.rng }
 
-  const autoCands = EVENTS.filter((e) => !isChoice(e) && eligible(e, prev, ctx))
-  if (autoCands.length > 0) {
-    const mult = threatWeightMult(prev)
-    const picked = weightedPick(
-      autoCands,
-      (e) => (e.tone === 'threat' ? e.weight(ctx) * mult : e.weight(ctx)),
-      rng,
-    )
-    if (picked) {
-      eventIds.push(picked[0].id)
-      rng = picked[1]
+  if (auto.eventId) {
+    eventIds.push(auto.eventId)
+    const event = findEvent(auto.eventId)
+    if (event) {
+      const result = applyAutoEvent(state, event)
+      state = applyEffects(result.state, result.effects)
     }
   }
 
-  const choiceCands = EVENTS.filter((e) => isChoice(e) && eligible(e, prev, ctx))
-  if (choiceCands.length > 0) {
-    const [fires, r1] = chance(rng, BALANCE.event.choiceChance)
-    rng = r1
-    if (fires) {
-      const picked = weightedPick(choiceCands, (e) => e.weight(ctx), rng)
-      if (picked) {
-        eventIds.push(picked[0].id)
-        rng = picked[1]
-      }
-    }
-  }
-
-  return { eventIds, rng }
+  const choice = determineChoiceEvent(state)
+  if (choice.eventId) eventIds.push(choice.eventId)
+  return { eventIds, rng: choice.rng }
 }
 
 export function applyAutoEvent(prev: GameState, event: EventDef): RunEventsResult {

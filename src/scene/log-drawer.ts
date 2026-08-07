@@ -2,12 +2,10 @@ import Phaser from 'phaser'
 import type { Effect } from '../game/types'
 import { COLORS, TEXT_SIZE } from './tokens'
 import { formatDelta } from './labels'
+import { visibleLogEntries } from './log-drawer-model'
 import { PixelButton } from './ui/button'
 import { PixelPanel } from './ui/panel'
 import { pixelText } from './ui/pixel-text'
-
-const COLLAPSED_LINES = 3
-const EXPANDED_MAX_LINES = 12
 
 export class LogDrawer extends Phaser.GameObjects.Container {
   private readonly panel: PixelPanel
@@ -50,7 +48,7 @@ export class LogDrawer extends Phaser.GameObjects.Container {
   private redraw(report: Effect[]): void {
     const d = this.dynamic
     d.removeAll(true)
-    const lines = report.slice(-this.expanded ? EXPANDED_MAX_LINES : COLLAPSED_LINES)
+    const lines = visibleLogEntries(report, this.expanded)
     const width = Math.min(this.maxWidth, 440)
     let y = 12
     if (report.length === 0) {

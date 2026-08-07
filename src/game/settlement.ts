@@ -1,12 +1,4 @@
-import type {
-  Effect,
-  EffectTarget,
-  Flags,
-  GameState,
-  RngState,
-  TaskId,
-  Unit,
-} from './types'
+import type { Effect, EffectTarget, Flags, GameState, RngState, TaskId, Unit } from './types'
 import { BALANCE } from './data/balance'
 import { APTITUDE_LABEL } from './data/units'
 import { TASK_APT, isOnExpedition } from './actions'
@@ -126,11 +118,7 @@ function settleTraitMorale(context: SettlementContext): void {
       addMorale(context, BALANCE.trait.popularMorale, `${unit.name}の存在が人心を和ませた`)
     }
     if (unit.traits.includes('troublemaker')) {
-      addMorale(
-        context,
-        BALANCE.trait.troublemakerMorale,
-        `${unit.name}が揉め事を起こした`,
-      )
+      addMorale(context, BALANCE.trait.troublemakerMorale, `${unit.name}が揉め事を起こした`)
     }
   }
 }
@@ -151,9 +139,7 @@ function settleFood(context: SettlementContext): void {
     context.input.ration ? '配給を絞り、消費を抑えた' : '人々が食料を消費した',
   )
 
-  const foodDecay = Math.round(
-    BALANCE.food.decay * queryMult(context.prev.modifiers, 'decay:food'),
-  )
+  const foodDecay = Math.round(BALANCE.food.decay * queryMult(context.prev.modifiers, 'decay:food'))
   context.food -= foodDecay
   addEffect(context, 'food', -foodDecay, '食料が劣化した')
 
@@ -177,12 +163,7 @@ function settleFood(context: SettlementContext): void {
   const dead = present[Math.floor(deathRoll * present.length)]
   context.units = context.units.filter((unit) => unit.id !== dead?.id)
   context.flags.casualties += 1
-  addEffect(
-    context,
-    'flag:casualties',
-    1,
-    `食料が尽き、${dead?.name ?? '仲間'}が亡くなった`,
-  )
+  addEffect(context, 'flag:casualties', 1, `食料が尽き、${dead?.name ?? '仲間'}が亡くなった`)
   addMorale(context, BALANCE.morale.hunger, '仲間を飢えで失った')
 }
 
@@ -203,18 +184,12 @@ function settleExpeditions(context: SettlementContext): void {
     )
     if (returnRoll >= returnChance) continue
 
-    const aptitude = Math.max(
-      unit.apt.labor,
-      unit.apt.tech,
-      unit.apt.medical,
-      unit.apt.charm,
-    )
+    const aptitude = Math.max(unit.apt.labor, unit.apt.tech, unit.apt.medical, unit.apt.charm)
     const aptitudeRate = Math.max(0, Math.min(1, (aptitude / 10 - 0.2) / 0.8))
     const greatChance =
       expedition.greatAtMin + aptitudeRate * (expedition.greatAtMax - expedition.greatAtMin)
     const successChance =
-      expedition.successAtMin +
-      aptitudeRate * (expedition.successAtMax - expedition.successAtMin)
+      expedition.successAtMin + aptitudeRate * (expedition.successAtMax - expedition.successAtMin)
     const dangerChance =
       expedition.dangerAtMin + aptitudeRate * (expedition.dangerAtMax - expedition.dangerAtMin)
 
@@ -263,9 +238,7 @@ function settleGreatExpedition(
   daysMultiplier: number,
 ): void {
   const variance = expeditionVariance(context)
-  const foodGain = Math.round(
-    dailyYield * BALANCE.expedition.greatDays * daysMultiplier * variance,
-  )
+  const foodGain = Math.round(dailyYield * BALANCE.expedition.greatDays * daysMultiplier * variance)
   const stockGain = Math.round(dailyYield * 2 * daysMultiplier * variance)
   const budgetGain = Math.round(dailyYield * 1.5 * daysMultiplier * variance)
   context.food += foodGain
@@ -370,8 +343,7 @@ function settleInfrastructure(context: SettlementContext): void {
 
   const extra = context.power < BALANCE.power.lowAt ? BALANCE.medical.extraDecay : 0
   const medicalDecay = Math.round(
-    (BALANCE.medical.decay + extra) *
-      queryMult(context.prev.modifiers, 'decay:medical'),
+    (BALANCE.medical.decay + extra) * queryMult(context.prev.modifiers, 'decay:medical'),
   )
   context.medical = clamp(context.medical - medicalDecay, 0, 100)
   addEffect(
@@ -394,14 +366,11 @@ function settleHealth(context: SettlementContext): void {
   if (context.medical >= BALANCE.unit.injuryMedicalBelow) return
   const workedHealthy = context.input.worked
     .map((work) => context.units.find((unit) => unit.id === work.unitId))
-    .filter(
-      (unit): unit is Unit => unit !== undefined && unit.condition === 'healthy',
-    )
+    .filter((unit): unit is Unit => unit !== undefined && unit.condition === 'healthy')
 
   for (const unit of workedHealthy) {
     if (unit.traits.includes('sturdy')) continue
-    let chance =
-      BALANCE.unit.injuryChance * queryMult(context.prev.modifiers, 'chance:injury')
+    let chance = BALANCE.unit.injuryChance * queryMult(context.prev.modifiers, 'chance:injury')
     if (unit.traits.includes('clumsy')) chance *= 2
     const [injuryRoll, rng] = nextRandom(context.rng)
     context.rng = rng
@@ -435,12 +404,8 @@ function settleGrowth(context: SettlementContext): void {
 
 function updateDailyFlags(context: SettlementContext): void {
   context.flags.daysWithoutMedical =
-    context.medical < BALANCE.medical.neglectAt
-      ? context.flags.daysWithoutMedical + 1
-      : 0
-  context.flags.daysFoodCut = context.input.ration
-    ? context.flags.daysFoodCut + 1
-    : 0
+    context.medical < BALANCE.medical.neglectAt ? context.flags.daysWithoutMedical + 1 : 0
+  context.flags.daysFoodCut = context.input.ration ? context.flags.daysFoodCut + 1 : 0
 }
 
 function settleDailyMorale(context: SettlementContext): void {
@@ -483,8 +448,7 @@ function settleDesertion(context: SettlementContext): void {
   const [desertionRoll, firstRng] = nextRandom(context.rng)
   context.rng = firstRng
   const chance =
-    BALANCE.unit.desertionChance *
-    queryMult(context.prev.modifiers, 'chance:desertion')
+    BALANCE.unit.desertionChance * queryMult(context.prev.modifiers, 'chance:desertion')
   if (desertionRoll >= chance) return
 
   const [unitRoll, secondRng] = nextRandom(context.rng)
@@ -492,11 +456,7 @@ function settleDesertion(context: SettlementContext): void {
   const left = present[Math.floor(unitRoll * present.length)]
   context.units = context.units.filter((unit) => unit.id !== left?.id)
   addEffect(context, 'flag:desert', 0, `${left?.name ?? '仲間'}が町を去った`)
-  addMorale(
-    context,
-    BALANCE.morale.desertionRecover,
-    '残った者たちで気持ちを引き締めた',
-  )
+  addMorale(context, BALANCE.morale.desertionRecover, '残った者たちで気持ちを引き締めた')
 }
 
 function settleRiot(context: SettlementContext): void {

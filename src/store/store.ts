@@ -1,7 +1,8 @@
 import { z } from 'zod'
 import type { DayPlan, Effect, EffectTarget, GameState } from '../game/types'
 import { createInitialState } from '../game/state'
-import { step } from '../game/engine'
+import { recoverInvalidChoice, step } from '../game/engine'
+import { choiceOptions, findEvent, isEventEligible } from '../game/events'
 import { SAVE_VERSION } from '../game/data/balance'
 import { RANDOM_PORTRAIT_IDS, selectRandomPortrait } from '../game/data/units'
 
@@ -217,6 +218,37 @@ function normalizePortraits(store: StoreState): StoreState {
   return { state: normalizeState(store.state), history }
 }
 
+function repairLoadedState(state: GameState): GameState {
+  if (state.phase !== 'choice') {
+    if (!state.pendingChoice && !state.pendingEvents) return state
+    return { ...state, pendingChoice: undefined, pendingEvents: undefined }
+  }
+
+  const pending = state.pendingChoice
+  const event = pending ? findEvent(pending.eventId) : undefined
+  if (!pending || !event || event.kind !== 'choice' || !isEventEligible(state, event)) {
+    return recoverInvalidChoice(state).state
+  }
+
+  const currentIds = new Set(choiceOptions(state, event).map((option) => option.id))
+  const optionIds = pending.optionIds.filter((id) => currentIds.has(id))
+  if (optionIds.length === 0) return recoverInvalidChoice(state).state
+  if (
+    optionIds.length === pending.optionIds.length &&
+    optionIds.every((id, index) => id === pending.optionIds[index])
+  ) {
+    return state
+  }
+  return { ...state, pendingChoice: { ...pending, optionIds } }
+}
+
+function normalizeStateIntegrity(store: StoreState): StoreState {
+  return {
+    state: repairLoadedState(store.state),
+    history: store.history.map(repairLoadedState),
+  }
+}
+
 export function serializeStore(store: StoreState): string {
   const data: z.infer<typeof SaveDataSchema> = { version: SAVE_VERSION, store }
   return JSON.stringify(data)
@@ -240,7 +272,7 @@ export function parseStore(json: string): StoreState | null {
     }
     const parsed = SaveDataSchema.safeParse(raw)
     if (!parsed.success || parsed.data.version !== SAVE_VERSION) return null
-    return normalizePortraits(parsed.data.store)
+    return normalizeStateIntegrity(normalizePortraits(parsed.data.store))
   } catch {
     return null
   }

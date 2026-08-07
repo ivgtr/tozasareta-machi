@@ -23,10 +23,7 @@ describe('effect channels', () => {
       'food',
       'flag:cooperation',
     ])
-    expect(channels.notices.map((effect) => effect.target)).toEqual([
-      'flag:injury',
-      'unit:farmer',
-    ])
+    expect(channels.notices.map((effect) => effect.target)).toEqual(['flag:injury', 'unit:farmer'])
   })
 
   it('状態適用時は通知チャネルを無視する', () => {
