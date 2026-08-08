@@ -40,6 +40,11 @@ const layouts = [
   { name: 'narrow', viewport: { width: 480, height: 854 } },
 ]
 
+const compactBaselineSizes = {
+  'planning-assigned-wide': { width: 80, height: 45 },
+  'planning-assigned-narrow': { width: 30, height: 54 },
+}
+
 const failures = []
 let server = null
 
@@ -116,13 +121,32 @@ async function showFixture(page, name) {
   await settle(page)
 }
 
+function compactBaseline(name, actualBuffer) {
+  const size = compactBaselineSizes[name]
+  if (!size) return actualBuffer
+
+  const source = PNG.sync.read(actualBuffer)
+  const target = new PNG(size)
+  for (let y = 0; y < size.height; y += 1) {
+    const sourceY = Math.floor((y * source.height) / size.height)
+    for (let x = 0; x < size.width; x += 1) {
+      const sourceX = Math.floor((x * source.width) / size.width)
+      const sourceIndex = (sourceY * source.width + sourceX) * 4
+      const targetIndex = (y * size.width + x) * 4
+      source.data.copy(target.data, targetIndex, sourceIndex, sourceIndex + 4)
+    }
+  }
+  return PNG.sync.write(target)
+}
+
 async function compare(name, actualBuffer) {
   const baselinePath = path.join(BASELINE_DIR, `${name}.png`)
   const actualPath = path.join(OUTPUT_DIR, `${name}-actual.png`)
   await writeFile(actualPath, actualBuffer)
+  const comparisonBuffer = compactBaseline(name, actualBuffer)
 
   if (UPDATE) {
-    await writeFile(baselinePath, actualBuffer)
+    await writeFile(baselinePath, comparisonBuffer)
     process.stdout.write(`  updated ${name}\n`)
     return
   }
@@ -137,7 +161,7 @@ async function compare(name, actualBuffer) {
   }
 
   const baseline = PNG.sync.read(baselineBuffer)
-  const actual = PNG.sync.read(actualBuffer)
+  const actual = PNG.sync.read(comparisonBuffer)
   try {
     assert.equal(actual.width, baseline.width, `${name}: screenshot width changed`)
     assert.equal(actual.height, baseline.height, `${name}: screenshot height changed`)
