@@ -22,6 +22,7 @@
 - **Issue #19 PR10 Presentation品質基盤**（docs/26）: 主要10画面の決定論的fixture、wide/narrow 20枚のVisual Regression、Story系単独E2Eを導入。
 - **Issue #19 PR11 Planning体験の完成**: Adaptive Town Viewport、Stable Roster、2段narrow HUD、Planning Forecast、FacilityFocus編成UIを統合。
 - **Issue #19 PR12 Story / Playback体験の完成**: Story表示metadata、人物駆動Event / Choice、Arrival / Ending統一、Playback重要度と可変テンポを統合。
+- **Issue #19 PR13 Sound / Input / Game Feel完成**: 意味カテゴリ駆動Audio、Planning/危機ambience、Sound設定、主要keyboard navigation、pointer/touch/keyboard feedbackを統合。
 - 正典: ゲームコアは [12-ユニット設計](./12-ユニット設計.md) を正とし、06/09 の作業員・人員記述は旧モデル。
 
 ## ドキュメント構成
@@ -53,7 +54,7 @@
 | [22-町中心UI再設計.md](./22-町中心UI再設計.md) | 【設計確定・未実装】Issue #1 の要件・設計書。**Phaser 3 フル移行**（全ゲーム画面を Phaser 化・React 撤去）+ アイソメ視点 + 並行構築→切替の移行戦略。町中心レイアウト・施設モデル・Effect→演出対応。壁打ち完了（§12 全件確定）。実行手順は docs/24 |
 | [23-町アセット制作計画.md](./23-町アセット制作計画.md) | 【制作待ち】docs/22 §9 の実体。Phase 4 最小セット25点（アイソメ地面ベース・施設12・トークン12）のアセット契約・生成プロンプト・ゲート。docs/14・15 と同じトラック分離・基準先行の流儀 |
 | [24-実行計画-町中心UI.md](./24-実行計画-町中心UI.md) | 【実行待ち】docs/22 の実行計画。トラック分離（実装T1/画像T2）・ファイル所有権による衝突回避・P1–P6 の詳細手順・等価性/手動チェックリスト。実装エージェントはこれに従う |
-| [25-音響構想.md](./25-音響構想.md) | 【構想段階】将来拡張の音響・BGM 構想。Issue #1 クローズ後着手。音は補助チャネル（視覚が正）・トーン分類単位の効果音・fx対応表/ビートへの統合（先行準備は docs/22 §7.1 + docs/24 P5） |
+| [25-音響構想.md](./25-音響構想.md) | Issue #19 PR13で実装した意味カテゴリ駆動Audio、Planning/危機ambience、Sound設定、非聴覚契約 |
 | [26-UI最終品質基準.md](./26-UI最終品質基準.md) | 現行Presentationの画面・入力・レスポンシブ契約。決定論的fixture、Visual Regression baseline運用、ブラウザ回帰、CIゲートを定義 |
 
 ## コアコンセプト
