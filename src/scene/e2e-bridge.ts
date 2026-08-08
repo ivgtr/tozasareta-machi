@@ -1,8 +1,13 @@
 import Phaser from 'phaser'
+import type { Effect, GameState } from '../game/types'
 import { KEYS } from './keys'
 import { deviceClassOf } from './layout'
 import type { PresentationMode } from './presentation'
 import { sharedStore } from './store-bridge'
+import {
+  buildPresentationFixture,
+  type PresentationFixtureName,
+} from './testing/presentation-fixtures'
 import { PixelButton } from './ui/button'
 
 interface CssBounds {
@@ -13,13 +18,19 @@ interface CssBounds {
 }
 
 interface PlaySceneInternals {
-  menu?: { isOpen: boolean }
+  menu?: { isOpen: boolean; show: (state: GameState) => void; hide: () => void }
   confirm?: { isOpen: boolean }
   characterFocus?: { isOpen: boolean }
-  playback?: { current: unknown | null }
+  playback?: {
+    current: unknown | null
+    cancel: () => void
+    start: (state: GameState, effects: Effect[]) => void
+  }
   presentation?: { mode: PresentationMode }
   selectedUnitId?: string | null
+  selectedFacility?: string | null
   startNewGame?: () => void
+  refresh?: () => void
 }
 
 interface E2ESnapshot {
@@ -54,6 +65,7 @@ interface E2EBridge {
   firstUnitBounds(): CssBounds | null
   buttonSizes(): E2EButtonSize[]
   restartNewGame(): void
+  showFixture(name: PresentationFixtureName): void
 }
 
 type E2EWindow = Window & {
@@ -171,6 +183,31 @@ function restartNewGame(game: Phaser.Game): void {
   play.startNewGame?.()
 }
 
+function showFixture(game: Phaser.Game, name: PresentationFixtureName): void {
+  const fixture = buildPresentationFixture(name)
+  const current = sharedStore().get()
+  current.state = fixture.state
+  current.history = []
+
+  if (fixture.scene === 'title') {
+    const active = activeScene(game)
+    active?.scene.start(KEYS.title)
+    return
+  }
+
+  const play = game.scene.getScene(KEYS.play) as unknown as PlaySceneInternals
+  play.playback?.cancel()
+  play.menu?.hide()
+  play.selectedUnitId = fixture.selectedUnitId ?? null
+  play.selectedFacility = fixture.selectedFacility ?? null
+  if (fixture.beat && fixture.baseState) {
+    play.playback?.start(fixture.baseState, fixture.beat.effects)
+  } else {
+    play.refresh?.()
+  }
+  if (fixture.menuOpen) play.menu?.show(fixture.state)
+}
+
 export function installE2EBridge(game: Phaser.Game): void {
   const target = window as E2EWindow
   target.__TOZASARETA_MACHI_E2E__ = {
@@ -179,6 +216,7 @@ export function installE2EBridge(game: Phaser.Game): void {
     firstUnitBounds: () => findFirstUnitBounds(game),
     buttonSizes: () => visibleButtonSizes(game),
     restartNewGame: () => restartNewGame(game),
+    showFixture: (name) => showFixture(game, name),
   }
   game.events.once(Phaser.Core.Events.DESTROY, () => {
     delete target.__TOZASARETA_MACHI_E2E__
