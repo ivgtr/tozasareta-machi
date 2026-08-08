@@ -13,6 +13,7 @@ import {
   type PresentationFixtureName,
 } from './testing/presentation-fixtures'
 import { PixelButton } from './ui/button'
+import { FACILITY_VISUAL, FOOTPRINT, type FacilityId } from './town/layout'
 
 interface CssBounds {
   x: number
@@ -54,6 +55,7 @@ interface E2ESnapshot {
   busy: boolean
   soundEnabled: boolean
   selectedUnitId: string | null
+  selectedFacility: string | null
   keyboardFocusedUnitId: string | null
   plannedAssignments: number
   deviceClass: 'wide' | 'narrow'
@@ -77,6 +79,7 @@ interface E2EBridge {
   firstUnitBounds(): CssBounds | null
   buttonSizes(): E2EButtonSize[]
   choiceSizes(): E2EButtonSize[]
+  facilityArtPoint(id: FacilityId): { x: number; y: number } | null
   restartNewGame(): void
   showFixture(name: PresentationFixtureName): void
 }
@@ -173,6 +176,44 @@ function visibleChoiceSizes(game: Phaser.Game): E2EButtonSize[] {
     })
 }
 
+function facilityArtPoint(game: Phaser.Game, id: FacilityId): { x: number; y: number } | null {
+  const image = visibleObjects(game).find(
+    (object): object is Phaser.GameObjects.Image =>
+      object instanceof Phaser.GameObjects.Image && object.name === `facility:${id}`,
+  )
+  if (!image) return null
+
+  const frameWidth = image.frame.realWidth
+  const frameHeight = image.frame.realHeight
+  const footprintTop = frameHeight / 2 - image.y - FOOTPRINT.height / 2
+  for (let y = 2; y < footprintTop - 2; y += 1) {
+    for (let x = 2; x < frameWidth - 2; x += 1) {
+      let opaque = true
+      for (let dy = -2; dy <= 2 && opaque; dy += 1) {
+        for (let dx = -2; dx <= 2; dx += 1) {
+          if (
+            (game.textures.getPixelAlpha(x + dx, y + dy, image.texture.key) ?? 0) <
+            FACILITY_VISUAL.alphaTolerance
+          ) {
+            opaque = false
+            break
+          }
+        }
+      }
+      if (!opaque) continue
+      const localX = (x / frameWidth - image.originX) * image.displayWidth
+      const localY = (y / frameHeight - image.originY) * image.displayHeight
+      const world = image.getWorldTransformMatrix().transformPoint(localX, localY)
+      const canvas = game.canvas.getBoundingClientRect()
+      return {
+        x: canvas.left + (world.x / Number(game.scale.gameSize.width)) * canvas.width,
+        y: canvas.top + (world.y / Number(game.scale.gameSize.height)) * canvas.height,
+      }
+    }
+  }
+  return null
+}
+
 function snapshot(game: Phaser.Game): E2ESnapshot {
   const store = sharedStore().get()
   const play = game.scene.getScene(KEYS.play) as unknown as PlaySceneInternals
@@ -190,6 +231,7 @@ function snapshot(game: Phaser.Game): E2ESnapshot {
     busy: play.playback?.current != null,
     soundEnabled: getSettings().sound,
     selectedUnitId: play.selectedUnitId ?? null,
+    selectedFacility: play.selectedFacility ?? null,
     keyboardFocusedUnitId: play.deck?.keyboardFocus ?? null,
     plannedAssignments: Object.values(play.plan?.placements ?? {}).reduce(
       (total, ids) => total + (ids?.length ?? 0),
@@ -249,6 +291,7 @@ export function installE2EBridge(game: Phaser.Game): void {
     firstUnitBounds: () => findFirstUnitBounds(game),
     buttonSizes: () => visibleButtonSizes(game),
     choiceSizes: () => visibleChoiceSizes(game),
+    facilityArtPoint: (id) => facilityArtPoint(game, id),
     restartNewGame: () => restartNewGame(game),
     showFixture: (name) => showFixture(game, name),
   }

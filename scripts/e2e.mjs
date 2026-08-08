@@ -133,6 +133,14 @@ async function firstUnitBounds(page) {
   return handle.jsonValue()
 }
 
+async function facilityArtPoint(page, id) {
+  const handle = await page.waitForFunction(
+    ({ name, facility }) => globalThis[name]?.facilityArtPoint(facility) ?? false,
+    { name: BRIDGE, facility: id },
+  )
+  return handle.jsonValue()
+}
+
 async function clickText(page, text, exact = true) {
   const bounds = await textBounds(page, text, exact)
   await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
@@ -429,6 +437,31 @@ try {
       await clickText(page, '外す')
       assert.ok(await textBounds(page, '実行見込  未配置'))
     })
+  })
+
+  await test('施設画像とクリック判定がwide/narrow・DPR 1/2で一致する', async () => {
+    for (const options of [
+      { viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 },
+      { viewport: { width: 1280, height: 720 }, deviceScaleFactor: 2 },
+      { viewport: { width: 600, height: 900 }, deviceScaleFactor: 1, hasTouch: true },
+      { viewport: { width: 600, height: 900 }, deviceScaleFactor: 2, hasTouch: true },
+    ]) {
+      await withGame(
+        `facility-hit-${options.viewport.width}-${options.deviceScaleFactor}`,
+        options,
+        async (page) => {
+          await startNewGame(page)
+          const point = await facilityArtPoint(page, 'hq')
+          if (options.hasTouch) await page.touchscreen.tap(point.x, point.y)
+          else await page.mouse.click(point.x, point.y)
+          await page.waitForFunction(
+            (name) => globalThis[name]?.snapshot().selectedFacility === 'hq',
+            BRIDGE,
+            { timeout: 3_000 },
+          )
+        },
+      )
+    }
   })
 
   await test('Turn Playbackが行動結果を専用Presentationで表示する', async () => {

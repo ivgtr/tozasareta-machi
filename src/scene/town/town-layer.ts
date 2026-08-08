@@ -6,6 +6,7 @@ import { FACILITIES, type FacilityViewMap } from './facilities'
 import { facilityAssetId } from './facility-view'
 import {
   FACILITY_PLOTS,
+  FACILITY_VISUAL,
   FOOTPRINT,
   TOWN_BASE,
   facilityAt,
@@ -172,8 +173,26 @@ export class TownLayer extends Phaser.GameObjects.Container {
     const key = textureKey('facility', facilityAssetId(facility, view))
 
     if (!visual.sprite) {
-      const sprite = this.scene.add.image(0, FOOTPRINT.height / 2 - 56, key)
-      sprite.setDisplaySize(96, 112)
+      const sprite = this.scene.add.image(0, FACILITY_VISUAL.centerY, key)
+      sprite.setName(`facility:${facility}`)
+      sprite.setDisplaySize(FACILITY_VISUAL.width, FACILITY_VISUAL.height)
+      sprite.setInteractive({
+        pixelPerfect: true,
+        alphaTolerance: FACILITY_VISUAL.alphaTolerance,
+        useHandCursor: true,
+      })
+      sprite.on(
+        'pointerdown',
+        (
+          _pointer: Phaser.Input.Pointer,
+          _localX: number,
+          _localY: number,
+          event: Phaser.Types.Input.EventData,
+        ) => {
+          event.stopPropagation()
+          this.callbacks.onFacilityTap(facility)
+        },
+      )
       visual.host.addAt(sprite, 0)
       visual.sprite = sprite
       return
