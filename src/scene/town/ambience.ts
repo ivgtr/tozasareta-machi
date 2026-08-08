@@ -69,7 +69,6 @@ export class TownAmbience extends Phaser.GameObjects.Container {
       this.coldFlecks,
       this.dangerTint,
     ])
-    scene.add.existing(this)
   }
 
   update(state: GameState, facilityView: FacilityViewMap): void {
@@ -264,15 +263,16 @@ export class TownAmbience extends Phaser.GameObjects.Container {
 
     this.weatherTint.setAlpha(cold ? 0.1 : typhoon ? 0.045 : 0)
     this.rain.setVisible(typhoon)
+    this.rain.setAlpha(typhoon ? 0.72 : 1)
     this.coldFlecks.setVisible(cold)
-    this.rain.setY(0)
 
     if (!typhoon || reduceMotion) return
 
     this.scene.tweens.add({
       targets: this.rain,
-      y: TOWN_BASE.height,
-      duration: 650,
+      alpha: { from: 0.42, to: 0.82 },
+      duration: 520,
+      yoyo: true,
       repeat: -1,
     })
   }
@@ -282,8 +282,8 @@ export class TownAmbience extends Phaser.GameObjects.Container {
     g.clear()
     g.lineStyle(1, COLORS.cyan, 0.5)
     for (let index = 0; index < RAIN_LINES; index += 1) {
-      const x = ((index * 97) % TOWN_BASE.width) + 4
-      const y = ((index * 53) % (TOWN_BASE.height * 2)) - TOWN_BASE.height
+      const x = ((index * 97) % (TOWN_BASE.width - 12)) + 8
+      const y = ((index * 53) % (TOWN_BASE.height - 18)) + 2
       g.lineBetween(x, y, x - 4, y + 13)
     }
     g.setVisible(false)
@@ -307,7 +307,7 @@ export class TownAmbience extends Phaser.GameObjects.Container {
     }
     this.activity.setAlpha(1)
     this.smoke.setY(0)
-    this.rain.setY(0)
+    this.rain.setAlpha(1)
   }
 }
 
