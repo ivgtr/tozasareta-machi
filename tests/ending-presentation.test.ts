@@ -50,6 +50,7 @@ describe('deriveEndingPresentation', () => {
     const model = deriveEndingPresentation(state)
 
     expect(model?.reachedDay).toBe(30)
+    expect(model?.witness?.id).toBe('mayor')
     expect(model?.resources).toEqual([
       { label: '食料', value: 42 },
       { label: '電力', value: 82 },
@@ -65,5 +66,12 @@ describe('deriveEndingPresentation', () => {
 
   it('endingが未確定ならPresentationを生成しない', () => {
     expect(deriveEndingPresentation(createInitialState(1))).toBeNull()
+  })
+
+  it('町長が不在なら在籍する人物を語り手に選ぶ', () => {
+    const state = ended('managed_sacrifice')
+    const units = state.units.filter((unit) => unit.id !== 'mayor')
+
+    expect(deriveEndingPresentation({ ...state, units })?.witness?.id).toBe(units[0]?.id)
   })
 })

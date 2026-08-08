@@ -1,5 +1,5 @@
 import { BALANCE } from '../../game/data/balance'
-import type { Ending, GameState } from '../../game/types'
+import type { Ending, GameState, Unit } from '../../game/types'
 import { COLORS } from '../tokens'
 
 interface EndingCopy {
@@ -42,6 +42,7 @@ export interface EndingPresentationModel {
   title: string
   flavor: string
   accent: number
+  witness: Unit | null
   reachedDay: number
   resources: Array<{ label: string; value: number }>
   records: Array<{ label: string; value: number }>
@@ -56,6 +57,11 @@ export function deriveEndingPresentation(state: GameState): EndingPresentationMo
     title: copy.title,
     flavor: copy.flavor,
     accent: copy.accent,
+    witness:
+      state.units.find((unit) => unit.id === 'mayor') ??
+      state.units.find((unit) => unit.unique) ??
+      state.units[0] ??
+      null,
     reachedDay: Math.max(1, Math.min(state.day - 1, BALANCE.days)),
     resources: [
       { label: '食料', value: Math.round(state.resources.food) },
