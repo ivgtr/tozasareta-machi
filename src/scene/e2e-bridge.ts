@@ -4,6 +4,7 @@ import { KEYS } from './keys'
 import { deviceClassOf } from './layout'
 import type { PresentationMode } from './presentation'
 import { sharedStore } from './store-bridge'
+import { ChoiceCard } from './story/choice-presentation'
 import {
   buildPresentationFixture,
   type PresentationFixtureName,
@@ -64,6 +65,7 @@ interface E2EBridge {
   textBounds(text: string, exact?: boolean): CssBounds | null
   firstUnitBounds(): CssBounds | null
   buttonSizes(): E2EButtonSize[]
+  choiceSizes(): E2EButtonSize[]
   restartNewGame(): void
   showFixture(name: PresentationFixtureName): void
 }
@@ -149,6 +151,17 @@ function visibleButtonSizes(game: Phaser.Game): E2EButtonSize[] {
     .map((button) => ({ width: button.buttonWidth, height: button.buttonHeight }))
 }
 
+function visibleChoiceSizes(game: Phaser.Game): E2EButtonSize[] {
+  return visibleObjects(game)
+    .filter((object): object is ChoiceCard => object instanceof ChoiceCard)
+    .flatMap((object) => {
+      const hitArea = object.input?.hitArea as { width?: unknown; height?: unknown } | undefined
+      return typeof hitArea?.width === 'number' && typeof hitArea.height === 'number'
+        ? [{ width: hitArea.width, height: hitArea.height }]
+        : []
+    })
+}
+
 function snapshot(game: Phaser.Game): E2ESnapshot {
   const store = sharedStore().get()
   const play = game.scene.getScene(KEYS.play) as unknown as PlaySceneInternals
@@ -215,6 +228,7 @@ export function installE2EBridge(game: Phaser.Game): void {
     textBounds: (text, exact = true) => findTextBounds(game, text, exact),
     firstUnitBounds: () => findFirstUnitBounds(game),
     buttonSizes: () => visibleButtonSizes(game),
+    choiceSizes: () => visibleChoiceSizes(game),
     restartNewGame: () => restartNewGame(game),
     showFixture: (name) => showFixture(game, name),
   }

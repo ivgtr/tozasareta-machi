@@ -159,6 +159,31 @@ async function assertMinimumTouchTargets(page) {
   }
 }
 
+async function assertMinimumChoiceTargets(page) {
+  const sizes = await page.evaluate((name) => globalThis[name]?.choiceSizes() ?? [], BRIDGE)
+  assert.ok(sizes.length > 0, 'no visible choice targets found')
+  for (const size of sizes) {
+    assert.ok(
+      size.width >= MIN_TOUCH_TARGET && size.height >= MIN_TOUCH_TARGET,
+      `choice target is too small: ${size.width}x${size.height}`,
+    )
+  }
+}
+
+async function showFixture(page, fixture) {
+  await page.evaluate(({ name, value }) => globalThis[name].showFixture(value), {
+    name: BRIDGE,
+    value: fixture,
+  })
+  await page.waitForFunction(
+    ({ name, value }) => {
+      const state = globalThis[name]?.snapshot()
+      return state && state.presentationMode === value
+    },
+    { name: BRIDGE, value: fixture },
+  )
+}
+
 async function startNewGame(page) {
   await clickText(page, '▶ 指揮所へ')
   await page.waitForFunction(
@@ -389,6 +414,38 @@ try {
       },
     )
   })
+
+  const storyFixtures = [
+    { name: 'event', label: '発電機の故障', action: '続ける ▶' },
+    { name: 'choice', label: '交易の申し出', action: '食料を買う' },
+    { name: 'arrival', label: 'シド彦', action: '迎え入れる ▶' },
+    { name: 'ending', label: '完全復旧', action: 'もう一度' },
+  ]
+
+  for (const fixture of storyFixtures) {
+    await test(`${fixture.name}をfixtureからwide/narrowで単独表示する`, async () => {
+      for (const layout of [
+        { name: 'wide', options: { animations: true } },
+        {
+          name: 'narrow-reduced-motion',
+          options: { viewport: { width: 600, height: 900 }, animations: false, hasTouch: true },
+        },
+      ]) {
+        await withGame(`story-${fixture.name}-${layout.name}`, layout.options, async (page) => {
+          await startNewGame(page)
+          await showFixture(page, fixture.name)
+          const state = await snapshot(page)
+          assert.equal(state.presentationMode, fixture.name)
+          assert.equal(state.deviceClass, layout.name === 'wide' ? 'wide' : 'narrow')
+          assert.ok(await optionalTextBounds(page, fixture.label))
+          assert.ok(await optionalTextBounds(page, fixture.action))
+          if (fixture.name === 'choice') await assertMinimumChoiceTargets(page)
+          else await assertMinimumTouchTargets(page)
+          await capture(page, `story-${fixture.name}-${layout.name}`)
+        })
+      }
+    })
+  }
 
   await test('Playback中の新規ゲームで再生状態を持ち越さない', async () => {
     await withGame('restart-playback', { animations: true }, async (page) => {

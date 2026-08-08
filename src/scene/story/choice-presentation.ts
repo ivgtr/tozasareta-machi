@@ -7,7 +7,7 @@ import { PixelButton } from '../ui/button'
 import { pixelText } from '../ui/pixel-text'
 import { PresentationSurface } from './presentation-surface'
 
-class ChoiceCard extends Phaser.GameObjects.Container {
+export class ChoiceCard extends Phaser.GameObjects.Container {
   constructor(
     scene: Phaser.Scene,
     option: ChoiceOption,
