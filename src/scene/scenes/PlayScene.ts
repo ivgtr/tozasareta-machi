@@ -36,7 +36,6 @@ import { PlaybackController } from '../playback/playback'
 import { TownPlaybackFx } from '../playback/town-playback-fx'
 import { TurnCoordinator } from '../turn-coordinator'
 import { UnitDragController } from '../unit-drag-controller'
-import { TownAmbience } from '../town/ambience'
 import { CONFIRM_NEW_GAME } from '../labels'
 import { DRAG_THRESHOLD } from '../ui/token'
 
@@ -61,7 +60,6 @@ export class PlayScene extends Phaser.Scene {
   private confirm!: ConfirmOverlay
   private story!: StoryPresentations
   private flow!: FlowPresentation
-  private ambience!: TownAmbience
   private lastBeatKey: string | null = null
   private readonly playback = new PlaybackController()
   private readonly presentation = new PresentationDirector()
@@ -113,7 +111,6 @@ export class PlayScene extends Phaser.Scene {
         this.refresh()
       },
     })
-    this.ambience = new TownAmbience(this)
     this.log = new LogDrawer(this)
     this.hud = new HudBar(this, {
       onUndo: () => {
@@ -366,8 +363,6 @@ export class PlayScene extends Phaser.Scene {
       regions.hud.y + regions.hud.height + 8,
       Math.min(440, regions.hud.width - 16),
     )
-    this.ambience.setPosition(regions.town.x, regions.town.y)
-    this.ambience.setArea(regions.town.width, regions.town.height)
     this.story.setViewport(width, height, deviceClass)
     this.flow.setViewport(width, height, deviceClass)
   }
@@ -456,7 +451,6 @@ export class PlayScene extends Phaser.Scene {
       flowModel?.facility ?? null,
       flowModel ? flowAccent(flowModel.tone) : COLORS.cyan,
     )
-    this.ambience.update(view)
     this.triggerPlaybackFx(flowModel)
   }
 }

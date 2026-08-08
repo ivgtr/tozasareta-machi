@@ -15,6 +15,7 @@ import {
 import { textureKey } from '../art/assets'
 import { reconcileTokens } from '../ui/token'
 import { pixelText } from '../ui/pixel-text'
+import { TownAmbience } from './ambience'
 
 const TOKEN_FAN: Array<{ x: number; y: number }> = [
   { x: -20, y: 8 },
@@ -49,6 +50,7 @@ interface FacilityVisual {
 
 export class TownLayer extends Phaser.GameObjects.Container {
   private readonly world: Phaser.GameObjects.Container
+  private readonly ambience: TownAmbience
   private readonly overlay: Phaser.GameObjects.Container
   private readonly visuals = new Map<FacilityId, FacilityVisual>()
   private readonly callbacks: TownCallbacks
@@ -63,8 +65,9 @@ export class TownLayer extends Phaser.GameObjects.Container {
     base.setOrigin(0)
 
     this.world = scene.add.container()
+    this.ambience = new TownAmbience(scene)
     this.overlay = scene.add.container()
-    this.add([base, this.world, this.overlay])
+    this.add([base, this.world, this.ambience, this.overlay])
 
     for (const plot of FACILITY_PLOTS) {
       const meta = FACILITIES[plot.id]
@@ -122,6 +125,7 @@ export class TownLayer extends Phaser.GameObjects.Container {
 
   update(state: GameState, plan: PlanState, view: FacilityViewMap, selection: TownSelection): void {
     this.persistentLabels.clear()
+    this.ambience.update(state, view)
 
     for (const plot of FACILITY_PLOTS) {
       const meta = FACILITIES[plot.id]
