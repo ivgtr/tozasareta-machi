@@ -1,19 +1,11 @@
 import Phaser from 'phaser'
-import type { Ending, GameState } from '../../game/types'
-import { BALANCE } from '../../game/data/balance'
-import { artSpec } from '../art/manifest'
-import { COLORS, TEXT_SIZE } from '../tokens'
+import type { GameState } from '../../game/types'
+import { COLORS, FONT_DISPLAY, TEXT_SIZE } from '../tokens'
 import { drawArtSlot } from '../ui/art-slot'
 import { PixelButton } from '../ui/button'
 import { pixelText } from '../ui/pixel-text'
+import { deriveEndingPresentation, type EndingPresentationModel } from './ending-model'
 import { PresentationSurface } from './presentation-surface'
-
-const ENDING_FLAVOR: Record<Ending, string> = {
-  full_recovery: '町は光を取り戻した。あなたの30日間は、奇跡として語り継がれるだろう。',
-  managed_sacrifice: '町は存続した。だが、その代償は決して小さくなかった。',
-  self_governance: '復旧は遅れた。だが町は、何にも代えがたい結びつきを手に入れた。',
-  collapse: '町は静まり返った。あなたの30日間は、途中で途絶えた。',
-}
 
 export interface EndingPresentationCallbacks {
   onRestart: () => void
@@ -29,74 +21,240 @@ export class EndingPresentation extends PresentationSurface {
   }
 
   show(state: GameState): void {
-    const ending = state.ending
-    if (!ending) {
+    const model = deriveEndingPresentation(state)
+    if (!model) {
       this.hide()
       return
     }
-    this.begin(ending === 'collapse' ? COLORS.red : COLORS.gold)
-    const p = this.panel
-    const pad = this.deviceClass === 'wide' ? 30 : 18
-    const artW =
-      this.deviceClass === 'wide' ? Math.min(520, Math.floor(p.width * 0.46)) : p.width - pad * 2
-    const artH = this.deviceClass === 'wide' ? Math.min(330, p.height - 150) : 220
-    const artX = p.x + pad
-    const artY = p.y + pad + 16
-    this.drawArtFrame(artX, artY, artW, artH, ending === 'collapse' ? COLORS.red : COLORS.gold)
-    drawArtSlot(this.scene, this.content, 'ending', ending, artX + artW / 2, artY + artH / 2, {
-      width: artW - 16,
-      height: artH - 16,
-      glyphSize: 84,
-      fallbackGlyph: '了',
-    })
+    this.begin(model.accent)
+    if (this.deviceClass === 'wide') this.renderWide(model)
+    else this.renderNarrow(model)
+  }
 
-    const textX = this.deviceClass === 'wide' ? artX + artW + 34 : p.x + pad
-    const textY = this.deviceClass === 'wide' ? artY + 12 : artY + artH + 18
-    const textW = this.deviceClass === 'wide' ? p.x + p.width - pad - textX : p.width - pad * 2
-    const spec = artSpec('ending', ending)
-    const title = pixelText(this.scene, spec?.label ?? ending, {
-      fontSize: this.deviceClass === 'wide' ? 30 : TEXT_SIZE.heading,
+  private renderWide(model: EndingPresentationModel): void {
+    const p = this.panel
+    const pad = 30
+    const kicker = pixelText(this.scene, model.eyebrow, {
+      fontSize: TEXT_SIZE.labelWide,
+      color: model.accent,
+      trackingEm: 0.08,
+    })
+    kicker.setPosition(p.x + pad, p.y + 30)
+    const title = pixelText(this.scene, model.title, {
+      fontSize: 30,
       color: COLORS.gold,
-      wordWrapWidth: textW,
     })
-    title.setPosition(textX, textY)
-    this.content.add(title)
-    const flavor = pixelText(this.scene, ENDING_FLAVOR[ending], {
-      fontSize: this.deviceClass === 'wide' ? TEXT_SIZE.bodyWide : TEXT_SIZE.bodyNarrow,
-      color: COLORS.ink,
-      wordWrapWidth: textW,
-    })
-    flavor.setPosition(textX, textY + 54)
-    this.content.add(flavor)
-    const reached = Math.min(state.day - 1, BALANCE.days)
-    const stats = pixelText(
+    title.setPosition(p.x + pad, p.y + 58)
+    this.content.add([kicker, title])
+
+    const artX = p.x + pad
+    const artY = p.y + 118
+    const artW = Math.floor(p.width * 0.55)
+    const artH = p.height - 200
+    this.drawArtFrame(artX, artY, artW, artH, model.accent)
+    drawArtSlot(
       this.scene,
-      `到達 第${reached}日\n犠牲者 ${state.flags.casualties}\n協力 ${state.flags.cooperation}`,
+      this.content,
+      'ending',
+      model.ending,
+      artX + artW / 2,
+      artY + artH / 2,
       {
-        fontSize: TEXT_SIZE.bodyWide,
-        color: COLORS.inkDim,
-        wordWrapWidth: textW,
+        width: artW - 16,
+        height: artH - 16,
+        glyphSize: 96,
+        fallbackGlyph: '了',
       },
     )
-    stats.setPosition(textX, textY + 132)
-    this.content.add(stats)
 
+    const columnX = artX + artW + 30
+    const columnW = p.x + p.width - pad - columnX
+    const dayLabel = pixelText(this.scene, 'SURVIVAL RECORD', {
+      fontSize: TEXT_SIZE.labelNarrow,
+      color: COLORS.inkDim,
+      trackingEm: 0.08,
+    })
+    dayLabel.setPosition(columnX, artY)
+    const day = pixelText(this.scene, `DAY ${model.reachedDay}`, {
+      fontFamily: FONT_DISPLAY,
+      fontSize: 28,
+      color: model.accent,
+    })
+    day.setPosition(columnX, artY + 26)
+    const flavor = pixelText(this.scene, model.flavor, {
+      fontSize: TEXT_SIZE.bodyWide,
+      color: COLORS.ink,
+      wordWrapWidth: columnW,
+    })
+    flavor.setPosition(columnX, artY + 78)
+    this.content.add([dayLabel, day, flavor])
+
+    const resourceY = artY + 160
+    model.resources.forEach((metric, index) => {
+      const col = index % 2
+      const row = Math.floor(index / 2)
+      const gap = 10
+      const cardW = (columnW - gap) / 2
+      this.addMetricCard(
+        columnX + col * (cardW + gap),
+        resourceY + row * 66,
+        cardW,
+        56,
+        metric.label,
+        metric.value,
+        model.accent,
+      )
+    })
+
+    this.addRecordGrid(columnX, resourceY + 142, columnW, model)
+    this.addActions(p.x + p.width - pad, p.y + p.height - 34, false)
+  }
+
+  private renderNarrow(model: EndingPresentationModel): void {
+    const p = this.panel
+    const pad = 18
+    const contentW = p.width - pad * 2
+    const kicker = pixelText(this.scene, model.eyebrow, {
+      fontSize: TEXT_SIZE.labelNarrow,
+      color: model.accent,
+    })
+    kicker.setPosition(p.x + pad, p.y + 26)
+    const title = pixelText(this.scene, model.title, {
+      fontSize: 23,
+      color: COLORS.gold,
+    })
+    title.setPosition(p.x + pad, p.y + 52)
+    this.content.add([kicker, title])
+
+    const artX = p.x + pad
+    const artY = p.y + 94
+    const artH = 214
+    this.drawArtFrame(artX, artY, contentW, artH, model.accent)
+    drawArtSlot(
+      this.scene,
+      this.content,
+      'ending',
+      model.ending,
+      artX + contentW / 2,
+      artY + artH / 2,
+      {
+        width: contentW - 14,
+        height: artH - 14,
+        glyphSize: 72,
+        fallbackGlyph: '了',
+      },
+    )
+
+    const day = pixelText(this.scene, `DAY ${model.reachedDay}`, {
+      fontFamily: FONT_DISPLAY,
+      fontSize: 21,
+      color: model.accent,
+    })
+    day.setPosition(p.x + pad, artY + artH + 18)
+    const flavor = pixelText(this.scene, model.flavor, {
+      fontSize: TEXT_SIZE.bodyNarrow,
+      color: COLORS.ink,
+      wordWrapWidth: contentW,
+    })
+    flavor.setPosition(p.x + pad, artY + artH + 52)
+    this.content.add([day, flavor])
+
+    const resourceY = artY + artH + 118
+    model.resources.forEach((metric, index) => {
+      const gap = 8
+      const cardW = (contentW - gap * 3) / 4
+      this.addMetricCard(
+        artX + index * (cardW + gap),
+        resourceY,
+        cardW,
+        54,
+        metric.label,
+        metric.value,
+        model.accent,
+      )
+    })
+    this.addRecordGrid(artX, resourceY + 70, contentW, model)
+    this.addActions(p.x + p.width - pad, p.y + p.height - 32, true)
+  }
+
+  private addMetricCard(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    label: string,
+    value: number,
+    accent: number,
+  ): void {
+    const g = this.scene.add.graphics()
+    g.fillStyle(COLORS.night800, 0.92)
+    g.fillRect(x, y, width, height)
+    g.lineStyle(1, COLORS.frameLo, 0.9)
+    g.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1)
+    g.fillStyle(accent, 0.9)
+    g.fillRect(x, y, 3, height)
+    const labelText = pixelText(this.scene, label, {
+      fontSize: TEXT_SIZE.labelNarrow,
+      color: COLORS.inkDim,
+    })
+    labelText.setPosition(x + 10, y + 7)
+    const valueText = pixelText(this.scene, String(value), {
+      fontFamily: FONT_DISPLAY,
+      fontSize: 16,
+      color: COLORS.ink,
+    })
+    valueText.setPosition(x + 10, y + 27)
+    this.content.add([g, labelText, valueText])
+  }
+
+  private addRecordGrid(
+    x: number,
+    y: number,
+    width: number,
+    model: EndingPresentationModel,
+  ): void {
+    const title = pixelText(this.scene, '30日間の記録', {
+      fontSize: TEXT_SIZE.labelWide,
+      color: COLORS.gold,
+    })
+    title.setPosition(x, y)
+    this.content.add(title)
+    const columns = this.deviceClass === 'wide' ? 3 : 2
+    const cellW = width / columns
+    model.records.forEach((record, index) => {
+      const col = index % columns
+      const row = Math.floor(index / columns)
+      const label = pixelText(this.scene, record.label, {
+        fontSize: TEXT_SIZE.labelNarrow,
+        color: COLORS.inkDim,
+      })
+      label.setPosition(x + col * cellW, y + 28 + row * 42)
+      const value = pixelText(this.scene, String(record.value), {
+        fontSize: TEXT_SIZE.bodyWide,
+        color: COLORS.ink,
+      })
+      value.setPosition(x + col * cellW, y + 46 + row * 42)
+      this.content.add([label, value])
+    })
+  }
+
+  private addActions(right: number, y: number, narrow: boolean): void {
     const restart = new PixelButton(this.scene, {
       label: 'もう一度',
-      width: 150,
+      width: narrow ? 156 : 150,
       height: 46,
       variant: 'primary',
       onAction: this.callbacks.onRestart,
     })
-    const titleButton = new PixelButton(this.scene, {
+    const title = new PixelButton(this.scene, {
       label: 'タイトルへ',
-      width: 150,
+      width: narrow ? 156 : 150,
       height: 46,
       variant: 'quiet',
       onAction: this.callbacks.onTitle,
     })
-    restart.setPosition(p.x + p.width - pad - 80, p.y + p.height - 36)
-    titleButton.setPosition(p.x + p.width - pad - 246, p.y + p.height - 36)
-    this.content.add([restart, titleButton])
+    restart.setPosition(right - restart.buttonWidth / 2, y)
+    title.setPosition(right - restart.buttonWidth - 12 - title.buttonWidth / 2, y)
+    this.content.add([restart, title])
   }
 }
