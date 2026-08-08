@@ -6,6 +6,7 @@ import { drawArtSlot } from '../ui/art-slot'
 import { PixelButton } from '../ui/button'
 import { pixelText } from '../ui/pixel-text'
 import { PresentationSurface } from './presentation-surface'
+import { deriveStoryPresentation, type StoryPresentationModel } from './story-metadata'
 
 export class ChoiceCard extends Phaser.GameObjects.Container {
   constructor(
@@ -103,8 +104,9 @@ export class ChoicePresentation extends PresentationSurface {
   private render(state: GameState, options: ChoiceOption[]): void {
     const pending = state.pendingChoice
     if (!pending) return
-    const event = findEvent(pending.eventId)
-    if (!event) return
+    const model = deriveStoryPresentation(pending.eventId, state)
+    if (!model) return
+    const event = model.event
     this.begin(COLORS.amber)
     const p = this.panel
     const pad = this.deviceClass === 'wide' ? 26 : 16
@@ -113,10 +115,16 @@ export class ChoicePresentation extends PresentationSurface {
     this.page = Math.min(this.page, pageCount - 1)
     const visible = options.slice(this.page * perPage, (this.page + 1) * perPage)
 
-    const kicker = pixelText(this.scene, '対策会議・判断を求められている', {
-      fontSize: TEXT_SIZE.labelWide,
-      color: COLORS.cyan,
-    })
+    const kicker = pixelText(
+      this.scene,
+      model.speaker
+        ? `${model.speaker.name}から判断を求められている`
+        : '対策会議・判断を求められている',
+      {
+        fontSize: TEXT_SIZE.labelWide,
+        color: COLORS.cyan,
+      },
+    )
     kicker.setPosition(p.x + pad, p.y + pad)
     this.content.add(kicker)
 
@@ -128,30 +136,37 @@ export class ChoicePresentation extends PresentationSurface {
     title.setPosition(p.x + pad, p.y + pad + 28)
     this.content.add(title)
 
-    if (this.deviceClass === 'wide') this.renderWide(event.desc, event.id, visible, pageCount)
-    else this.renderNarrow(event.desc, event.id, visible, pageCount)
+    if (this.deviceClass === 'wide') this.renderWide(model, visible, pageCount)
+    else this.renderNarrow(model, visible, pageCount)
   }
 
   private renderWide(
-    desc: string | undefined,
-    eventId: string,
+    model: StoryPresentationModel,
     options: ChoiceOption[],
     pageCount: number,
   ): void {
     const p = this.panel
     const pad = 26
-    const leftW = Math.min(360, Math.floor(p.width * 0.32))
+    const leftW = Math.min(340, Math.floor(p.width * 0.31))
     const artX = p.x + pad
     const artY = p.y + 92
-    const artH = 210
+    const artH = model.speaker ? 250 : 210
     this.drawArtFrame(artX, artY, leftW, artH, COLORS.amber)
-    drawArtSlot(this.scene, this.content, 'event', eventId, artX + leftW / 2, artY + artH / 2, {
-      width: leftW - 16,
-      height: artH - 16,
-      glyphSize: 68,
-      fallbackGlyph: '？',
-    })
-    const descText = pixelText(this.scene, desc ?? '町の今後を左右する判断です。', {
+    drawArtSlot(
+      this.scene,
+      this.content,
+      model.speaker ? 'portrait' : 'event',
+      model.speaker?.portrait ?? model.event.id,
+      artX + leftW / 2,
+      artY + artH / 2,
+      {
+        width: leftW - 16,
+        height: artH - 16,
+        glyphSize: model.speaker ? 86 : 68,
+        fallbackGlyph: model.speaker ? '人' : '？',
+      },
+    )
+    const descText = pixelText(this.scene, model.event.desc ?? '町の今後を左右する判断です。', {
       fontSize: TEXT_SIZE.bodyWide,
       color: COLORS.inkDim,
       wordWrapWidth: leftW,
@@ -177,25 +192,32 @@ export class ChoicePresentation extends PresentationSurface {
   }
 
   private renderNarrow(
-    desc: string | undefined,
-    eventId: string,
+    model: StoryPresentationModel,
     options: ChoiceOption[],
     pageCount: number,
   ): void {
     const p = this.panel
     const pad = 16
-    const artW = 118
-    const artH = 88
+    const artW = model.speaker ? 126 : 118
+    const artH = model.speaker ? 154 : 88
     const artX = p.x + pad
     const artY = p.y + 88
     this.drawArtFrame(artX, artY, artW, artH, COLORS.amber)
-    drawArtSlot(this.scene, this.content, 'event', eventId, artX + artW / 2, artY + artH / 2, {
-      width: artW - 12,
-      height: artH - 12,
-      glyphSize: 40,
-      fallbackGlyph: '？',
-    })
-    const descText = pixelText(this.scene, desc ?? '町の今後を左右する判断です。', {
+    drawArtSlot(
+      this.scene,
+      this.content,
+      model.speaker ? 'portrait' : 'event',
+      model.speaker?.portrait ?? model.event.id,
+      artX + artW / 2,
+      artY + artH / 2,
+      {
+        width: artW - 12,
+        height: artH - 12,
+        glyphSize: model.speaker ? 54 : 40,
+        fallbackGlyph: model.speaker ? '人' : '？',
+      },
+    )
+    const descText = pixelText(this.scene, model.event.desc ?? '町の今後を左右する判断です。', {
       fontSize: TEXT_SIZE.bodyNarrow,
       color: COLORS.inkDim,
       wordWrapWidth: p.width - artW - pad * 3,

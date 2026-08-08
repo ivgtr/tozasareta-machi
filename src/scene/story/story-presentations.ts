@@ -41,7 +41,7 @@ export class StoryPresentations {
   update(mode: PresentationMode, state: GameState, beat: Beat | undefined): void {
     this.hideAll()
     if (mode === 'event' && beat?.kind === 'event') {
-      this.event.show(beat)
+      this.event.show(state, beat)
       return
     }
     if (mode === 'arrival' && beat?.kind === 'arrival') {
