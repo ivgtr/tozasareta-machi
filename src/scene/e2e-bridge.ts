@@ -13,6 +13,7 @@ import {
   type PresentationFixtureName,
 } from './testing/presentation-fixtures'
 import { PixelButton } from './ui/button'
+import { UnitToken } from './ui/token'
 import { FACILITY_VISUAL, FOOTPRINT, footprintDiamond, type FacilityId } from './town/layout'
 
 interface CssBounds {
@@ -73,12 +74,21 @@ interface E2EButtonSize {
   height: number
 }
 
+interface E2EButtonTarget {
+  label: string
+  labelBounds: CssBounds
+  hitBounds: CssBounds
+  hovered: boolean
+}
+
 interface E2EBridge {
   snapshot(): E2ESnapshot
   textBounds(text: string, exact?: boolean): CssBounds | null
   firstUnitBounds(): CssBounds | null
   buttonSizes(): E2EButtonSize[]
+  buttonTargets(): E2EButtonTarget[]
   choiceSizes(): E2EButtonSize[]
+  townTokenArtPoint(): { unitId: string; x: number; y: number } | null
   facilityArtPoint(id: FacilityId): { x: number; y: number } | null
   facilityFootprintPoint(id: FacilityId): { x: number; y: number } | null
   facilityTexture(id: FacilityId): string | null
@@ -167,6 +177,45 @@ function visibleButtonSizes(game: Phaser.Game): E2EButtonSize[] {
     .map((button) => ({ width: button.buttonWidth, height: button.buttonHeight }))
 }
 
+function transformedBounds(
+  object: Phaser.GameObjects.Container,
+  rectangle: Phaser.Geom.Rectangle,
+): Phaser.Geom.Rectangle {
+  const matrix = object.getWorldTransformMatrix()
+  const corners = [
+    matrix.transformPoint(rectangle.left, rectangle.top),
+    matrix.transformPoint(rectangle.right, rectangle.top),
+    matrix.transformPoint(rectangle.right, rectangle.bottom),
+    matrix.transformPoint(rectangle.left, rectangle.bottom),
+  ]
+  const xs = corners.map((point) => point.x)
+  const ys = corners.map((point) => point.y)
+  const left = Math.min(...xs)
+  const top = Math.min(...ys)
+  return new Phaser.Geom.Rectangle(left, top, Math.max(...xs) - left, Math.max(...ys) - top)
+}
+
+function visibleButtonTargets(game: Phaser.Game): E2EButtonTarget[] {
+  return visibleObjects(game)
+    .filter((object): object is PixelButton => object instanceof PixelButton)
+    .flatMap((button) => {
+      const label = button.list.find(
+        (object): object is Phaser.GameObjects.Text => object instanceof Phaser.GameObjects.Text,
+      )
+      const hitArea = button.input?.hitArea
+      const labelBounds = label ? boundsOf(label) : null
+      if (!label || !(hitArea instanceof Phaser.Geom.Rectangle) || !labelBounds) return []
+      return [
+        {
+          label: label.text,
+          labelBounds: toCssBounds(game, labelBounds),
+          hitBounds: toCssBounds(game, transformedBounds(button, hitArea)),
+          hovered: button.isHovered,
+        },
+      ]
+    })
+}
+
 function visibleChoiceSizes(game: Phaser.Game): E2EButtonSize[] {
   return visibleObjects(game)
     .filter((object): object is ChoiceCard => object instanceof ChoiceCard)
@@ -178,6 +227,19 @@ function visibleChoiceSizes(game: Phaser.Game): E2EButtonSize[] {
     })
 }
 
+function townTokenArtPoint(game: Phaser.Game): { unitId: string; x: number; y: number } | null {
+  const token = visibleObjects(game).find(
+    (object): object is UnitToken => object instanceof UnitToken,
+  )
+  if (!token) return null
+  const image = token.list.find(
+    (object): object is Phaser.GameObjects.Image => object instanceof Phaser.GameObjects.Image,
+  )
+  if (!image) return null
+  const point = imageCssPoint(game, image, image.frame.realWidth / 2, 2)
+  return { unitId: token.unitId, ...point }
+}
+
 function facilityImage(game: Phaser.Game, id: FacilityId): Phaser.GameObjects.Image | null {
   return (
     visibleObjects(game).find(
@@ -187,7 +249,7 @@ function facilityImage(game: Phaser.Game, id: FacilityId): Phaser.GameObjects.Im
   )
 }
 
-function facilityCssPoint(
+function imageCssPoint(
   game: Phaser.Game,
   image: Phaser.GameObjects.Image,
   x: number,
@@ -224,7 +286,7 @@ function facilityArtPoint(game: Phaser.Game, id: FacilityId): { x: number; y: nu
           }
         }
       }
-      if (opaque) return facilityCssPoint(game, image, x, y)
+      if (opaque) return imageCssPoint(game, image, x, y)
     }
   }
   return null
@@ -255,7 +317,7 @@ function facilityFootprintPoint(
             FACILITY_VISUAL.alphaTolerance,
         ),
       )
-      if (transparent) return facilityCssPoint(game, image, x, y)
+      if (transparent) return imageCssPoint(game, image, x, y)
     }
   }
   return null
@@ -337,7 +399,9 @@ export function installE2EBridge(game: Phaser.Game): void {
     textBounds: (text, exact = true) => findTextBounds(game, text, exact),
     firstUnitBounds: () => findFirstUnitBounds(game),
     buttonSizes: () => visibleButtonSizes(game),
+    buttonTargets: () => visibleButtonTargets(game),
     choiceSizes: () => visibleChoiceSizes(game),
+    townTokenArtPoint: () => townTokenArtPoint(game),
     facilityArtPoint: (id) => facilityArtPoint(game, id),
     facilityFootprintPoint: (id) => facilityFootprintPoint(game, id),
     facilityTexture: (id) => facilityImage(game, id)?.texture.key ?? null,

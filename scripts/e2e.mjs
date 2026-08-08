@@ -149,6 +149,46 @@ async function facilityFootprintPoint(page, id) {
   return handle.jsonValue()
 }
 
+async function buttonTarget(page, label) {
+  const handle = await page.waitForFunction(
+    ({ name, text }) =>
+      globalThis[name]?.buttonTargets().find((target) => target.label === text) ?? false,
+    { name: BRIDGE, text: label },
+  )
+  return handle.jsonValue()
+}
+
+async function townTokenArtPoint(page) {
+  const handle = await page.waitForFunction(
+    (name) => globalThis[name]?.townTokenArtPoint() ?? false,
+    BRIDGE,
+  )
+  return handle.jsonValue()
+}
+
+function centerOf(bounds) {
+  return { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }
+}
+
+function assertAligned(a, b, message) {
+  const aCenter = centerOf(a)
+  const bCenter = centerOf(b)
+  assert.ok(
+    Math.abs(aCenter.x - bCenter.x) <= 1 && Math.abs(aCenter.y - bCenter.y) <= 1,
+    `${message}: visual=${JSON.stringify(aCenter)} hit=${JSON.stringify(bCenter)}`,
+  )
+}
+
+function assertWithinViewport(bounds, viewport, message) {
+  assert.ok(
+    bounds.x >= 0 &&
+      bounds.y >= 0 &&
+      bounds.x + bounds.width <= viewport.width &&
+      bounds.y + bounds.height <= viewport.height,
+    `${message}: bounds=${JSON.stringify(bounds)} viewport=${JSON.stringify(viewport)}`,
+  )
+}
+
 async function clickText(page, text, exact = true) {
   const bounds = await textBounds(page, text, exact)
   await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
@@ -363,6 +403,80 @@ try {
     })
   })
 
+  await test('未配置確認モーダルを画面回転後も再配置する', async () => {
+    for (const scenario of [
+      {
+        name: 'wide-to-narrow',
+        options: { viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 },
+        nextViewport: { width: 600, height: 900 },
+        nextClass: 'narrow',
+      },
+      {
+        name: 'narrow-to-wide-touch',
+        options: {
+          viewport: { width: 600, height: 900 },
+          deviceScaleFactor: 2,
+          hasTouch: true,
+        },
+        nextViewport: { width: 1280, height: 720 },
+        nextClass: 'wide',
+      },
+    ]) {
+      await withGame(`commit-confirm-${scenario.name}`, scenario.options, async (page) => {
+        await startNewGame(page)
+        await clickText(page, '今日を終える ▶')
+        await page.waitForFunction((name) => globalThis[name]?.snapshot().confirmOpen, BRIDGE)
+        await page.setViewportSize(scenario.nextViewport)
+        await page.waitForFunction(
+          ({ name, deviceClass }) => globalThis[name]?.snapshot().deviceClass === deviceClass,
+          { name: BRIDGE, deviceClass: scenario.nextClass },
+        )
+        const target = await buttonTarget(page, '戻って調整')
+        assertAligned(target.labelBounds, target.hitBounds, scenario.name)
+        assertWithinViewport(target.hitBounds, scenario.nextViewport, scenario.name)
+        const point = centerOf(target.hitBounds)
+        if (scenario.options.hasTouch) {
+          await page.touchscreen.tap(point.x, point.y)
+        } else {
+          await page.mouse.move(point.x, point.y)
+          await page.waitForFunction(
+            ({ name, label }) =>
+              globalThis[name]
+                ?.buttonTargets()
+                .some((button) => button.label === label && button.hovered),
+            { name: BRIDGE, label: '戻って調整' },
+          )
+          await page.mouse.click(point.x, point.y)
+        }
+        await page.waitForFunction((name) => !globalThis[name]?.snapshot().confirmOpen, BRIDGE)
+      })
+    }
+  })
+
+  await test('開いたStory Presentationを画面幅切替後も再配置する', async () => {
+    await withGame('story-presentation-resize', {}, async (page) => {
+      await startNewGame(page)
+      const cases = [
+        { fixture: 'event', action: '続ける ▶' },
+        { fixture: 'choice', action: '食料を買う' },
+        { fixture: 'arrival', action: '迎え入れる ▶' },
+        { fixture: 'ending', action: 'もう一度' },
+      ]
+      for (const [index, entry] of cases.entries()) {
+        await showFixture(page, entry.fixture)
+        const narrow = index % 2 === 0
+        const viewport = narrow ? { width: 600, height: 900 } : { width: 1280, height: 720 }
+        await page.setViewportSize(viewport)
+        await page.waitForFunction(
+          ({ name, width }) => globalThis[name]?.snapshot().gameSize.width === width,
+          { name: BRIDGE, width: narrow ? 480 : 1280 },
+        )
+        const actionBounds = await textBounds(page, entry.action)
+        assertWithinViewport(actionBounds, viewport, `${entry.fixture} after resize`)
+      }
+    })
+  })
+
   await test('タッチ操作で人物フォーカスを開ける', async () => {
     await withGame(
       'touch-character-focus',
@@ -511,7 +625,30 @@ try {
         (name) => globalThis[name]?.facilityTexture('road') === 'facility/road-working',
         BRIDGE,
       )
+      const token = await townTokenArtPoint(page)
+      await page.mouse.click(token.x, token.y)
+      await page.waitForFunction(
+        ({ name, unitId }) => globalThis[name]?.snapshot().selectedUnitId === unitId,
+        { name: BRIDGE, unitId: token.unitId },
+        { timeout: 3_000 },
+      )
     })
+
+    await withGame(
+      'town-token-touch',
+      { viewport: { width: 600, height: 900 }, deviceScaleFactor: 2, hasTouch: true },
+      async (page) => {
+        await startNewGame(page)
+        await clickText(page, '自動配置')
+        const token = await townTokenArtPoint(page)
+        await page.touchscreen.tap(token.x, token.y)
+        await page.waitForFunction(
+          ({ name, unitId }) => globalThis[name]?.snapshot().selectedUnitId === unitId,
+          { name: BRIDGE, unitId: token.unitId },
+          { timeout: 3_000 },
+        )
+      },
+    )
   })
 
   await test('Turn Playbackが行動結果を専用Presentationで表示する', async () => {

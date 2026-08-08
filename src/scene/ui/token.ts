@@ -51,8 +51,15 @@ export class UnitToken extends Phaser.GameObjects.Container {
     this.badge.setOrigin(1, 0)
 
     this.add([this.outline, this.bodyView, this.badge])
-    this.setSize(TOKEN_HIT, TOKEN_HIT)
-    this.setInteractive()
+    this.setInteractive(
+      new Phaser.Geom.Rectangle(
+        -TOKEN_HIT / 2,
+        -this.displayH / 2 - TOKEN_HIT / 2,
+        TOKEN_HIT,
+        TOKEN_HIT,
+      ),
+      Phaser.Geom.Rectangle.Contains,
+    )
     scene.add.existing(this)
     this.updateUnit(unit)
   }
