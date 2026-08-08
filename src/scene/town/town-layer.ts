@@ -6,6 +6,7 @@ import { FACILITIES, type FacilityViewMap } from './facilities'
 import { facilityAssetId } from './facility-view'
 import {
   FACILITY_PLOTS,
+  FACILITY_VISUAL,
   FOOTPRINT,
   TOWN_BASE,
   facilityAt,
@@ -73,15 +74,8 @@ export class TownLayer extends Phaser.GameObjects.Container {
       const meta = FACILITIES[plot.id]
       const host = scene.add.container(plot.x, plot.y)
 
-      const zone = scene.add.zone(0, 0, FOOTPRINT.width, FOOTPRINT.height)
-      zone.setInteractive(
-        new Phaser.Geom.Polygon(footprintDiamond(FOOTPRINT.width / 2, FOOTPRINT.height / 2)),
-        Phaser.Geom.Polygon.Contains,
-      )
-      zone.on('pointerdown', () => this.callbacks.onFacilityTap(plot.id))
-
       const tokens = scene.add.container()
-      host.add([zone, tokens])
+      host.add(tokens)
       this.world.add(host)
 
       const highlight = scene.add.graphics()
@@ -93,17 +87,6 @@ export class TownLayer extends Phaser.GameObjects.Container {
       label.setPosition(plot.x, plot.y + 18)
       label.setOrigin(0.5)
       label.setVisible(false)
-      label.setInteractive()
-      label.on('pointerdown', () => this.callbacks.onFacilityTap(plot.id))
-
-      zone.on('pointerover', () => {
-        this.hoveredFacility = plot.id
-        label.setVisible(true)
-      })
-      zone.on('pointerout', () => {
-        if (this.hoveredFacility === plot.id) this.hoveredFacility = null
-        label.setVisible(this.persistentLabels.has(plot.id))
-      })
 
       this.overlay.add([highlight, label])
       this.visuals.set(plot.id, { host, highlight, tokens, sprite: null, label })
@@ -172,8 +155,31 @@ export class TownLayer extends Phaser.GameObjects.Container {
     const key = textureKey('facility', facilityAssetId(facility, view))
 
     if (!visual.sprite) {
-      const sprite = this.scene.add.image(0, FOOTPRINT.height / 2 - 56, key)
-      sprite.setDisplaySize(96, 112)
+      const sprite = this.scene.add.image(0, FACILITY_VISUAL.centerY, key)
+      sprite.setName(`facility:${facility}`)
+      sprite.setDisplaySize(FACILITY_VISUAL.width, FACILITY_VISUAL.height)
+      const footprint = new Phaser.Geom.Polygon(
+        footprintDiamond(FACILITY_VISUAL.width / 2, FACILITY_VISUAL.height - FOOTPRINT.height / 2),
+      )
+      const pixelPerfect = this.scene.input.makePixelPerfect(
+        FACILITY_VISUAL.alphaTolerance,
+      ) as Phaser.Types.Input.HitAreaCallback
+      sprite.setInteractive(
+        footprint,
+        (hitArea, x, y, gameObject) =>
+          Phaser.Geom.Polygon.Contains(hitArea as Phaser.Geom.Polygon, x, y) ||
+          pixelPerfect(hitArea, x, y, gameObject),
+      )
+      if (sprite.input) sprite.input.cursor = 'pointer'
+      sprite.on('pointerdown', () => this.callbacks.onFacilityTap(facility))
+      sprite.on('pointerover', () => {
+        this.hoveredFacility = facility
+        visual.label.setVisible(true)
+      })
+      sprite.on('pointerout', () => {
+        if (this.hoveredFacility === facility) this.hoveredFacility = null
+        visual.label.setVisible(this.persistentLabels.has(facility))
+      })
       visual.host.addAt(sprite, 0)
       visual.sprite = sprite
       return

@@ -4,6 +4,13 @@ export const TOWN_BASE = { width: 480, height: 320 } as const
 
 export const FOOTPRINT = { width: 96, height: 48 } as const
 
+export const FACILITY_VISUAL = {
+  width: 96,
+  height: 112,
+  centerY: -32,
+  alphaTolerance: 16,
+} as const
+
 export type FacilityId = 'hq' | 'power' | 'road' | 'clinic' | 'plaza' | 'warehouse'
 
 export interface FacilityPlot {
