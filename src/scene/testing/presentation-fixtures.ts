@@ -7,6 +7,7 @@ import type { FacilityId } from '../town/layout'
 
 export const PRESENTATION_FIXTURE_NAMES = [
   'planning',
+  'planning-assigned',
   'unit-focus',
   'facility-focus',
   'minor-result',
@@ -67,6 +68,27 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
 
   if (name === 'title') return { name, state, scene: 'title' }
   if (name === 'menu') return { name, state, scene: 'play', menuOpen: true }
+  if (name === 'planning-assigned') {
+    const assigned = state.units.slice(0, 4).map((unit) => unit.id)
+    if (assigned.length !== 4) {
+      throw new Error('Assigned planning fixture requires four initial units')
+    }
+    return {
+      name,
+      state,
+      scene: 'play',
+      plan: {
+        placements: {
+          repair_power: [assigned[0]!],
+          restore_road: [assigned[1]!],
+          reinforce_medical: [assigned[2]!],
+          soup_kitchen: [assigned[3]!],
+        },
+        ration: false,
+        procure: false,
+      },
+    }
+  }
   if (name === 'unit-focus') {
     return {
       name,
@@ -170,6 +192,7 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
 }
 
 export function fixturePresentationMode(name: PresentationFixtureName): string {
+  if (name === 'planning-assigned') return 'planning'
   if (name.endsWith('-result')) return 'flow'
   return name
 }

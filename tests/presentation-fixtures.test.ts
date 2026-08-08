@@ -37,6 +37,23 @@ describe('presentation fixtures', () => {
     }
   })
 
+  it('builds assigned planning with every Phase 1 working facility visible', () => {
+    const fixture = buildPresentationFixture('planning-assigned')
+    const ids = fixture.state.units.slice(0, 4).map((unit) => unit.id)
+
+    expect(fixture.plan).toEqual({
+      placements: {
+        repair_power: [ids[0]],
+        restore_road: [ids[1]],
+        reinforce_medical: [ids[2]],
+        soup_kitchen: [ids[3]],
+      },
+      ration: false,
+      procure: false,
+    })
+    expect(fixturePresentationMode('planning-assigned')).toBe('planning')
+  })
+
   it('focus fixtures share a deterministic assignment', () => {
     const unit = buildPresentationFixture('unit-focus')
     const facility = buildPresentationFixture('facility-focus')

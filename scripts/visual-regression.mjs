@@ -19,19 +19,26 @@ const UPDATE = process.env.UPDATE_VISUAL_BASELINES === '1'
 const PIXEL_COLOR_THRESHOLD = 0.5
 const MAX_DIFF_RATIO = 0.003
 
-const fixtures = [
-  'title',
-  'planning',
-  'unit-focus',
-  'facility-focus',
-  'minor-result',
-  'normal-result',
-  'major-result',
-  'event',
-  'choice',
-  'arrival',
-  'ending',
-  'menu',
+const visualTargets = [
+  { fixture: 'title' },
+  { fixture: 'planning' },
+  {
+    fixture: 'planning-assigned',
+    clips: {
+      wide: { x: 450, y: 215, width: 390, height: 260 },
+      narrow: { x: 115, y: 285, width: 270, height: 190 },
+    },
+  },
+  { fixture: 'unit-focus' },
+  { fixture: 'facility-focus' },
+  { fixture: 'minor-result' },
+  { fixture: 'normal-result' },
+  { fixture: 'major-result' },
+  { fixture: 'event' },
+  { fixture: 'choice' },
+  { fixture: 'arrival' },
+  { fixture: 'ending' },
+  { fixture: 'menu' },
 ]
 
 const layouts = [
@@ -39,6 +46,7 @@ const layouts = [
   { name: 'narrow', viewport: { width: 480, height: 854 } },
 ]
 
+const failures = []
 let server = null
 
 function delay(ms) {
@@ -100,7 +108,13 @@ async function showFixture(page, name) {
       ({ bridge, fixture }) => {
         const value = globalThis[bridge].snapshot()
         if (fixture === 'menu') return value.menuOpen
-        return value.presentationMode === (fixture.endsWith('-result') ? 'flow' : fixture)
+        const expectedMode =
+          fixture === 'planning-assigned'
+            ? 'planning'
+            : fixture.endsWith('-result')
+              ? 'flow'
+              : fixture
+        return value.presentationMode === expectedMode
       },
       { bridge: BRIDGE, fixture: name },
     )
@@ -123,13 +137,20 @@ async function compare(name, actualBuffer) {
   try {
     baselineBuffer = await readFile(baselinePath)
   } catch {
-    throw new Error(`Missing baseline ${name}. Run npm run test:visual:update.`)
+    failures.push(`Missing baseline ${name}. Run npm run test:visual:update.`)
+    process.stdout.write(`  missing ${name}\n`)
+    return
   }
 
   const baseline = PNG.sync.read(baselineBuffer)
   const actual = PNG.sync.read(actualBuffer)
-  assert.equal(actual.width, baseline.width, `${name}: screenshot width changed`)
-  assert.equal(actual.height, baseline.height, `${name}: screenshot height changed`)
+  try {
+    assert.equal(actual.width, baseline.width, `${name}: screenshot width changed`)
+    assert.equal(actual.height, baseline.height, `${name}: screenshot height changed`)
+  } catch (error) {
+    failures.push(error instanceof Error ? error.message : String(error))
+    return
+  }
 
   const diff = new PNG({ width: baseline.width, height: baseline.height })
   const changed = pixelmatch(
@@ -146,11 +167,11 @@ async function compare(name, actualBuffer) {
   const ratio = changed / (baseline.width * baseline.height)
   if (ratio > MAX_DIFF_RATIO) {
     await writeFile(path.join(OUTPUT_DIR, `${name}-diff.png`), PNG.sync.write(diff))
+    failures.push(
+      `${name}: ${(ratio * 100).toFixed(3)}% of pixels changed; inspect test-results/visual/${name}-diff.png`,
+    )
+    return
   }
-  assert.ok(
-    ratio <= MAX_DIFF_RATIO,
-    `${name}: ${(ratio * 100).toFixed(3)}% of pixels changed; inspect test-results/visual/${name}-diff.png`,
-  )
   process.stdout.write(`  matched ${name} (${changed} pixels)\n`)
 }
 
@@ -188,7 +209,8 @@ try {
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded' })
     await page.waitForFunction((bridge) => Boolean(globalThis[bridge]), BRIDGE)
 
-    for (const fixture of fixtures) {
+    for (const target of visualTargets) {
+      const { fixture } = target
       if (fixture !== 'title') {
         const inPlay = await page.evaluate(
           (bridge) => globalThis[bridge].snapshot().activeScenes.includes('Play'),
@@ -207,13 +229,22 @@ try {
         }
       }
       await showFixture(page, fixture)
-      await compare(`${fixture}-${layout.name}`, await page.screenshot({ animations: 'disabled' }))
+      const clip = target.clips?.[layout.name]
+      const screenshot = await page.screenshot({
+        animations: 'disabled',
+        ...(clip ? { clip } : {}),
+      })
+      await compare(`${fixture}-${layout.name}`, screenshot)
     }
     await context.close()
   }
 } finally {
   await browser?.close()
   await stopServer()
+}
+
+if (failures.length > 0) {
+  throw new Error(`Visual regression failed:\n- ${failures.join('\n- ')}`)
 }
 
 process.stdout.write(UPDATE ? '\nVisual baselines updated.\n' : '\nVisual regression passed.\n')
