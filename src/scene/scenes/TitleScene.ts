@@ -45,6 +45,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.transitioning = false
     this.audio = audioDirectorFor(this.game)
     this.audio.setMood('silent')
     this.cameras.main.setBackgroundColor(COLORS.night900)
