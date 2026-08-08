@@ -39,30 +39,130 @@ const WORLD_PALETTE = new Set([
 
 const CONTRACT = [
   { path: 'town/base.png', width: 480, height: 320, background: 'opaque' },
-  { path: 'facility/hq-normal.png', width: 96, height: 112, background: 'transparent' },
-  { path: 'facility/power-normal.png', width: 96, height: 112, background: 'transparent' },
-  { path: 'facility/power-low.png', width: 96, height: 112, background: 'transparent' },
-  { path: 'facility/power-working.png', width: 96, height: 112, background: 'transparent' },
-  { path: 'facility/road-collapsed.png', width: 96, height: 112, background: 'transparent' },
-  { path: 'facility/road-working.png', width: 96, height: 112, background: 'transparent' },
-  { path: 'facility/road-restored.png', width: 96, height: 112, background: 'transparent' },
-  { path: 'facility/clinic-normal.png', width: 96, height: 112, background: 'transparent' },
-  { path: 'facility/clinic-working.png', width: 96, height: 112, background: 'transparent' },
-  { path: 'facility/plaza-normal.png', width: 96, height: 112, background: 'transparent' },
-  { path: 'facility/plaza-working.png', width: 96, height: 112, background: 'transparent' },
-  { path: 'facility/warehouse-normal.png', width: 96, height: 112, background: 'transparent' },
+  {
+    path: 'facility/hq-normal.png',
+    width: 96,
+    height: 112,
+    background: 'transparent',
+  },
+  {
+    path: 'facility/power-normal.png',
+    width: 96,
+    height: 112,
+    background: 'transparent',
+  },
+  {
+    path: 'facility/power-low.png',
+    width: 96,
+    height: 112,
+    background: 'transparent',
+  },
+  {
+    path: 'facility/power-working.png',
+    width: 96,
+    height: 112,
+    background: 'transparent',
+  },
+  {
+    path: 'facility/road-collapsed.png',
+    width: 96,
+    height: 112,
+    background: 'transparent',
+  },
+  {
+    path: 'facility/road-working.png',
+    width: 96,
+    height: 112,
+    background: 'transparent',
+  },
+  {
+    path: 'facility/road-restored.png',
+    width: 96,
+    height: 112,
+    background: 'transparent',
+  },
+  {
+    path: 'facility/clinic-normal.png',
+    width: 96,
+    height: 112,
+    background: 'transparent',
+  },
+  {
+    path: 'facility/clinic-working.png',
+    width: 96,
+    height: 112,
+    background: 'transparent',
+  },
+  {
+    path: 'facility/plaza-normal.png',
+    width: 96,
+    height: 112,
+    background: 'transparent',
+  },
+  {
+    path: 'facility/plaza-working.png',
+    width: 96,
+    height: 112,
+    background: 'transparent',
+  },
+  {
+    path: 'facility/warehouse-normal.png',
+    width: 96,
+    height: 112,
+    background: 'transparent',
+  },
   { path: 'token/mayor.png', width: 24, height: 32, background: 'transparent' },
   { path: 'token/medic.png', width: 24, height: 32, background: 'transparent' },
   { path: 'token/engineer.png', width: 24, height: 32, background: 'transparent' },
   { path: 'token/farmer.png', width: 24, height: 32, background: 'transparent' },
-  { path: 'token/recruit_workwear_a.png', width: 24, height: 32, background: 'transparent' },
-  { path: 'token/recruit_workwear_b.png', width: 24, height: 32, background: 'transparent' },
-  { path: 'token/recruit_utility_a.png', width: 24, height: 32, background: 'transparent' },
-  { path: 'token/recruit_utility_b.png', width: 24, height: 32, background: 'transparent' },
-  { path: 'token/recruit_care_a.png', width: 24, height: 32, background: 'transparent' },
-  { path: 'token/recruit_care_b.png', width: 24, height: 32, background: 'transparent' },
-  { path: 'token/recruit_townsfolk_a.png', width: 24, height: 32, background: 'transparent' },
-  { path: 'token/recruit_townsfolk_b.png', width: 24, height: 32, background: 'transparent' },
+  {
+    path: 'token/recruit_workwear_a.png',
+    width: 24,
+    height: 32,
+    background: 'transparent',
+  },
+  {
+    path: 'token/recruit_workwear_b.png',
+    width: 24,
+    height: 32,
+    background: 'transparent',
+  },
+  {
+    path: 'token/recruit_utility_a.png',
+    width: 24,
+    height: 32,
+    background: 'transparent',
+  },
+  {
+    path: 'token/recruit_utility_b.png',
+    width: 24,
+    height: 32,
+    background: 'transparent',
+  },
+  {
+    path: 'token/recruit_care_a.png',
+    width: 24,
+    height: 32,
+    background: 'transparent',
+  },
+  {
+    path: 'token/recruit_care_b.png',
+    width: 24,
+    height: 32,
+    background: 'transparent',
+  },
+  {
+    path: 'token/recruit_townsfolk_a.png',
+    width: 24,
+    height: 32,
+    background: 'transparent',
+  },
+  {
+    path: 'token/recruit_townsfolk_b.png',
+    width: 24,
+    height: 32,
+    background: 'transparent',
+  },
 ]
 
 function listPngs(kind) {
@@ -117,7 +217,9 @@ for (const spec of CONTRACT) {
   const { png, colors, transparentPixels, partialAlphaPixels } = inspectAsset(spec)
 
   if (png.width !== spec.width || png.height !== spec.height) {
-    errors.push(`${spec.path}: expected ${spec.width}x${spec.height}, got ${png.width}x${png.height}`)
+    errors.push(
+      `${spec.path}: expected ${spec.width}x${spec.height}, got ${png.width}x${png.height}`,
+    )
   }
 
   if (spec.background === 'opaque' && transparentPixels !== 0) {
