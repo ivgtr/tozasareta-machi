@@ -263,7 +263,7 @@ try {
 
   await test('タイトルと指揮所メニューをwide/narrowで維持する', async () => {
     await withGame('global-presentation-wide', {}, async (page) => {
-      assert.ok(await optionalTextBounds(page, '孤立した町の30日間'))
+      await textBounds(page, '孤立した町の30日間')
       await assertMinimumTouchTargets(page)
       await capture(page, 'title-wide')
       await startNewGame(page)
@@ -280,7 +280,7 @@ try {
       'global-presentation-narrow',
       { viewport: { width: 600, height: 900 } },
       async (page) => {
-        assert.ok(await optionalTextBounds(page, '孤立した町の30日間'))
+        await textBounds(page, '孤立した町の30日間')
         await assertMinimumTouchTargets(page)
         await capture(page, 'title-narrow')
         await startNewGame(page)
