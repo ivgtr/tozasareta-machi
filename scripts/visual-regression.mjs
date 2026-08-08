@@ -177,7 +177,7 @@ try {
             localStorage: [
               {
                 name: 'tozasareta-machi:settings',
-                value: JSON.stringify({ animations: false }),
+                value: JSON.stringify({ animations: false, sound: false }),
               },
             ],
           },

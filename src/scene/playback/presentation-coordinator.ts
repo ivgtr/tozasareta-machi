@@ -1,4 +1,7 @@
 import type { GameState } from '../../game/types'
+import { findEvent } from '../../game/events'
+import type { AudioDirector } from '../audio/audio-director'
+import { audioCueForFlow } from '../audio/audio-cues'
 import { COLORS } from '../tokens'
 import type { FacilityId } from '../town/layout'
 import { deriveFlowPresentation, type FlowPresentationModel } from './flow-model'
@@ -12,6 +15,7 @@ export class PlaybackPresentationCoordinator {
   constructor(
     private readonly flow: FlowPresentation,
     private readonly townFx: TownPlaybackFx,
+    private readonly audio: AudioDirector,
   ) {}
 
   update(
@@ -37,8 +41,13 @@ export class PlaybackPresentationCoordinator {
     if (current && beat && beatKey !== this.lastBeatKey) {
       if (beat.kind === 'flow' && model) {
         this.townFx.play(model.fx, flowAccent(model.tone), model.importance)
+        this.audio.play(audioCueForFlow(model))
       } else if (beat.kind === 'arrival') {
         this.townFx.playArrival()
+        this.audio.play('arrival')
+      } else if (beat.kind === 'event') {
+        const tone = findEvent(beat.id)?.tone
+        this.audio.play(tone === 'threat' ? 'threat' : tone === 'boon' ? 'boon' : 'normal-result')
       }
     }
     this.lastBeatKey = beatKey

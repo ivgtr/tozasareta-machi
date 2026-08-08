@@ -85,7 +85,7 @@ async function openGame({
           localStorage: [
             {
               name: 'tozasareta-machi:settings',
-              value: JSON.stringify({ animations }),
+              value: JSON.stringify({ animations, sound: false }),
             },
           ],
         },
@@ -289,6 +289,12 @@ try {
   await test('タイトルと指揮所メニューをwide/narrowで維持する', async () => {
     await withGame('global-presentation-wide', {}, async (page) => {
       await textBounds(page, '孤立した町の30日間')
+      assert.ok(await optionalTextBounds(page, 'サウンド OFF'))
+      await clickText(page, 'サウンド OFF')
+      await page.waitForFunction((name) => globalThis[name]?.snapshot().soundEnabled, BRIDGE)
+      assert.ok(await optionalTextBounds(page, 'サウンド ON'))
+      await clickText(page, 'サウンド ON')
+      await page.waitForFunction((name) => !globalThis[name]?.snapshot().soundEnabled, BRIDGE)
       await assertMinimumTouchTargets(page)
       await capture(page, 'title-wide')
       await startNewGame(page)

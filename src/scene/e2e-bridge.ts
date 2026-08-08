@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { Effect, GameState } from '../game/types'
+import { getSettings } from '../store'
 import type { PlaybackContext } from './playback/beats'
 import { KEYS } from './keys'
 import { deviceClassOf } from './layout'
@@ -48,6 +49,7 @@ interface E2ESnapshot {
   characterFocusOpen: boolean
   presentationMode: PresentationMode
   busy: boolean
+  soundEnabled: boolean
   selectedUnitId: string | null
   deviceClass: 'wide' | 'narrow'
   gameSize: { width: number; height: number }
@@ -180,6 +182,7 @@ function snapshot(game: Phaser.Game): E2ESnapshot {
     characterFocusOpen: play.characterFocus?.isOpen ?? false,
     presentationMode: play.presentation?.mode ?? 'planning',
     busy: play.playback?.current != null,
+    soundEnabled: getSettings().sound,
     selectedUnitId: play.selectedUnitId ?? null,
     deviceClass: deviceClassOf(window.innerWidth),
     gameSize: {

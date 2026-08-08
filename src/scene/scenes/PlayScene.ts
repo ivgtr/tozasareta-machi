@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { autoAssign } from '../../game/actions'
 import { randomSeed, reducedMotion } from '../../store'
+import { audioDirectorFor, type AudioDirector } from '../audio/audio-director'
 import { CharacterDeck } from '../character/character-deck'
 import { CharacterDragGhost } from '../character/character-drag-ghost'
 import { CharacterFocus } from '../character/character-focus'
@@ -35,6 +36,7 @@ import { StoryPresentations, isStoryPresentation } from '../story/story-presenta
 import { TASK_LABEL, TASK_PRESENTATION } from '../task-presentation'
 import { COLORS } from '../tokens'
 import { deriveFacilityView } from '../town/facility-view'
+import { deriveTownAmbience } from '../town/ambience-model'
 import { FACILITIES } from '../town/facilities'
 import type { FacilityId } from '../town/layout'
 import { TownLayer } from '../town/town-layer'
@@ -70,6 +72,7 @@ export class PlayScene extends Phaser.Scene {
   private story!: StoryPresentations
   private flow!: FlowPresentation
   private playbackPresentation!: PlaybackPresentationCoordinator
+  private audio!: AudioDirector
   private townViewportKey: string | null = null
   private readonly playback = new PlaybackController()
   private readonly presentation = new PresentationDirector()
@@ -80,6 +83,8 @@ export class PlayScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.audio = audioDirectorFor(this.game)
+    void this.audio.unlock()
     this.cameras.main.setBackgroundColor(COLORS.night900)
     this.store = sharedStore()
     this.turns = new TurnCoordinator(this.store, this.playback)
@@ -110,12 +115,14 @@ export class PlayScene extends Phaser.Scene {
     })
     this.characterFocus = new CharacterFocus(this, {
       onClose: () => {
+        this.audio.play('cancel')
         this.selectedUnitId = null
         this.refresh()
       },
     })
     this.facilityFocus = new FacilityFocus(this, {
       onClose: () => {
+        this.audio.play('cancel')
         this.selectedFacility = null
         this.refresh()
       },
@@ -127,6 +134,7 @@ export class PlayScene extends Phaser.Scene {
       onUnassignUnit: (unitId) => {
         if (this.busy) return
         this.plan = withRemove(this.plan, unitId)
+        this.audio.play('unassign')
         this.refresh()
       },
     })
@@ -135,15 +143,23 @@ export class PlayScene extends Phaser.Scene {
       onUndo: () => {
         if (this.busy) return
         this.store.dispatch({ type: 'undo' })
+        this.audio.play('cancel')
         this.clearPlan()
       },
-      onLog: () => this.log.toggle(),
-      onMenu: () => this.menu.show(this.view()),
+      onLog: () => {
+        this.audio.play('select')
+        this.log.toggle()
+      },
+      onMenu: () => {
+        this.audio.play('select')
+        this.menu.show(this.view())
+      },
     })
     this.controls = new PlanningControls(this, {
       onAuto: () => {
         if (this.busy) return
         this.plan = fromAutoAssign(autoAssign(this.store.get().state))
+        this.audio.play('assign')
         this.selectedUnitId = null
         this.refresh()
       },
@@ -151,52 +167,83 @@ export class PlayScene extends Phaser.Scene {
       onUnassignSelected: () => {
         if (this.busy || !this.selectedUnitId) return
         this.plan = withRemove(this.plan, this.selectedUnitId)
+        this.audio.play('unassign')
         this.refresh()
       },
       onToggleRation: () => {
         if (this.busy) return
         this.plan = { ...this.plan, ration: !this.plan.ration }
+        this.audio.play('select')
         this.refresh()
       },
       onToggleProcure: () => {
         if (this.busy) return
         this.plan = { ...this.plan, procure: !this.plan.procure }
+        this.audio.play('select')
         this.refresh()
       },
     })
-    this.menu = new MenuPresentation(this, {
-      onClose: () => this.menu.hide(),
-      onBackToTitle: () => {
-        this.menu.hide()
-        transitionToScene(this, KEYS.title)
+    this.menu = new MenuPresentation(
+      this,
+      {
+        onClose: () => {
+          this.audio.play('cancel')
+          this.menu.hide()
+        },
+        onBackToTitle: () => {
+          this.audio.play('confirm')
+          this.menu.hide()
+          transitionToScene(this, KEYS.title)
+        },
+        onRestart: () => {
+          this.menu.hide()
+          if (window.confirm(CONFIRM_NEW_GAME)) {
+            this.audio.play('confirm')
+            this.startNewGame()
+          }
+        },
       },
-      onRestart: () => {
-        this.menu.hide()
-        if (window.confirm(CONFIRM_NEW_GAME)) this.startNewGame()
-      },
-    })
+      this.audio,
+    )
     this.confirm = new CommitConfirmPresentation(this, {
       onConfirm: () => {
         this.confirm.hide()
         this.commit()
       },
-      onCancel: () => this.confirm.hide(),
+      onCancel: () => {
+        this.audio.play('cancel')
+        this.confirm.hide()
+      },
     })
     this.story = new StoryPresentations(this, {
-      onConfirmBeat: () => this.playback.confirm(),
+      onConfirmBeat: () => {
+        this.audio.play('confirm')
+        this.playback.confirm()
+      },
       onChoose: (optionId) => this.resolveChoice(optionId),
-      onEndingRestart: () => this.startNewGame(),
-      onEndingTitle: () => transitionToScene(this, KEYS.title),
+      onEndingRestart: () => {
+        this.audio.play('confirm')
+        this.startNewGame()
+      },
+      onEndingTitle: () => {
+        this.audio.play('confirm')
+        transitionToScene(this, KEYS.title)
+      },
     })
     this.flow = new FlowPresentation(this, {
       onSkip: () => this.playback.skipFlow(),
     })
-    this.playbackPresentation = new PlaybackPresentationCoordinator(this.flow, this.playbackFx)
+    this.playbackPresentation = new PlaybackPresentationCoordinator(
+      this.flow,
+      this.playbackFx,
+      this.audio,
+    )
     this.playback.onChange = () => {
       if (!this.playback.current) this.clearPlan()
       this.refresh()
     }
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => this.drag.pointerMove(pointer))
+    this.input.on('pointerdown', () => void this.audio.unlock())
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => this.drag.pointerUp(pointer))
     this.input.keyboard?.on('keydown-ESC', () => {
       if (this.menu.isOpen) {
@@ -246,7 +293,9 @@ export class PlayScene extends Phaser.Scene {
 
   private selectUnit(unitId: string): void {
     if (this.busy) return
-    this.selectedUnitId = this.selectedUnitId === unitId ? null : unitId
+    const deselecting = this.selectedUnitId === unitId
+    this.selectedUnitId = deselecting ? null : unitId
+    this.audio.play(deselecting ? 'cancel' : 'select')
     this.selectedFacility = null
     this.refresh()
   }
@@ -258,6 +307,7 @@ export class PlayScene extends Phaser.Scene {
       const next = withMove(this.store.get().state, this.plan, this.selectedUnitId, meta.tasks[0]!)
       if (next) {
         this.plan = next
+        this.audio.play('assign')
         this.selectedUnitId = null
         this.selectedFacility = id
       }
@@ -265,6 +315,7 @@ export class PlayScene extends Phaser.Scene {
       return
     }
     this.selectedFacility = this.selectedFacility === id ? null : id
+    this.audio.play(this.selectedFacility ? 'facility' : 'cancel')
     this.selectedUnitId = null
     this.refresh()
   }
@@ -276,11 +327,19 @@ export class PlayScene extends Phaser.Scene {
       const meta = FACILITIES[facility]
       if (meta.tasks.length > 0) {
         const next = withMove(this.store.get().state, this.plan, unitId, meta.tasks[0]!)
-        if (next) this.plan = next
+        if (next) {
+          this.plan = next
+          this.audio.play('assign')
+        } else {
+          this.audio.play('invalid')
+        }
         return
       }
     }
-    if (this.deck.containsWorld(worldX, worldY)) this.plan = withRemove(this.plan, unitId)
+    if (this.deck.containsWorld(worldX, worldY)) {
+      this.plan = withRemove(this.plan, unitId)
+      this.audio.play('unassign')
+    }
   }
 
   private tryCommit(): void {
@@ -305,6 +364,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private commit(): void {
+    this.audio.play('confirm')
     this.turns.commit(buildPlan(this.plan))
     this.refresh()
   }
@@ -323,6 +383,7 @@ export class PlayScene extends Phaser.Scene {
 
   private resolveChoice(optionId: string): void {
     if (this.busy) return
+    this.audio.play('confirm')
     this.turns.resolveChoice(optionId)
     this.refresh()
   }
@@ -448,6 +509,8 @@ export class PlayScene extends Phaser.Scene {
       selectedFacility: this.selectedFacility,
     })
     const facilityView = deriveFacilityView(view, this.plan)
+    const ambience = deriveTownAmbience(view, facilityView)
+    this.audio.setMood(state.phase === 'ended' ? 'silent' : ambience.danger ? 'crisis' : 'planning')
     const storyMode = isStoryPresentation(frame.mode)
     const fallbackFacility = frame.mode === 'facility-focus' ? this.selectedFacility : null
     const flowModel = this.playbackPresentation.update(this.playback, view, fallbackFacility)

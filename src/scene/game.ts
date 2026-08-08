@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { destroyAudioDirector } from './audio/audio-director'
 import { SCENE_EVENTS } from './keys'
 import { designSizeOf, deviceClassOf, type DeviceClass } from './layout'
 import { BootScene } from './scenes/BootScene'
@@ -29,6 +30,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
     canvas.style.touchAction = 'none'
     canvas.addEventListener('contextmenu', (event) => event.preventDefault())
   })
+  game.events.once(Phaser.Core.Events.DESTROY, () => destroyAudioDirector(game))
   watchDeviceClass(game)
   return game
 }
