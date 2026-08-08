@@ -18,6 +18,7 @@ interface PlaySceneInternals {
   playback?: { current: unknown | null }
   presentation?: { mode: PresentationMode }
   selectedUnitId?: string | null
+  startNewGame?: () => void
 }
 
 interface E2ESnapshot {
@@ -45,6 +46,7 @@ interface E2EBridge {
   snapshot(): E2ESnapshot
   textBounds(text: string, exact?: boolean): CssBounds | null
   firstUnitBounds(): CssBounds | null
+  restartNewGame(): void
 }
 
 type E2EWindow = Window & {
@@ -151,12 +153,18 @@ function snapshot(game: Phaser.Game): E2ESnapshot {
   }
 }
 
+function restartNewGame(game: Phaser.Game): void {
+  const play = game.scene.getScene(KEYS.play) as unknown as PlaySceneInternals
+  play.startNewGame?.()
+}
+
 export function installE2EBridge(game: Phaser.Game): void {
   const target = window as E2EWindow
   target.__TOZASARETA_MACHI_E2E__ = {
     snapshot: () => snapshot(game),
     textBounds: (text, exact = true) => findTextBounds(game, text, exact),
     firstUnitBounds: () => findFirstUnitBounds(game),
+    restartNewGame: () => restartNewGame(game),
   }
   game.events.once(Phaser.Core.Events.DESTROY, () => {
     delete target.__TOZASARETA_MACHI_E2E__

@@ -151,6 +151,47 @@ async function commitWithAutoAssign(page) {
   if (confirm) await page.mouse.click(confirm.x + confirm.width / 2, confirm.y + confirm.height / 2)
 }
 
+async function clickOptional(page, labels) {
+  for (const label of labels) {
+    const bounds = await optionalTextBounds(page, label)
+    if (!bounds) continue
+    await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
+    return true
+  }
+  return false
+}
+
+async function finishPlayback(page) {
+  for (let step = 0; step < 80; step += 1) {
+    const state = await snapshot(page)
+    if (!state.busy) return
+
+    if (state.presentationMode === 'flow') {
+      if (await clickOptional(page, ['結果を送る ▶▶'])) {
+        await delay(100)
+        continue
+      }
+    }
+
+    if (state.presentationMode === 'event') {
+      if (await clickOptional(page, ['続ける ▶'])) {
+        await delay(350)
+        continue
+      }
+    }
+
+    if (state.presentationMode === 'arrival') {
+      if (await clickOptional(page, ['町へ戻る ▶', '迎え入れる ▶', '続ける ▶'])) {
+        await delay(350)
+        continue
+      }
+    }
+
+    await delay(100)
+  }
+  throw new Error('Playback did not settle within the expected number of steps')
+}
+
 async function capture(page, name) {
   const target = path.join(OUTPUT_DIR, `${name}.png`)
   await page.screenshot({ path: target, fullPage: true })
@@ -235,14 +276,49 @@ try {
     })
   })
 
-  await test('演出中の新規ゲームで旧再生状態を残さない', async () => {
+  await test('Turn Playbackが行動結果を専用Presentationで表示する', async () => {
+    await withGame('turn-playback-flow', { animations: true }, async (page) => {
+      await startNewGame(page)
+      await commitWithAutoAssign(page)
+      await page.waitForFunction(
+        (name) => globalThis[name]?.snapshot().presentationMode === 'flow',
+        BRIDGE,
+      )
+      assert.ok(await optionalTextBounds(page, '結果を送る ▶▶'))
+      assert.ok(await optionalTextBounds(page, 'RESULT', false))
+      assert.equal(await optionalTextBounds(page, '今日を終える ▶'), null)
+      await capture(page, 'turn-playback-flow-wide')
+      await finishPlayback(page)
+    })
+  })
+
+  await test('narrowでもTurn Playbackの情報を維持する', async () => {
+    await withGame(
+      'turn-playback-flow-narrow',
+      { viewport: { width: 600, height: 900 }, animations: true },
+      async (page) => {
+        await startNewGame(page)
+        await commitWithAutoAssign(page)
+        await page.waitForFunction(
+          (name) => globalThis[name]?.snapshot().presentationMode === 'flow',
+          BRIDGE,
+        )
+        assert.ok(await optionalTextBounds(page, '結果を送る ▶▶'))
+        await capture(page, 'turn-playback-flow-narrow')
+        await finishPlayback(page)
+      },
+    )
+  })
+
+  await test('Playback中の新規ゲームで再生状態を持ち越さない', async () => {
     await withGame('restart-playback', { animations: true }, async (page) => {
       await startNewGame(page)
       await commitWithAutoAssign(page)
-      await page.waitForFunction((name) => globalThis[name]?.snapshot().busy, BRIDGE)
-      await clickText(page, 'メニュー')
-      await page.waitForFunction((name) => globalThis[name]?.snapshot().menuOpen, BRIDGE)
-      await clickText(page, '最初から')
+      await page.waitForFunction(
+        (name) => globalThis[name]?.snapshot().presentationMode === 'flow',
+        BRIDGE,
+      )
+      await page.evaluate((name) => globalThis[name].restartNewGame(), BRIDGE)
       await page.waitForFunction((name) => {
         const value = globalThis[name]?.snapshot()
         return value && value.day === 1 && value.phase === 'planning' && !value.busy
@@ -257,6 +333,7 @@ try {
     await withGame('reload-save', {}, async (page) => {
       await startNewGame(page)
       await commitWithAutoAssign(page)
+      await finishPlayback(page)
       await page.waitForFunction((name) => {
         const value = globalThis[name]?.snapshot()
         return (
