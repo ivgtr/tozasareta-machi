@@ -1,10 +1,16 @@
 import Phaser from 'phaser'
-import { KEYS, SCENE_EVENTS } from '../keys'
-import { COLORS } from '../tokens'
-import { deviceClassOf, readSafeInsets, toLogicalSafeInsets } from '../layout'
-import { computeRegions, type Regions } from '../regions'
+import { autoAssign } from '../../game/actions'
 import { randomSeed } from '../../store'
-import { sharedStore, type SceneStore } from '../store-bridge'
+import { CharacterDeck } from '../character/character-deck'
+import { CharacterDragGhost } from '../character/character-drag-ghost'
+import { CharacterFocus } from '../character/character-focus'
+import { MenuPresentation } from '../global/menu-presentation'
+import { transitionToScene } from '../global/scene-transition'
+import { HudBar } from '../hud'
+import { KEYS, SCENE_EVENTS } from '../keys'
+import { CONFIRM_NEW_GAME } from '../labels'
+import { deviceClassOf, readSafeInsets, toLogicalSafeInsets } from '../layout'
+import { LogDrawer } from '../log-drawer'
 import {
   buildPlan,
   emptyPlan,
@@ -14,51 +20,51 @@ import {
   withRemove,
   type PlanState,
 } from '../plan'
-import { autoAssign } from '../../game/actions'
-import { applyEffects } from '../../game/effects'
+import { deriveFlowPresentation, type FlowPresentationModel } from '../playback/flow-model'
+import { FlowPresentation, flowAccent } from '../playback/flow-presentation'
+import { PlaybackController } from '../playback/playback'
+import { TownPlaybackFx } from '../playback/town-playback-fx'
+import { CommitConfirmPresentation } from '../planning/commit-confirm-presentation'
+import { FacilityFocus } from '../planning/facility-focus'
+import { PlanningControls } from '../planning/planning-controls'
+import { PresentationDirector } from '../presentation'
+import { computeRegions, type Regions } from '../regions'
+import { sharedStore, type SceneStore } from '../store-bridge'
+import { StoryPresentations, isStoryPresentation } from '../story/story-presentations'
+import { TASK_LABEL } from '../task-presentation'
+import { COLORS } from '../tokens'
 import { deriveFacilityView } from '../town/facility-view'
 import { FACILITIES } from '../town/facilities'
 import { TOWN_BASE, type FacilityId } from '../town/layout'
 import { TownLayer } from '../town/town-layer'
-import { TrayLayer } from '../town/tray-layer'
-import { HudBar } from '../hud'
-import { PlanStrip, TASK_LABEL } from '../plan-strip'
-import { DetailPanel, UnitDetailsOverlay } from '../detail-panel'
-import { LogDrawer } from '../log-drawer'
-import { ConfirmOverlay, MenuOverlay } from '../menu'
-import { OverlayStack } from '../overlays'
-import { PlaybackController } from '../playback/playback'
 import { TurnCoordinator } from '../turn-coordinator'
-import { UnitDragController } from '../unit-drag-controller'
-import { TownAmbience } from '../town/ambience'
-import { resolveFx } from '../town/fx-map'
-import { formatDelta, CONFIRM_NEW_GAME } from '../labels'
-import { PixelButton } from '../ui/button'
-import { pixelText } from '../ui/pixel-text'
 import { DRAG_THRESHOLD } from '../ui/token'
+import { UnitDragController } from '../unit-drag-controller'
 
 export class PlayScene extends Phaser.Scene {
   private store!: SceneStore
   private turns!: TurnCoordinator
   private drag!: UnitDragController
+  private dragGhost!: CharacterDragGhost
   private plan: PlanState = emptyPlan()
   private selectedUnitId: string | null = null
   private selectedFacility: FacilityId | null = null
   private regions!: Regions
   private town!: TownLayer
-  private tray!: TrayLayer
+  private playbackFx!: TownPlaybackFx
+  private deck!: CharacterDeck
+  private characterFocus!: CharacterFocus
+  private facilityFocus!: FacilityFocus
   private hud!: HudBar
-  private strip!: PlanStrip
-  private detail!: DetailPanel
-  private unitDetails!: UnitDetailsOverlay
+  private controls!: PlanningControls
   private log!: LogDrawer
-  private menu!: MenuOverlay
-  private confirm!: ConfirmOverlay
-  private overlays!: OverlayStack
-  private ambience!: TownAmbience
-  private skipButton!: PixelButton
+  private menu!: MenuPresentation
+  private confirm!: CommitConfirmPresentation
+  private story!: StoryPresentations
+  private flow!: FlowPresentation
   private lastBeatKey: string | null = null
   private readonly playback = new PlaybackController()
+  private readonly presentation = new PresentationDirector()
   private unsubscribe: (() => void) | null = null
 
   constructor() {
@@ -70,13 +76,10 @@ export class PlayScene extends Phaser.Scene {
     this.store = sharedStore()
     this.turns = new TurnCoordinator(this.store, this.playback)
 
-    const dragGhost = pixelText(this, '人', { fontSize: 20, color: COLORS.gold })
-    dragGhost.setOrigin(0.5)
-    dragGhost.setDepth(1000)
-    dragGhost.setVisible(false)
+    this.dragGhost = new CharacterDragGhost(this)
     this.drag = new UnitDragController({
       threshold: DRAG_THRESHOLD,
-      ghost: dragGhost,
+      ghost: this.dragGhost,
       canInteract: () => !this.busy,
       onTap: (unitId) => this.selectUnit(unitId),
       onDrop: (unitId, worldX, worldY) => {
@@ -87,34 +90,52 @@ export class PlayScene extends Phaser.Scene {
 
     this.town = new TownLayer(this, {
       onFacilityTap: (id) => this.onFacilityTap(id),
-      onTokenPointerDown: (unitId, x, y) => this.drag.pointerDown(unitId, x, y),
+      onTokenPointerDown: (unitId, x, y) => this.beginUnitDrag(unitId, x, y),
     })
-    this.tray = new TrayLayer(this, {
-      onTokenPointerDown: (unitId, x, y) => this.drag.pointerDown(unitId, x, y),
+    this.playbackFx = new TownPlaybackFx(this)
+    this.deck = new CharacterDeck(this, {
+      onCharacterPointerDown: (unitId, x, y) => this.beginUnitDrag(unitId, x, y),
     })
-    this.ambience = new TownAmbience(this)
+    this.characterFocus = new CharacterFocus(this, {
+      onClose: () => {
+        this.selectedUnitId = null
+        this.refresh()
+      },
+    })
+    this.facilityFocus = new FacilityFocus(this, {
+      onClose: () => {
+        this.selectedFacility = null
+        this.refresh()
+      },
+      onSelectUnit: (unitId) => {
+        this.selectedFacility = null
+        this.selectedUnitId = unitId
+        this.refresh()
+      },
+    })
+    this.log = new LogDrawer(this)
     this.hud = new HudBar(this, {
       onUndo: () => {
         if (this.busy) return
         this.store.dispatch({ type: 'undo' })
         this.clearPlan()
       },
-      onMenu: () => this.menu.show(),
+      onLog: () => this.log.toggle(),
+      onMenu: () => this.menu.show(this.view()),
     })
-    this.strip = new PlanStrip(this, {
+    this.controls = new PlanningControls(this, {
       onAuto: () => {
         if (this.busy) return
         this.plan = fromAutoAssign(autoAssign(this.store.get().state))
         this.selectedUnitId = null
         this.refresh()
       },
-      onReset: () => {
-        if (this.busy) return
-        this.plan = emptyPlan()
-        this.selectedUnitId = null
+      onCommit: () => this.tryCommit(),
+      onUnassignSelected: () => {
+        if (this.busy || !this.selectedUnitId) return
+        this.plan = withRemove(this.plan, this.selectedUnitId)
         this.refresh()
       },
-      onCommit: () => this.tryCommit(),
       onToggleRation: () => {
         if (this.busy) return
         this.plan = { ...this.plan, ration: !this.plan.ration }
@@ -126,50 +147,33 @@ export class PlayScene extends Phaser.Scene {
         this.refresh()
       },
     })
-    this.detail = new DetailPanel(this, {
-      onClose: () => {
-        this.selectedFacility = null
-        this.selectedUnitId = null
-        this.refresh()
-      },
-      onOpenUnit: (unitId) => {
-        const unit = this.store.get().state.units.find((candidate) => candidate.id === unitId)
-        if (unit) this.unitDetails.show(unit)
-      },
-    })
-    this.unitDetails = new UnitDetailsOverlay(this, () => this.unitDetails.hide())
-    this.log = new LogDrawer(this)
-    this.menu = new MenuOverlay(this, {
+    this.menu = new MenuPresentation(this, {
       onClose: () => this.menu.hide(),
       onBackToTitle: () => {
         this.menu.hide()
-        this.scene.start(KEYS.title)
+        transitionToScene(this, KEYS.title)
       },
       onRestart: () => {
         this.menu.hide()
         if (window.confirm(CONFIRM_NEW_GAME)) this.startNewGame()
       },
     })
-    this.confirm = new ConfirmOverlay(this, {
+    this.confirm = new CommitConfirmPresentation(this, {
       onConfirm: () => {
         this.confirm.hide()
         this.commit()
       },
       onCancel: () => this.confirm.hide(),
     })
-    this.overlays = new OverlayStack(this, {
-      onConfirm: () => this.playback.confirm(),
+    this.story = new StoryPresentations(this, {
+      onConfirmBeat: () => this.playback.confirm(),
       onChoose: (optionId) => this.resolveChoice(optionId),
       onEndingRestart: () => this.startNewGame(),
-      onEndingTitle: () => this.scene.start(KEYS.title),
+      onEndingTitle: () => transitionToScene(this, KEYS.title),
     })
-    this.skipButton = new PixelButton(this, {
-      label: 'スキップ ▶▶',
-      width: 150,
-      height: 40,
-      onAction: () => this.playback.skip(),
+    this.flow = new FlowPresentation(this, {
+      onSkip: () => this.playback.skipFlow(),
     })
-    this.skipButton.setVisible(false)
     this.playback.onChange = () => {
       if (!this.playback.current) this.clearPlan()
       this.refresh()
@@ -177,8 +181,19 @@ export class PlayScene extends Phaser.Scene {
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => this.drag.pointerMove(pointer))
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => this.drag.pointerUp(pointer))
     this.input.keyboard?.on('keydown-ESC', () => {
-      if (this.menu.isOpen) this.menu.hide()
-      else if (this.unitDetails.isOpen) this.unitDetails.hide()
+      if (this.menu.isOpen) {
+        this.menu.hide()
+        return
+      }
+      if (this.log.isOpen) {
+        this.log.hide()
+        return
+      }
+      if (this.characterFocus.isOpen || this.facilityFocus.isOpen) {
+        this.selectedUnitId = null
+        this.selectedFacility = null
+        this.refresh()
+      }
     })
     this.unsubscribe = this.store.subscribe(() => {
       this.selectedUnitId = null
@@ -200,11 +215,15 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private view() {
-    const state = this.store.get().state
-    const playback = this.playback.current
-    if (!playback) return state
-    const effects = playback.beats.slice(0, playback.index + 1).flatMap((beat) => beat.effects)
-    return { ...applyEffects(playback.prev, effects), day: playback.prev.day }
+    return this.playback.projectedState ?? this.store.get().state
+  }
+
+  private beginUnitDrag(unitId: string, worldX: number, worldY: number): void {
+    if (this.busy) return
+    const unit = this.store.get().state.units.find((candidate) => candidate.id === unitId)
+    if (!unit) return
+    this.dragGhost.setUnit(unit)
+    this.drag.pointerDown(unitId, worldX, worldY)
   }
 
   private selectUnit(unitId: string): void {
@@ -242,9 +261,7 @@ export class PlayScene extends Phaser.Scene {
         return
       }
     }
-    if (this.tray.containsWorld(worldX, worldY)) {
-      this.plan = withRemove(this.plan, unitId)
-    }
+    if (this.deck.containsWorld(worldX, worldY)) this.plan = withRemove(this.plan, unitId)
   }
 
   private tryCommit(): void {
@@ -291,7 +308,18 @@ export class PlayScene extends Phaser.Scene {
     this.refresh()
   }
 
+  private selectedUnitAssigned(): boolean {
+    const selectedUnitId = this.selectedUnitId
+    if (!selectedUnitId) return false
+    return Object.values(this.plan.placements).some((ids) => ids?.includes(selectedUnitId))
+  }
+
   private layout(): void {
+    this.applyLayout()
+    this.refresh()
+  }
+
+  private applyLayout(): void {
     const { width, height } = this.scale.gameSize
     const deviceClass = deviceClassOf(window.innerWidth)
     const canvas = this.game.canvas.getBoundingClientRect()
@@ -316,49 +344,41 @@ export class PlayScene extends Phaser.Scene {
       regions.town.width / TOWN_BASE.width,
       regions.town.height / TOWN_BASE.height,
     )
+    const townX = regions.town.x + (regions.town.width - TOWN_BASE.width * scale) / 2
+    const townY = regions.town.y + (regions.town.height - TOWN_BASE.height * scale) / 2
     this.town.setScale(scale)
-    this.town.setPosition(
-      regions.town.x + (regions.town.width - TOWN_BASE.width * scale) / 2,
-      regions.town.y + (regions.town.height - TOWN_BASE.height * scale) / 2,
-    )
+    this.town.setPosition(townX, townY)
+    this.playbackFx.setTownTransform(townX, townY, scale)
     this.hud.setBounds(regions.hud, deviceClass)
-    this.strip.setBounds(regions.strip, deviceClass)
-    this.tray.setBounds(
-      regions.tray.x,
-      regions.tray.y,
-      regions.tray.width,
-      regions.tray.height,
+    this.controls.setBounds(regions.controls, deviceClass)
+    this.deck.setBounds(
+      regions.deck.x,
+      regions.deck.y,
+      regions.deck.width,
+      regions.deck.height,
       deviceClass,
     )
-    this.detail.setBounds(regions.detail)
+    this.characterFocus.setBounds(regions.town, deviceClass)
+    this.facilityFocus.setBounds(regions.town, deviceClass)
     this.log.setAnchor(
       regions.hud.x + 8,
       regions.hud.y + regions.hud.height + 8,
       Math.min(440, regions.hud.width - 16),
     )
-    this.skipButton.setPosition(width - 100, regions.town.y + regions.town.height - 24)
-    this.ambience.setPosition(regions.town.x, regions.town.y)
-    this.ambience.setArea(regions.town.width, regions.town.height)
-    this.refresh()
+    this.menu.setViewport(width, height, deviceClass)
+    this.story.setViewport(width, height, deviceClass)
+    this.flow.setViewport(width, height, deviceClass)
   }
 
-  private triggerBeatFx(): void {
+  private triggerPlaybackFx(model: FlowPresentationModel | null): void {
     const playback = this.playback.current
-    const beatKey = playback ? `${playback.prev.rng.seed}:${playback.index}` : null
-    if (playback && beatKey !== this.lastBeatKey) {
-      const beat = playback.beats[playback.index]
-      if (beat?.kind === 'flow') {
-        const effect = beat.effects[0]
-        if (effect) {
-          const entry = resolveFx(effect.source, effect.target)
-          this.town.playFx(
-            entry,
-            formatDelta(effect.target, effect.delta),
-            effect.delta >= 0 ? COLORS.green : COLORS.red,
-          )
-        }
-      } else if (beat?.kind === 'arrival') {
-        this.town.playArrival()
+    const beat = this.playback.beat
+    const beatKey = playback && beat ? `${playback.base.day}:${playback.index}:${beat.kind}` : null
+    if (playback && beat && beatKey !== this.lastBeatKey) {
+      if (beat.kind === 'flow' && model) {
+        this.playbackFx.play(model.fx, flowAccent(model.tone))
+      } else if (beat.kind === 'arrival') {
+        this.playbackFx.playArrival()
       }
     }
     this.lastBeatKey = beatKey
@@ -368,34 +388,72 @@ export class PlayScene extends Phaser.Scene {
     const store = this.store.get()
     const state = store.state
     const view = this.view()
-    const narrow = deviceClassOf(window.innerWidth) === 'narrow'
     const busy = this.busy
-    const facilityView = deriveFacilityView(view, this.plan)
-    this.hud.update(view, store.history.length > 0 && !busy)
-    this.strip.update(view, this.plan, unassignedUnits(view, this.plan).length, busy)
-    this.town.update(view, this.plan, facilityView, {
+    const beat = this.playback.beat
+    const frame = this.presentation.resolve({
+      state,
+      beat,
+      selectedUnitId: this.selectedUnitId,
       selectedFacility: this.selectedFacility,
-      placeableUnitId: this.selectedUnitId,
     })
-    this.tray.update(view, this.plan, this.selectedUnitId)
-    const hasSelection = this.selectedFacility !== null || this.selectedUnitId !== null
-    this.detail.setVisible(!narrow || hasSelection)
-    if (this.detail.visible) {
-      this.detail.update({
-        state: view,
-        plan: this.plan,
-        view: facilityView,
-        selectedFacility: this.selectedFacility,
-        selectedUnitId: this.selectedUnitId,
-      })
+    const facilityView = deriveFacilityView(view, this.plan)
+    const storyMode = isStoryPresentation(frame.mode)
+    const flowBeat = frame.mode === 'flow' && beat?.kind === 'flow' ? beat : null
+    const flowModel = flowBeat ? deriveFlowPresentation(flowBeat, view) : null
+    const planningChrome = !storyMode && flowModel === null
+
+    if (!planningChrome && this.log.isOpen) this.log.hide()
+    this.hud.setVisible(planningChrome)
+    this.controls.setVisible(planningChrome)
+    this.deck.setVisible(planningChrome)
+
+    this.hud.update(view, store.history.length > 0 && !busy)
+    this.controls.update(view, this.plan, busy, this.selectedUnitAssigned())
+    this.town.update(view, this.plan, facilityView, {
+      selectedFacility: busy ? null : this.selectedFacility,
+      placeableUnitId: busy ? null : this.selectedUnitId,
+    })
+    this.deck.update(view, this.plan, this.selectedUnitId)
+
+    const selectedUnit =
+      frame.mode === 'unit-focus'
+        ? view.units.find((unit) => unit.id === this.selectedUnitId)
+        : undefined
+    if (selectedUnit) {
+      const assignment =
+        Object.entries(this.plan.placements).find(([, unitIds]) =>
+          unitIds?.includes(selectedUnit.id),
+        )?.[0] ?? '待機中'
+      this.characterFocus.show(
+        selectedUnit,
+        assignment === '待機中' ? assignment : TASK_LABEL[assignment as keyof typeof TASK_LABEL],
+      )
+    } else {
+      this.characterFocus.hide()
     }
+
+    if (frame.mode === 'facility-focus' && this.selectedFacility) {
+      this.facilityFocus.show(
+        { state: view, plan: this.plan, view: facilityView },
+        this.selectedFacility,
+      )
+    } else {
+      this.facilityFocus.hide()
+    }
+
     this.log.update(view.report)
-    this.overlays.update({ state, busy, beat: this.playback.beat })
+    this.story.update(frame.mode, state, beat)
     const playback = this.playback.current
-    this.skipButton.setVisible(
-      !!playback && !this.playback.waiting && playback.index < playback.beats.length - 1,
+    this.flow.update(
+      flowModel,
+      playback?.index ?? 0,
+      playback?.beats.length ?? 0,
+      playback?.reduced ?? false,
     )
-    this.ambience.update(view)
-    this.triggerBeatFx()
+    this.playbackFx.setFocus(
+      flowModel?.facility ?? null,
+      flowModel ? flowAccent(flowModel.tone) : COLORS.cyan,
+    )
+    this.triggerPlaybackFx(flowModel)
   }
 }

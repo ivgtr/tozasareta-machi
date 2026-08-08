@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { NO_INSETS, deviceClassOf, designSizeOf, toLogicalSafeInsets } from '../src/scene/layout'
+import {
+  NO_INSETS,
+  deviceClassOf,
+  designSizeOf,
+  guardSafeInsets,
+  toLogicalSafeInsets,
+} from '../src/scene/layout'
 import { computeRegions } from '../src/scene/regions'
 import { colorCss, colorNum } from '../src/scene/tokens'
 
@@ -34,31 +40,39 @@ describe('safe-area conversion', () => {
     expect(insets.top).toBeCloseTo((20 * 854) / 780)
     expect(insets.bottom).toBe(0)
   })
+
+  it('safe-area が存在する辺だけ最低8pxの操作ガードを確保する', () => {
+    expect(guardSafeInsets({ top: 4, right: 0, bottom: 12, left: 1 })).toEqual({
+      top: 8,
+      right: 0,
+      bottom: 12,
+      left: 8,
+    })
+  })
 })
 
 describe('computeRegions', () => {
-  it('wide は §4.5 の寸法どおりに積み上がる', () => {
+  it('wide は町を拡大し、人物デッキと計画操作を同じ下段に置く', () => {
     const r = computeRegions('wide', 1280, 720, NO_INSETS)
-    expect(r.hud).toEqual({ x: 0, y: 0, width: 1280, height: 48 })
-    expect(r.town.height).toBe(460)
-    expect(r.strip.height).toBe(48)
-    expect(r.tray.width).toBe(480)
-    expect(r.strip.width).toBe(800)
-    expect(r.detail.height).toBe(164)
-    expect(r.hud.height + r.town.height + r.strip.height + r.detail.height).toBe(720)
-    expect(r.strip.y + r.strip.height).toBe(r.detail.y)
-    expect(r.tray.x).toBe(r.strip.x + r.strip.width)
+    expect(r.hud).toEqual({ x: 0, y: 0, width: 1280, height: 56 })
+    expect(r.town).toEqual({ x: 0, y: 56, width: 1280, height: 536 })
+    expect(r.deck).toEqual({ x: 0, y: 592, width: 912, height: 128 })
+    expect(r.controls).toEqual({ x: 920, y: 592, width: 360, height: 128 })
+    expect(r.deck.y).toBe(r.controls.y)
   })
 
-  it('narrow は HUD44 / 町380 / ストリップ48 で町が上部に支配的', () => {
+  it('narrow は町・人物デッキ・計画操作を縦に積む', () => {
     const r = computeRegions('narrow', 480, 854, NO_INSETS)
-    expect(r.hud.height).toBe(44)
-    expect(r.town.height).toBe(380)
-    expect(r.strip.height).toBe(48)
-    expect(r.strip.y + r.strip.height).toBe(854)
-    expect(r.tray.y).toBe(r.town.y + r.town.height)
-    expect(r.detail.height).toBe(220)
-    expect(r.detail.y + r.detail.height).toBe(r.strip.y)
+    expect(r.hud).toEqual({ x: 0, y: 0, width: 480, height: 52 })
+    expect(r.town).toEqual({ x: 0, y: 52, width: 480, height: 620 })
+    expect(r.deck).toEqual({ x: 0, y: 672, width: 480, height: 118 })
+    expect(r.controls).toEqual({ x: 0, y: 790, width: 480, height: 64 })
+  })
+
+  it('基本領域はpresentation modeに依存せず安定する', () => {
+    const first = computeRegions('wide', 1280, 720, NO_INSETS)
+    const second = computeRegions('wide', 1280, 720, NO_INSETS)
+    expect(second).toEqual(first)
   })
 
   it('セーフエリア inset があるときのみ 8px ガードが効く', () => {
@@ -71,7 +85,8 @@ describe('computeRegions', () => {
       left: 0,
     })
     expect(notched.hud.y).toBe(20)
-    expect(notched.detail.y + notched.detail.height + 12).toBe(720)
+    expect(notched.controls.y + notched.controls.height + 12).toBe(720)
+    expect(notched.deck.y).toBe(notched.controls.y)
     const tiny = computeRegions('wide', 1280, 720, { top: 4, right: 0, bottom: 0, left: 0 })
     expect(tiny.hud.y).toBe(8)
   })

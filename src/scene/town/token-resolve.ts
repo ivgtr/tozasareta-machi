@@ -1,33 +1,21 @@
 import { RANDOM_PORTRAIT_IDS, selectRandomPortrait } from '../../game/data/units'
 
-export const GENERIC_POOL: readonly string[] = RANDOM_PORTRAIT_IDS
+const INITIAL_TOKEN_IDS = ['mayor', 'medic', 'engineer', 'farmer'] as const
 
+export const GENERIC_POOL: readonly string[] = RANDOM_PORTRAIT_IDS
+export const TOKEN_ASSET_IDS: readonly string[] = [...INITIAL_TOKEN_IDS, ...GENERIC_POOL]
+
+const DIRECT_TOKEN_IDS = new Set<string>(TOKEN_ASSET_IDS)
 const FALLBACK_SEED = 0
 
 export function recruitFallbackOf(portraitId: string): string {
   return selectRandomPortrait(FALLBACK_SEED, portraitId, [])
 }
 
-export interface TokenResolution {
-  kind: 'token' | 'glyph'
-  key: string | null
-  fallbackPortrait: string | null
+export function tokenAssetId(portraitId: string): string {
+  return DIRECT_TOKEN_IDS.has(portraitId) ? portraitId : recruitFallbackOf(portraitId)
 }
 
-export function resolveToken(
-  portraitId: string,
-  hasTexture: (key: string) => boolean,
-): TokenResolution {
-  const own = `token/${portraitId}`
-  if (hasTexture(own)) return { kind: 'token', key: own, fallbackPortrait: null }
-  const portraitKey = `portrait/${portraitId}`
-  if (hasTexture(portraitKey)) return { kind: 'token', key: portraitKey, fallbackPortrait: null }
-  if (GENERIC_POOL.includes(portraitId)) {
-    return { kind: 'glyph', key: null, fallbackPortrait: portraitId }
-  }
-  const fallback = recruitFallbackOf(portraitId)
-  const fallbackKey = `token/${fallback}`
-  if (hasTexture(fallbackKey))
-    return { kind: 'token', key: fallbackKey, fallbackPortrait: fallback }
-  return { kind: 'glyph', key: null, fallbackPortrait: fallback }
+export function tokenTextureKey(portraitId: string): string {
+  return `token/${tokenAssetId(portraitId)}`
 }

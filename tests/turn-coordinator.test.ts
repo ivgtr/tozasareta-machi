@@ -22,31 +22,38 @@ function transition(changed = true): StoreTransition {
 }
 
 describe('TurnCoordinator', () => {
-  it('commit はStore遷移を一度だけ実行し、その表示契約を再生へ渡す', () => {
+  it('commit はStore遷移を一度だけ実行し、計画由来の担当人物を再生へ渡す', () => {
     const result = transition()
+    const plan: DayPlan = {
+      placements: [{ task: 'repair_power', unitIds: ['engineer'] }],
+      ration: false,
+      procure: false,
+    }
     const dispatch = vi.fn((action: StoreAction): StoreTransition => {
       expect(action.type).toBe('commitDay')
       return result
     })
     const start = vi.fn()
-    const coordinator = new TurnCoordinator({ dispatch }, { start, skip: vi.fn() })
+    const coordinator = new TurnCoordinator({ dispatch }, { start, cancel: vi.fn() })
 
-    expect(coordinator.commit(idle)).toBe(result)
+    expect(coordinator.commit(plan)).toBe(result)
     expect(dispatch).toHaveBeenCalledTimes(1)
-    expect(dispatch).toHaveBeenCalledWith({ type: 'commitDay', plan: idle })
-    expect(start).toHaveBeenCalledWith(result.previousState, result.effects)
+    expect(dispatch).toHaveBeenCalledWith({ type: 'commitDay', plan })
+    expect(start).toHaveBeenCalledWith(result.previousState, result.effects, {
+      taskActors: { repair_power: ['engineer'] },
+    })
   })
 
   it('no-op遷移ではPlaybackを開始しない', () => {
     const result = transition(false)
     const start = vi.fn()
-    const coordinator = new TurnCoordinator({ dispatch: () => result }, { start, skip: vi.fn() })
+    const coordinator = new TurnCoordinator({ dispatch: () => result }, { start, cancel: vi.fn() })
 
     coordinator.resolveChoice('invalid')
     expect(start).not.toHaveBeenCalled()
   })
 
-  it('新規ゲームはPlaybackを停止してからStoreを更新する', () => {
+  it('新規ゲームはPlaybackを破棄してからStoreを更新する', () => {
     const calls: string[] = []
     const result = transition()
     const coordinator = new TurnCoordinator(
@@ -58,11 +65,20 @@ describe('TurnCoordinator', () => {
       },
       {
         start: vi.fn(),
-        skip: () => calls.push('skip'),
+        cancel: () => calls.push('cancel'),
       },
     )
 
     coordinator.restart(7)
-    expect(calls).toEqual(['skip', 'dispatch:newGame'])
+    expect(calls).toEqual(['cancel', 'dispatch:newGame'])
+  })
+
+  it('空計画でも空の担当人物契約を明示する', () => {
+    const result = transition()
+    const start = vi.fn()
+    const coordinator = new TurnCoordinator({ dispatch: () => result }, { start, cancel: vi.fn() })
+
+    coordinator.commit(idle)
+    expect(start).toHaveBeenCalledWith(result.previousState, result.effects, { taskActors: {} })
   })
 })

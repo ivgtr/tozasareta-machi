@@ -1,4 +1,4 @@
-import { SCREEN_EDGE_GUARD, type DeviceClass, type SafeInsets } from './layout'
+import { guardSafeInsets, type DeviceClass, type SafeInsets } from './layout'
 
 export interface Rect {
   x: number
@@ -10,21 +10,15 @@ export interface Rect {
 export interface Regions {
   hud: Rect
   town: Rect
-  strip: Rect
-  tray: Rect
-  detail: Rect
+  deck: Rect
+  controls: Rect
 }
 
-export const HUD_HEIGHT = { wide: 48, narrow: 44 } as const
-export const TOWN_HEIGHT = { wide: 460, narrow: 380 } as const
-export const STRIP_HEIGHT = 48
-export const STRIP_WIDTH_WIDE = 800
-export const TRAY_WIDTH_WIDE = 480
-export const DETAIL_HEIGHT = { wide: 164, narrow: 220 } as const
-
-function edge(value: number): number {
-  return value > 0 ? Math.max(value, SCREEN_EDGE_GUARD) : 0
-}
+export const HUD_HEIGHT = { wide: 56, narrow: 52 } as const
+export const DECK_HEIGHT = { wide: 128, narrow: 118 } as const
+export const CONTROLS_HEIGHT = { wide: 128, narrow: 64 } as const
+export const WIDE_CONTROLS_WIDTH = 360
+export const WIDE_COMMAND_GAP = 8
 
 export function computeRegions(
   deviceClass: DeviceClass,
@@ -32,55 +26,60 @@ export function computeRegions(
   height: number,
   insets: SafeInsets,
 ): Regions {
-  const left = edge(insets.left)
-  const right = edge(insets.right)
-  const top = edge(insets.top)
-  const bottom = edge(insets.bottom)
+  const safe = guardSafeInsets(insets)
+  const left = safe.left
+  const right = safe.right
+  const top = safe.top
+  const bottom = safe.bottom
   const innerX = left
   const innerW = width - left - right
   const innerH = height - top - bottom
   const hudH = HUD_HEIGHT[deviceClass]
+
   const hud: Rect = { x: innerX, y: top, width: innerW, height: hudH }
+
   if (deviceClass === 'wide') {
-    const detail: Rect = {
+    const commandY = top + innerH - DECK_HEIGHT.wide
+    const controlsW = Math.min(WIDE_CONTROLS_WIDTH, Math.max(320, innerW * 0.3))
+    const deckW = innerW - controlsW - WIDE_COMMAND_GAP
+    const deck: Rect = {
       x: innerX,
-      y: top + innerH - DETAIL_HEIGHT.wide,
+      y: commandY,
+      width: deckW,
+      height: DECK_HEIGHT.wide,
+    }
+    const controls: Rect = {
+      x: innerX + deckW + WIDE_COMMAND_GAP,
+      y: commandY,
+      width: controlsW,
+      height: CONTROLS_HEIGHT.wide,
+    }
+    const town: Rect = {
+      x: innerX,
+      y: top + hudH,
       width: innerW,
-      height: DETAIL_HEIGHT.wide,
+      height: commandY - (top + hudH),
     }
-    const strip: Rect = {
-      x: innerX,
-      y: detail.y - STRIP_HEIGHT,
-      width: Math.min(STRIP_WIDTH_WIDE, innerW - TRAY_WIDTH_WIDE),
-      height: STRIP_HEIGHT,
-    }
-    const tray: Rect = {
-      x: innerX + strip.width,
-      y: strip.y,
-      width: innerW - strip.width,
-      height: STRIP_HEIGHT,
-    }
-    const town: Rect = { x: innerX, y: top + hudH, width: innerW, height: strip.y - (top + hudH) }
-    return { hud, town, strip, tray, detail }
+    return { hud, town, deck, controls }
   }
-  const strip: Rect = {
+
+  const controls: Rect = {
     x: innerX,
-    y: top + innerH - STRIP_HEIGHT,
+    y: top + innerH - CONTROLS_HEIGHT.narrow,
     width: innerW,
-    height: STRIP_HEIGHT,
+    height: CONTROLS_HEIGHT.narrow,
   }
-  const town: Rect = { x: innerX, y: top + hudH, width: innerW, height: TOWN_HEIGHT.narrow }
-  const tray: Rect = {
+  const deck: Rect = {
     x: innerX,
-    y: town.y + town.height,
+    y: controls.y - DECK_HEIGHT.narrow,
     width: innerW,
-    height: strip.y - (town.y + town.height),
+    height: DECK_HEIGHT.narrow,
   }
-  const detail: Rect = {
+  const town: Rect = {
     x: innerX,
-    y: strip.y - DETAIL_HEIGHT.narrow,
+    y: top + hudH,
     width: innerW,
-    height: DETAIL_HEIGHT.narrow,
+    height: deck.y - (top + hudH),
   }
-  return { hud, town, strip, tray, detail }
+  return { hud, town, deck, controls }
 }

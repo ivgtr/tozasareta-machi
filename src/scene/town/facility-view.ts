@@ -1,13 +1,10 @@
 import type { GameState, TaskId } from '../../game/types'
 import { BALANCE } from '../../game/data/balance'
 import type { PlanState } from '../plan'
-import type { FacilityViewId } from './facilities'
+import type { FacilityViewId, FacilityViewMap } from './facilities'
 import type { FacilityId } from './layout'
 
-export function deriveFacilityView(
-  state: GameState,
-  plan: PlanState,
-): Record<FacilityId, FacilityViewId> {
+export function deriveFacilityView(state: GameState, plan: PlanState): FacilityViewMap {
   const placed = (task: TaskId): boolean => (plan.placements[task] ?? []).length > 0
   return {
     hq: 'normal',

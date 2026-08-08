@@ -1,5 +1,6 @@
 import type { DayPlan, Effect, GameState } from '../game/types'
 import type { StoreAction, StoreTransition } from '../store'
+import { playbackContextForPlan, type PlaybackContext } from './playback/beats'
 import { buildPlaybackEffects } from './playback/contract'
 
 interface TurnStore {
@@ -7,11 +8,10 @@ interface TurnStore {
 }
 
 interface TurnPlayback {
-  start(previousState: GameState, effects: Effect[]): void
-  skip(): void
+  start(previousState: GameState, effects: Effect[], context?: PlaybackContext): void
+  cancel(): void
 }
 
-/** Storeの状態遷移結果を、そのまま再生制御へ引き渡す境界。 */
 export class TurnCoordinator {
   constructor(
     private readonly store: TurnStore,
@@ -19,7 +19,8 @@ export class TurnCoordinator {
   ) {}
 
   commit(plan: DayPlan): StoreTransition {
-    return this.play(this.store.dispatch({ type: 'commitDay', plan }))
+    const transition = this.store.dispatch({ type: 'commitDay', plan })
+    return this.play(transition, playbackContextForPlan(plan))
   }
 
   resolveChoice(optionId: string): StoreTransition {
@@ -27,18 +28,18 @@ export class TurnCoordinator {
   }
 
   restart(seed: number): StoreTransition {
-    this.playback.skip()
+    this.playback.cancel()
     return this.store.dispatch({ type: 'newGame', seed })
   }
 
-  private play(transition: StoreTransition): StoreTransition {
+  private play(transition: StoreTransition, context?: PlaybackContext): StoreTransition {
     if (transition.changed) {
       const effects = buildPlaybackEffects(
         transition.previousState,
         transition.store.state,
         transition.effects,
       )
-      this.playback.start(transition.previousState, effects)
+      this.playback.start(transition.previousState, effects, context)
     }
     return transition
   }

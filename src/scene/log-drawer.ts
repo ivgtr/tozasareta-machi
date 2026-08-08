@@ -3,37 +3,25 @@ import type { Effect } from '../game/types'
 import { COLORS, TEXT_SIZE } from './tokens'
 import { formatDelta } from './labels'
 import { visibleLogEntries } from './log-drawer-model'
-import { PixelButton } from './ui/button'
 import { PixelPanel } from './ui/panel'
 import { pixelText } from './ui/pixel-text'
 
 export class LogDrawer extends Phaser.GameObjects.Container {
   private readonly panel: PixelPanel
   private readonly dynamic: Phaser.GameObjects.Container
-  private readonly toggleButton: PixelButton
   private expanded = false
   private maxWidth = 480
+  private lastReport: Effect[] = []
 
   constructor(scene: Phaser.Scene) {
     super(scene)
     this.panel = new PixelPanel(scene, 100, 40)
     this.dynamic = scene.add.container()
-    this.toggleButton = new PixelButton(scene, {
-      label: '記録',
-      width: 64,
-      height: 32,
-      fontSize: TEXT_SIZE.labelWide,
-      onAction: () => {
-        this.expanded = !this.expanded
-        this.toggleButton.setLabel(this.expanded ? '閉じる' : '記録')
-        this.redraw(this.lastReport)
-      },
-    })
-    this.add([this.panel, this.dynamic, this.toggleButton])
+    this.add([this.panel, this.dynamic])
+    this.setDepth(720)
+    this.setVisible(false)
     scene.add.existing(this)
   }
-
-  private lastReport: Effect[] = []
 
   setAnchor(x: number, y: number, maxWidth: number): void {
     this.maxWidth = maxWidth
@@ -42,13 +30,28 @@ export class LogDrawer extends Phaser.GameObjects.Container {
 
   update(report: Effect[]): void {
     this.lastReport = report
-    this.redraw(report)
+    if (this.expanded) this.redraw(report)
+  }
+
+  toggle(): void {
+    this.expanded = !this.expanded
+    this.setVisible(this.expanded)
+    if (this.expanded) this.redraw(this.lastReport)
+  }
+
+  hide(): void {
+    this.expanded = false
+    this.setVisible(false)
+  }
+
+  get isOpen(): boolean {
+    return this.expanded
   }
 
   private redraw(report: Effect[]): void {
     const d = this.dynamic
     d.removeAll(true)
-    const lines = visibleLogEntries(report, this.expanded)
+    const lines = visibleLogEntries(report, true)
     const width = Math.min(this.maxWidth, 440)
     let y = 12
     if (report.length === 0) {
@@ -68,19 +71,21 @@ export class LogDrawer extends Phaser.GameObjects.Container {
       head.setPosition(14, y)
       d.add(head)
       y += 20
-      for (const e of lines) {
+      for (const effect of lines) {
         const line = pixelText(
           this.scene,
-          `${e.reason}${e.delta !== 0 ? `（${formatDelta(e.target, e.delta)}）` : ''}`,
-          { fontSize: TEXT_SIZE.labelWide, color: COLORS.ink, wordWrapWidth: width - 40 },
+          `${effect.reason}${effect.delta !== 0 ? `（${formatDelta(effect.target, effect.delta)}）` : ''}`,
+          {
+            fontSize: TEXT_SIZE.labelWide,
+            color: COLORS.ink,
+            wordWrapWidth: width - 40,
+          },
         )
         line.setPosition(14, y)
         d.add(line)
         y += line.height + 4
       }
     }
-    const height = y + 12
-    this.panel.setPanelSize(width, height)
-    this.toggleButton.setPosition(width - 44, height + 22)
+    this.panel.setPanelSize(width, y + 12)
   }
 }

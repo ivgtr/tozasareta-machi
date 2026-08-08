@@ -1,7 +1,9 @@
 import Phaser from 'phaser'
 import { KEYS } from './keys'
 import { deviceClassOf } from './layout'
+import type { PresentationMode } from './presentation'
 import { sharedStore } from './store-bridge'
+import { PixelButton } from './ui/button'
 
 interface CssBounds {
   x: number
@@ -13,9 +15,11 @@ interface CssBounds {
 interface PlaySceneInternals {
   menu?: { isOpen: boolean }
   confirm?: { isOpen: boolean }
-  unitDetails?: { isOpen: boolean }
+  characterFocus?: { isOpen: boolean }
   playback?: { current: unknown | null }
+  presentation?: { mode: PresentationMode }
   selectedUnitId?: string | null
+  startNewGame?: () => void
 }
 
 interface E2ESnapshot {
@@ -25,7 +29,8 @@ interface E2ESnapshot {
   historyLength: number
   menuOpen: boolean
   confirmOpen: boolean
-  unitDetailsOpen: boolean
+  characterFocusOpen: boolean
+  presentationMode: PresentationMode
   busy: boolean
   selectedUnitId: string | null
   deviceClass: 'wide' | 'narrow'
@@ -38,10 +43,17 @@ interface E2ESnapshot {
   }
 }
 
+interface E2EButtonSize {
+  width: number
+  height: number
+}
+
 interface E2EBridge {
   snapshot(): E2ESnapshot
   textBounds(text: string, exact?: boolean): CssBounds | null
   firstUnitBounds(): CssBounds | null
+  buttonSizes(): E2EButtonSize[]
+  restartNewGame(): void
 }
 
 type E2EWindow = Window & {
@@ -119,6 +131,12 @@ function findFirstUnitBounds(game: Phaser.Game): CssBounds | null {
   return bounds ? toCssBounds(game, bounds) : null
 }
 
+function visibleButtonSizes(game: Phaser.Game): E2EButtonSize[] {
+  return visibleObjects(game)
+    .filter((object): object is PixelButton => object instanceof PixelButton)
+    .map((button) => ({ width: button.buttonWidth, height: button.buttonHeight }))
+}
+
 function snapshot(game: Phaser.Game): E2ESnapshot {
   const store = sharedStore().get()
   const play = game.scene.getScene(KEYS.play) as unknown as PlaySceneInternals
@@ -130,7 +148,8 @@ function snapshot(game: Phaser.Game): E2ESnapshot {
     historyLength: store.history.length,
     menuOpen: play.menu?.isOpen ?? false,
     confirmOpen: play.confirm?.isOpen ?? false,
-    unitDetailsOpen: play.unitDetails?.isOpen ?? false,
+    characterFocusOpen: play.characterFocus?.isOpen ?? false,
+    presentationMode: play.presentation?.mode ?? 'planning',
     busy: play.playback?.current != null,
     selectedUnitId: play.selectedUnitId ?? null,
     deviceClass: deviceClassOf(window.innerWidth),
@@ -147,12 +166,19 @@ function snapshot(game: Phaser.Game): E2ESnapshot {
   }
 }
 
+function restartNewGame(game: Phaser.Game): void {
+  const play = game.scene.getScene(KEYS.play) as unknown as PlaySceneInternals
+  play.startNewGame?.()
+}
+
 export function installE2EBridge(game: Phaser.Game): void {
   const target = window as E2EWindow
   target.__TOZASARETA_MACHI_E2E__ = {
     snapshot: () => snapshot(game),
     textBounds: (text, exact = true) => findTextBounds(game, text, exact),
     firstUnitBounds: () => findFirstUnitBounds(game),
+    buttonSizes: () => visibleButtonSizes(game),
+    restartNewGame: () => restartNewGame(game),
   }
   game.events.once(Phaser.Core.Events.DESTROY, () => {
     delete target.__TOZASARETA_MACHI_E2E__

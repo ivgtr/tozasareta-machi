@@ -2,11 +2,14 @@ import Phaser from 'phaser'
 import { BUTTON, COLORS, TEXT_SIZE, colorCss } from '../tokens'
 import { pixelText } from './pixel-text'
 
+export type PixelButtonVariant = 'default' | 'primary' | 'quiet' | 'toggle' | 'danger'
+
 export interface PixelButtonOptions {
   label: string
   width: number
   height: number
-  primary?: boolean
+  variant?: PixelButtonVariant
+  selected?: boolean
   fontSize?: number
   onAction: () => void
   wordWrapWidth?: number
@@ -15,7 +18,8 @@ export interface PixelButtonOptions {
 export class PixelButton extends Phaser.GameObjects.Container {
   private innerWidth: number
   private innerHeight: number
-  private readonly primary: boolean
+  private variant: PixelButtonVariant
+  private selected: boolean
   private readonly onAction: () => void
   private readonly bg: Phaser.GameObjects.Graphics
   private readonly label: Phaser.GameObjects.Text
@@ -25,8 +29,9 @@ export class PixelButton extends Phaser.GameObjects.Container {
 
   constructor(scene: Phaser.Scene, options: PixelButtonOptions) {
     super(scene)
-    this.innerWidth = options.width
-    this.primary = options.primary ?? false
+    this.innerWidth = Math.max(options.width, BUTTON.minTouchSize)
+    this.variant = options.variant ?? 'default'
+    this.selected = options.selected ?? false
     this.onAction = options.onAction
     this.bg = scene.add.graphics()
     this.label = pixelText(scene, options.label, {
@@ -34,14 +39,18 @@ export class PixelButton extends Phaser.GameObjects.Container {
       trackingEm: BUTTON.trackingEm,
       ...(options.wordWrapWidth !== undefined ? { wordWrapWidth: options.wordWrapWidth } : {}),
     })
-    this.innerHeight = Math.max(options.height, Math.ceil(this.label.height) + BUTTON.labelVPad * 2)
+    this.innerHeight = Math.max(
+      options.height,
+      Math.ceil(this.label.height) + BUTTON.labelVPad * 2,
+      BUTTON.minTouchSize,
+    )
     this.label.setOrigin(0.5)
     this.add([this.bg, this.label])
     this.setInteractive(
       new Phaser.Geom.Rectangle(
-        -options.width / 2,
+        -this.innerWidth / 2,
         -this.innerHeight / 2,
-        options.width,
+        this.innerWidth,
         this.innerHeight,
       ),
       Phaser.Geom.Rectangle.Contains,
@@ -89,10 +98,15 @@ export class PixelButton extends Phaser.GameObjects.Container {
   }
 
   setSize(width: number, height: number): this {
-    this.innerWidth = width
-    this.innerHeight = height
+    this.innerWidth = Math.max(width, BUTTON.minTouchSize)
+    this.innerHeight = Math.max(height, BUTTON.minTouchSize)
     if (this.input) {
-      this.input.hitArea = new Phaser.Geom.Rectangle(-width / 2, -height / 2, width, height)
+      this.input.hitArea = new Phaser.Geom.Rectangle(
+        -this.innerWidth / 2,
+        -this.innerHeight / 2,
+        this.innerWidth,
+        this.innerHeight,
+      )
     }
     this.redraw()
     return this
@@ -112,6 +126,16 @@ export class PixelButton extends Phaser.GameObjects.Container {
     this.label.setText(text)
   }
 
+  setVariant(variant: PixelButtonVariant): void {
+    this.variant = variant
+    this.redraw()
+  }
+
+  setSelected(selected: boolean): void {
+    this.selected = selected
+    this.redraw()
+  }
+
   private redraw(): void {
     const g = this.bg
     const w = this.innerWidth
@@ -120,14 +144,7 @@ export class PixelButton extends Phaser.GameObjects.Container {
     const active = this.enabled && this.hovered
     const shift = this.enabled && this.pressed ? BUTTON.pressShift : 0
     const shadow = this.enabled && this.pressed ? BUTTON.shadowPressed : BUTTON.shadow
-    const body = this.primary
-      ? active
-        ? COLORS.gold
-        : COLORS.amber
-      : active
-        ? COLORS.frameHi
-        : COLORS.night600
-    const textColor = this.primary || active ? COLORS.night900 : COLORS.ink
+    const palette = this.palette(active)
     const x = -w / 2 + shift
     const y = -h / 2 + shift
     g.clear()
@@ -135,11 +152,54 @@ export class PixelButton extends Phaser.GameObjects.Container {
       g.fillStyle(BUTTON.shadowColor, BUTTON.shadowAlpha)
       g.fillRect(x + shadow, y + shadow, w, h)
     }
-    g.fillStyle(COLORS.frameHi)
+    g.fillStyle(palette.border)
     g.fillRect(x, y, w, h)
-    g.fillStyle(body)
+    g.fillStyle(palette.body)
     g.fillRect(x + b, y + b, w - b * 2, h - b * 2)
-    this.label.setColor(colorCss(textColor))
+    this.label.setColor(colorCss(palette.text))
     this.label.setPosition(shift, shift)
+  }
+
+  private palette(active: boolean): { border: number; body: number; text: number } {
+    if (this.variant === 'primary') {
+      return {
+        border: COLORS.gold,
+        body: active ? COLORS.gold : COLORS.amber,
+        text: COLORS.night900,
+      }
+    }
+    if (this.variant === 'danger') {
+      return {
+        border: COLORS.red,
+        body: active ? COLORS.red : COLORS.night700,
+        text: active ? COLORS.night900 : COLORS.red,
+      }
+    }
+    if (this.variant === 'toggle') {
+      if (this.selected) {
+        return {
+          border: COLORS.cyan,
+          body: active ? COLORS.gold : COLORS.cyan,
+          text: COLORS.night900,
+        }
+      }
+      return {
+        border: active ? COLORS.cyan : COLORS.frameLo,
+        body: active ? COLORS.night600 : COLORS.night800,
+        text: active ? COLORS.cyan : COLORS.inkDim,
+      }
+    }
+    if (this.variant === 'quiet') {
+      return {
+        border: active ? COLORS.frameHi : COLORS.frameLo,
+        body: active ? COLORS.night700 : COLORS.night900,
+        text: active ? COLORS.ink : COLORS.inkDim,
+      }
+    }
+    return {
+      border: COLORS.frameHi,
+      body: active ? COLORS.frameHi : COLORS.night600,
+      text: active ? COLORS.night900 : COLORS.ink,
+    }
   }
 }
