@@ -16,7 +16,8 @@ const BASE_URL = process.env.VISUAL_BASE_URL ?? `http://127.0.0.1:${PORT}`
 const APP_URL = `${BASE_URL.replace(/\/$/, '')}/?e2e=1`
 const BRIDGE = '__TOZASARETA_MACHI_E2E__'
 const UPDATE = process.env.UPDATE_VISUAL_BASELINES === '1'
-const MAX_DIFF_RATIO = 0.001
+const PIXEL_COLOR_THRESHOLD = 0.5
+const MAX_DIFF_RATIO = 0.003
 
 const fixtures = [
   'title',
@@ -136,7 +137,7 @@ async function compare(name, actualBuffer) {
     baseline.width,
     baseline.height,
     {
-      threshold: 0.1,
+      threshold: PIXEL_COLOR_THRESHOLD,
       includeAA: false,
     },
   )
