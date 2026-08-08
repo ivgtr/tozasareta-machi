@@ -207,12 +207,7 @@ export class EndingPresentation extends PresentationSurface {
     this.content.add([g, labelText, valueText])
   }
 
-  private addRecordGrid(
-    x: number,
-    y: number,
-    width: number,
-    model: EndingPresentationModel,
-  ): void {
+  private addRecordGrid(x: number, y: number, width: number, model: EndingPresentationModel): void {
     const title = pixelText(this.scene, '30日間の記録', {
       fontSize: TEXT_SIZE.labelWide,
       color: COLORS.gold,
