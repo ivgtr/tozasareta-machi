@@ -152,6 +152,10 @@ export class HudBar extends Phaser.GameObjects.Container {
     g.fillRect(0, 0, this.rect.width, this.rect.height)
     g.lineStyle(1, COLORS.frameLo, 0.8)
     g.lineBetween(0, this.rect.height - 1, this.rect.width, this.rect.height - 1)
+    if (this.deviceClass === 'narrow') {
+      g.lineStyle(1, COLORS.frameLo, 0.35)
+      g.lineBetween(SPACING.sm, this.rect.height / 2, this.rect.width - 140, this.rect.height / 2)
+    }
   }
 
   private renderWide(
@@ -159,7 +163,7 @@ export class HudBar extends Phaser.GameObjects.Container {
     state: GameState,
     alerts: HudAlert[],
   ): void {
-    let cursor = this.renderDay(host, state.day, true)
+    let cursor = this.renderWideDay(host, state.day)
     cursor = this.renderResources(host, cursor, state, alerts, true)
     const stocks = pixelText(this.scene, `予算 ${state.budget}  備蓄 ${state.stockpile}`, {
       fontSize: TEXT_SIZE.labelWide,
@@ -202,53 +206,61 @@ export class HudBar extends Phaser.GameObjects.Container {
     state: GameState,
     alerts: HudAlert[],
   ): void {
-    const cursor = this.renderDay(host, state.day, false)
-    this.renderResources(host, cursor, state, alerts, false)
-  }
-
-  private renderDay(host: Phaser.GameObjects.Container, day: number, wide: boolean): number {
-    const clamped = Math.min(day, BALANCE.days)
+    const clamped = Math.min(state.day, BALANCE.days)
     const rescueIn = Math.max(1, BALANCE.days - clamped + 1)
-    if (wide) {
-      const dayLabel = pixelText(this.scene, 'DAY', {
-        fontSize: TEXT_SIZE.labelNarrow,
-        color: COLORS.inkDim,
-      })
-      dayLabel.setPosition(SPACING.sm, 8)
-      host.add(dayLabel)
-      const dayNum = pixelText(this.scene, String(clamped), {
-        fontFamily: FONT_DISPLAY,
-        fontSize: 24,
-        color: COLORS.gold,
-      })
-      dayNum.setPosition(SPACING.sm, 24)
-      host.add(dayNum)
-      const rescue = pixelText(this.scene, `救援まで ${rescueIn}日`, {
-        fontSize: TEXT_SIZE.labelWide,
-        color: rescueIn <= 5 ? COLORS.red : COLORS.inkDim,
-      })
-      rescue.setPosition(60, this.rect.height / 2)
-      rescue.setOrigin(0, 0.5)
-      host.add(rescue)
-      return 158
-    }
-
-    const dayNum = pixelText(this.scene, String(clamped), {
+    const day = pixelText(this.scene, `DAY ${clamped}`, {
       fontFamily: FONT_DISPLAY,
-      fontSize: 18,
+      fontSize: TEXT_SIZE.labelWide,
       color: COLORS.gold,
     })
-    dayNum.setPosition(SPACING.sm, this.rect.height / 2)
-    dayNum.setOrigin(0, 0.5)
-    host.add(dayNum)
-    const rescue = pixelText(this.scene, `あと${rescueIn}日`, {
+    day.setPosition(SPACING.sm, 6)
+    host.add(day)
+
+    const rescue = pixelText(this.scene, `救援 ${rescueIn}日`, {
       fontSize: TEXT_SIZE.labelNarrow,
       color: rescueIn <= 5 ? COLORS.red : COLORS.inkDim,
     })
-    rescue.setPosition(42, this.rect.height / 2)
+    rescue.setPosition(72, 7)
+    host.add(rescue)
+
+    const stocks = pixelText(this.scene, `予算 ${state.budget}  備蓄 ${state.stockpile}`, {
+      fontSize: TEXT_SIZE.labelNarrow,
+      color: COLORS.inkDim,
+    })
+    stocks.setPosition(148, 7)
+    host.add(stocks)
+
+    const cursor = this.renderResources(host, SPACING.sm, state, alerts, false, 39)
+    const actionLimit = this.logButton.x - this.logButton.buttonWidth / 2 - SPACING.sm
+    if (cursor < actionLimit - 54) {
+      this.renderModifier(host, cursor, state, actionLimit - cursor, 39)
+    }
+  }
+
+  private renderWideDay(host: Phaser.GameObjects.Container, day: number): number {
+    const clamped = Math.min(day, BALANCE.days)
+    const rescueIn = Math.max(1, BALANCE.days - clamped + 1)
+    const dayLabel = pixelText(this.scene, 'DAY', {
+      fontSize: TEXT_SIZE.labelNarrow,
+      color: COLORS.inkDim,
+    })
+    dayLabel.setPosition(SPACING.sm, 8)
+    host.add(dayLabel)
+    const dayNum = pixelText(this.scene, String(clamped), {
+      fontFamily: FONT_DISPLAY,
+      fontSize: 24,
+      color: COLORS.gold,
+    })
+    dayNum.setPosition(SPACING.sm, 24)
+    host.add(dayNum)
+    const rescue = pixelText(this.scene, `救援まで ${rescueIn}日`, {
+      fontSize: TEXT_SIZE.labelWide,
+      color: rescueIn <= 5 ? COLORS.red : COLORS.inkDim,
+    })
+    rescue.setPosition(60, this.rect.height / 2)
     rescue.setOrigin(0, 0.5)
     host.add(rescue)
-    return 92
+    return 158
   }
 
   private renderResources(
@@ -257,6 +269,7 @@ export class HudBar extends Phaser.GameObjects.Container {
     state: GameState,
     alerts: HudAlert[],
     wide: boolean,
+    y: number = this.rect.height / 2,
   ): number {
     const alertByResource = new Map<NonNullable<HudAlert['resource']>, HudAlert>()
     for (const alert of alerts) {
@@ -271,7 +284,7 @@ export class HudBar extends Phaser.GameObjects.Container {
     let cursor = start
     for (const [id, value] of items) {
       const alert = alertByResource.get(id)
-      cursor += this.addResource(host, cursor, id, value, wide, alert?.tone)
+      cursor += this.addResource(host, cursor, id, value, wide, alert?.tone, y)
     }
     return cursor
   }
@@ -283,23 +296,30 @@ export class HudBar extends Phaser.GameObjects.Container {
     value: number,
     wide: boolean,
     tone?: HudAlert['tone'],
+    y: number = this.rect.height / 2,
   ): number {
     const iconSize = wide ? 20 : 16
     let cursor = x
-    cursor += this.addIcon(host, cursor, id, iconSize)
+    cursor += this.addIcon(host, cursor, id, iconSize, y)
     const color = tone === 'danger' ? COLORS.red : tone === 'warning' ? COLORS.amber : COLORS.inkDim
     const num = pixelText(this.scene, String(Math.round(value)), {
       fontSize: tone && wide ? 18 : wide ? TEXT_SIZE.bodyWide : TEXT_SIZE.bodyNarrow,
       color,
     })
-    num.setPosition(cursor + 2, this.rect.height / 2)
+    num.setPosition(cursor + 2, y)
     num.setOrigin(0, 0.5)
     host.add(num)
     return iconSize + num.width + (wide ? SPACING.md : SPACING.sm)
   }
 
-  private addIcon(host: Phaser.GameObjects.Container, x: number, id: string, size: number): number {
-    drawArtSlot(this.scene, host, 'icon', id, x + size / 2, this.rect.height / 2, {
+  private addIcon(
+    host: Phaser.GameObjects.Container,
+    x: number,
+    id: string,
+    size: number,
+    y: number = this.rect.height / 2,
+  ): number {
+    drawArtSlot(this.scene, host, 'icon', id, x + size / 2, y, {
       width: size,
       height: size,
       glyphSize: Math.max(12, size - 4),
@@ -313,6 +333,7 @@ export class HudBar extends Phaser.GameObjects.Container {
     x: number,
     state: GameState,
     available: number,
+    y: number = this.rect.height / 2,
   ): void {
     const modifier = state.modifiers[0]
     if (!modifier) return
@@ -323,7 +344,7 @@ export class HudBar extends Phaser.GameObjects.Container {
       color: spec ? colorNum(spec.color) : COLORS.inkDim,
       wordWrapWidth: available,
     })
-    badge.setPosition(x, this.rect.height / 2)
+    badge.setPosition(x, y)
     badge.setOrigin(0, 0.5)
     host.add(badge)
   }
