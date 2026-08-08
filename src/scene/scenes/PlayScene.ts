@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import { autoAssign } from '../../game/actions'
-import { randomSeed } from '../../store'
+import { randomSeed, reducedMotion } from '../../store'
 import { CharacterDeck } from '../character/character-deck'
 import { CharacterDragGhost } from '../character/character-drag-ghost'
 import { CharacterFocus } from '../character/character-focus'
@@ -31,12 +31,17 @@ import { PresentationDirector } from '../presentation'
 import { computeRegions, type Regions } from '../regions'
 import { sharedStore, type SceneStore } from '../store-bridge'
 import { StoryPresentations, isStoryPresentation } from '../story/story-presentations'
-import { TASK_LABEL } from '../task-presentation'
+import { TASK_LABEL, TASK_PRESENTATION } from '../task-presentation'
 import { COLORS } from '../tokens'
 import { deriveFacilityView } from '../town/facility-view'
 import { FACILITIES } from '../town/facilities'
-import { TOWN_BASE, type FacilityId } from '../town/layout'
+import type { FacilityId } from '../town/layout'
 import { TownLayer } from '../town/town-layer'
+import {
+  deriveTownViewport,
+  type TownViewportPreset,
+  type TownViewportTransform,
+} from '../town/viewport'
 import { TurnCoordinator } from '../turn-coordinator'
 import { DRAG_THRESHOLD } from '../ui/token'
 import { UnitDragController } from '../unit-drag-controller'
@@ -52,6 +57,7 @@ export class PlayScene extends Phaser.Scene {
   private regions!: Regions
   private town!: TownLayer
   private playbackFx!: TownPlaybackFx
+  private townMask!: Phaser.GameObjects.Graphics
   private deck!: CharacterDeck
   private characterFocus!: CharacterFocus
   private facilityFocus!: FacilityFocus
@@ -63,6 +69,7 @@ export class PlayScene extends Phaser.Scene {
   private story!: StoryPresentations
   private flow!: FlowPresentation
   private lastBeatKey: string | null = null
+  private townViewportKey: string | null = null
   private readonly playback = new PlaybackController()
   private readonly presentation = new PresentationDirector()
   private unsubscribe: (() => void) | null = null
@@ -88,11 +95,15 @@ export class PlayScene extends Phaser.Scene {
       },
     })
 
+    this.townMask = new Phaser.GameObjects.Graphics(this)
     this.town = new TownLayer(this, {
       onFacilityTap: (id) => this.onFacilityTap(id),
       onTokenPointerDown: (unitId, x, y) => this.beginUnitDrag(unitId, x, y),
     })
     this.playbackFx = new TownPlaybackFx(this)
+    const townGeometryMask = this.townMask.createGeometryMask()
+    this.town.setMask(townGeometryMask)
+    this.playbackFx.setMask(townGeometryMask)
     this.deck = new CharacterDeck(this, {
       onCharacterPointerDown: (unitId, x, y) => this.beginUnitDrag(unitId, x, y),
     })
@@ -340,15 +351,10 @@ export class PlayScene extends Phaser.Scene {
     )
     this.regions = computeRegions(deviceClass, width, height, insets)
     const regions = this.regions
-    const scale = Math.min(
-      regions.town.width / TOWN_BASE.width,
-      regions.town.height / TOWN_BASE.height,
-    )
-    const townX = regions.town.x + (regions.town.width - TOWN_BASE.width * scale) / 2
-    const townY = regions.town.y + (regions.town.height - TOWN_BASE.height * scale) / 2
-    this.town.setScale(scale)
-    this.town.setPosition(townX, townY)
-    this.playbackFx.setTownTransform(townX, townY, scale)
+    this.townMask.clear()
+    this.townMask.fillStyle(0xffffff)
+    this.townMask.fillRect(regions.town.x, regions.town.y, regions.town.width, regions.town.height)
+    this.townViewportKey = null
     this.hud.setBounds(regions.hud, deviceClass)
     this.controls.setBounds(regions.controls, deviceClass)
     this.deck.setBounds(
@@ -384,6 +390,57 @@ export class PlayScene extends Phaser.Scene {
     this.lastBeatKey = beatKey
   }
 
+  private viewportPreset(
+    mode: ReturnType<PresentationDirector['resolve']>['mode'],
+    flowModel: FlowPresentationModel | null,
+  ): TownViewportPreset {
+    if (mode === 'facility-focus' && this.selectedFacility) {
+      return { mode: 'facility-focus', facility: this.selectedFacility }
+    }
+    if (mode === 'unit-focus' && this.selectedUnitId) {
+      const task = Object.entries(this.plan.placements).find(([, ids]) =>
+        ids?.includes(this.selectedUnitId!),
+      )?.[0]
+      return {
+        mode: 'unit-focus',
+        facility: task ? TASK_PRESENTATION[task as keyof typeof TASK_PRESENTATION].facility : null,
+      }
+    }
+    if (mode === 'flow' && flowModel?.facility) {
+      return { mode: 'playback-target', facility: flowModel.facility }
+    }
+    if (mode === 'arrival') return { mode: 'playback-target', facility: 'road' }
+    return { mode: 'overview' }
+  }
+
+  private applyTownViewport(preset: TownViewportPreset): void {
+    const deviceClass = deviceClassOf(window.innerWidth)
+    const target = deriveTownViewport(this.regions.town, deviceClass, preset)
+    const key = `${preset.mode}:${'facility' in preset ? (preset.facility ?? 'hq') : ''}:${target.x}:${target.y}:${target.scale}`
+    if (key === this.townViewportKey) return
+    this.townViewportKey = key
+    this.tweens.killTweensOf([this.town, this.playbackFx])
+    if (reducedMotion() || this.town.scaleX === 1) {
+      this.setTownTransform(target)
+      return
+    }
+    this.tweens.add({
+      targets: [this.town, this.playbackFx],
+      x: target.x,
+      y: target.y,
+      scaleX: target.scale,
+      scaleY: target.scale,
+      duration: 280,
+      ease: 'Cubic.Out',
+    })
+  }
+
+  private setTownTransform(transform: TownViewportTransform): void {
+    this.town.setPosition(transform.x, transform.y)
+    this.town.setScale(transform.scale)
+    this.playbackFx.setTownTransform(transform.x, transform.y, transform.scale)
+  }
+
   private refresh(): void {
     const store = this.store.get()
     const state = store.state
@@ -401,6 +458,8 @@ export class PlayScene extends Phaser.Scene {
     const flowBeat = frame.mode === 'flow' && beat?.kind === 'flow' ? beat : null
     const flowModel = flowBeat ? deriveFlowPresentation(flowBeat, view) : null
     const planningChrome = !storyMode && flowModel === null
+
+    this.applyTownViewport(this.viewportPreset(frame.mode, flowModel))
 
     if (!planningChrome && this.log.isOpen) this.log.hide()
     this.hud.setVisible(planningChrome)
@@ -450,10 +509,9 @@ export class PlayScene extends Phaser.Scene {
       playback?.beats.length ?? 0,
       playback?.reduced ?? false,
     )
-    this.playbackFx.setFocus(
-      flowModel?.facility ?? null,
-      flowModel ? flowAccent(flowModel.tone) : COLORS.cyan,
-    )
+    const focusedFacility =
+      flowModel?.facility ?? (frame.mode === 'facility-focus' ? this.selectedFacility : null)
+    this.playbackFx.setFocus(focusedFacility, flowModel ? flowAccent(flowModel.tone) : COLORS.cyan)
     this.triggerPlaybackFx(flowModel)
   }
 }
