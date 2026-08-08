@@ -3,6 +3,7 @@ import type { Effect, GameState } from '../game/types'
 import { KEYS } from './keys'
 import { deviceClassOf } from './layout'
 import type { PresentationMode } from './presentation'
+import { emptyPlan, type PlanState } from './plan'
 import { sharedStore } from './store-bridge'
 import { ChoiceCard } from './story/choice-presentation'
 import {
@@ -30,6 +31,7 @@ interface PlaySceneInternals {
   presentation?: { mode: PresentationMode }
   selectedUnitId?: string | null
   selectedFacility?: string | null
+  plan?: PlanState
   startNewGame?: () => void
   refresh?: () => void
 }
@@ -213,6 +215,7 @@ function showFixture(game: Phaser.Game, name: PresentationFixtureName): void {
   play.menu?.hide()
   play.selectedUnitId = fixture.selectedUnitId ?? null
   play.selectedFacility = fixture.selectedFacility ?? null
+  play.plan = fixture.plan ?? emptyPlan()
   if (fixture.beat && fixture.baseState) {
     play.playback?.start(fixture.baseState, fixture.beat.effects)
   } else {

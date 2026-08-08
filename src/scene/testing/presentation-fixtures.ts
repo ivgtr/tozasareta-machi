@@ -2,6 +2,7 @@ import { UNIQUE_UNITS, cloneUnit } from '../../game/data/units'
 import { createInitialState } from '../../game/state'
 import type { Effect, GameState } from '../../game/types'
 import type { Beat } from '../playback/beats'
+import type { PlanState } from '../plan'
 import type { FacilityId } from '../town/layout'
 
 export const PRESENTATION_FIXTURE_NAMES = [
@@ -26,6 +27,7 @@ export interface PresentationFixture {
   beat?: Beat
   selectedUnitId?: string
   selectedFacility?: FacilityId
+  plan?: PlanState
   scene: 'title' | 'play'
   menuOpen?: boolean
 }
@@ -63,10 +65,22 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
   if (name === 'title') return { name, state, scene: 'title' }
   if (name === 'menu') return { name, state, scene: 'play', menuOpen: true }
   if (name === 'unit-focus') {
-    return { name, state, scene: 'play', selectedUnitId: firstUnitId }
+    return {
+      name,
+      state,
+      scene: 'play',
+      selectedUnitId: firstUnitId,
+      plan: { placements: { restore_road: [firstUnitId] }, ration: false, procure: false },
+    }
   }
   if (name === 'facility-focus') {
-    return { name, state, scene: 'play', selectedFacility: 'road' }
+    return {
+      name,
+      state,
+      scene: 'play',
+      selectedFacility: 'road',
+      plan: { placements: { restore_road: [firstUnitId] }, ration: false, procure: false },
+    }
   }
   if (name === 'flow') {
     const effects = [

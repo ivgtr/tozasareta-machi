@@ -20,6 +20,7 @@
 - **v1.4 完了**（docs/20 D1–D4）: アクティブ難易度（派生脅威度 + アクト制）。静的な減衰・イベント抽選を状況応答型へ。確定バランス: **熟練 53% / 無作為 0/40（400ゲーム真値 1/400）/ FR 番人 19/60**。D5（予告・連鎖の拡張）のみ任意残。詳細と次の作業は [00-現状と引き継ぎ](./00-現状と引き継ぎ.md)、実装記録は [20-アクティブ難易度](./20-アクティブ難易度.md) §8
 - **Issue #1 町中心UI再設計 完了**（docs/22〜24）: Phaser 3 フル移行 + アイソメ町 + Presentation刷新。Reactは撤去済み。
 - **Issue #19 PR10 Presentation品質基盤**（docs/26）: 主要10画面の決定論的fixture、wide/narrow 20枚のVisual Regression、Story系単独E2Eを導入。
+- **Issue #19 PR11 Planning体験の完成**: Adaptive Town Viewport、Stable Roster、2段narrow HUD、Planning Forecast、FacilityFocus編成UIを統合。
 - 正典: ゲームコアは [12-ユニット設計](./12-ユニット設計.md) を正とし、06/09 の作業員・人員記述は旧モデル。
 
 ## ドキュメント構成

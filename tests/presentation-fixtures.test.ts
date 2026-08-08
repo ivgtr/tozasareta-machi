@@ -27,4 +27,11 @@ describe('presentation fixtures', () => {
       ending: 'full_recovery',
     })
   })
+
+  it('focus fixtures share a deterministic assignment', () => {
+    const unit = buildPresentationFixture('unit-focus')
+    const facility = buildPresentationFixture('facility-focus')
+    expect(unit.plan).toEqual(facility.plan)
+    expect(facility.plan?.placements.restore_road).toEqual([facility.state.units[0]?.id])
+  })
 })
