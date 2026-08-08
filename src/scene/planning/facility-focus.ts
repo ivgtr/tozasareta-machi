@@ -8,7 +8,7 @@ import type { PlanState } from '../plan'
 import type { Rect } from '../regions'
 import { TASK_LABEL } from '../task-presentation'
 import { COLORS, PANEL_CONTENT_INSET, SPACING, TEXT_SIZE } from '../tokens'
-import { FACILITIES, type FacilityViewId } from '../town/facilities'
+import { FACILITIES, type FacilityViewId, type FacilityViewMap } from '../town/facilities'
 import type { FacilityId } from '../town/layout'
 import { drawArtSlot } from '../ui/art-slot'
 import { PixelButton } from '../ui/button'
@@ -20,13 +20,12 @@ const VIEW_LABEL: Record<FacilityViewId, string> = {
   working: '作業中',
   collapsed: '崩落',
   restored: '復旧済み',
-  damaged: '損傷',
 }
 
 export interface FacilityFocusContext {
   state: GameState
   plan: PlanState
-  view: Record<FacilityId, FacilityViewId>
+  view: FacilityViewMap
 }
 
 export interface FacilityFocusCallbacks {
@@ -128,7 +127,7 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
     const stateBadge = pixelText(this.scene, VIEW_LABEL[viewId], {
       fontSize: TEXT_SIZE.labelWide,
       color:
-        viewId === 'low' || viewId === 'collapsed' || viewId === 'damaged'
+        viewId === 'low' || viewId === 'collapsed'
           ? COLORS.red
           : viewId === 'working'
             ? COLORS.green
