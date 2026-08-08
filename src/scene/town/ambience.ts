@@ -31,23 +31,9 @@ export class TownAmbience extends Phaser.GameObjects.Container {
     this.skyBand.setOrigin(0)
     this.darkness = scene.add.rectangle(0, 0, TOWN_BASE.width, TOWN_BASE.height, 0x000000, 0)
     this.darkness.setOrigin(0)
-    this.weatherTint = scene.add.rectangle(
-      0,
-      0,
-      TOWN_BASE.width,
-      TOWN_BASE.height,
-      COLORS.cyan,
-      0,
-    )
+    this.weatherTint = scene.add.rectangle(0, 0, TOWN_BASE.width, TOWN_BASE.height, COLORS.cyan, 0)
     this.weatherTint.setOrigin(0)
-    this.dangerTint = scene.add.rectangle(
-      0,
-      0,
-      TOWN_BASE.width,
-      TOWN_BASE.height,
-      COLORS.red,
-      0,
-    )
+    this.dangerTint = scene.add.rectangle(0, 0, TOWN_BASE.width, TOWN_BASE.height, COLORS.red, 0)
     this.dangerTint.setOrigin(0)
 
     this.signals = scene.add.graphics()

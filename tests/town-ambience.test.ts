@@ -89,9 +89,7 @@ describe('deriveTownAmbience', () => {
   it('探索中ユニットを食料安全度の必要人数から除外する', () => {
     const base = state()
     const allPresent = deriveTownAmbience(base, NORMAL_VIEW)
-    const units = base.units.map((unit, index) =>
-      index === 0 ? { ...unit, expedition: 1 } : unit,
-    )
+    const units = base.units.map((unit, index) => (index === 0 ? { ...unit, expedition: 1 } : unit))
     const expedition = deriveTownAmbience({ ...base, units }, NORMAL_VIEW)
 
     expect(expedition.supplies.foodSecurity).toBeGreaterThan(allPresent.supplies.foodSecurity)
