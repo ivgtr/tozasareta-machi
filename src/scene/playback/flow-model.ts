@@ -5,6 +5,7 @@ import { TASK_PRESENTATION } from '../task-presentation'
 import { resolveFx, type FxEntry } from '../town/fx-map'
 import type { FacilityId } from '../town/layout'
 import type { FlowBeat } from './beats'
+import { deriveBeatImportance, type BeatImportance } from './beat-presentation'
 
 export type FlowTone = 'positive' | 'negative' | 'neutral'
 
@@ -25,6 +26,7 @@ export interface FlowPresentationModel {
   fx: FxEntry
   tone: FlowTone
   deltas: FlowDelta[]
+  importance: BeatImportance
 }
 
 function toneOf(delta: number): FlowTone {
@@ -123,5 +125,6 @@ export function deriveFlowPresentation(
     fx,
     tone,
     deltas,
+    importance: deriveBeatImportance(beat),
   }
 }

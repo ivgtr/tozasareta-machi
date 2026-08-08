@@ -1,12 +1,6 @@
 import { isTaskId } from '../../game/data/tasks'
 import type { DayPlan, Effect, TaskId } from '../../game/types'
 
-export const UI_TIMING = {
-  flowMs: 1600,
-  reducedFlowMs: 650,
-  afterConfirmMs: 250,
-} as const
-
 export interface PlaybackContext {
   taskActors: Partial<Record<TaskId, readonly string[]>>
 }

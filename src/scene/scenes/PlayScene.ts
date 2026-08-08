@@ -388,7 +388,7 @@ export class PlayScene extends Phaser.Scene {
     const beatKey = playback && beat ? `${playback.base.day}:${playback.index}:${beat.kind}` : null
     if (playback && beat && beatKey !== this.lastBeatKey) {
       if (beat.kind === 'flow' && model) {
-        this.playbackFx.play(model.fx, flowAccent(model.tone))
+        this.playbackFx.play(model.fx, flowAccent(model.tone), model.importance)
       } else if (beat.kind === 'arrival') {
         this.playbackFx.playArrival()
       }

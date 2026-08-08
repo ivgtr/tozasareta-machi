@@ -1,6 +1,7 @@
 import type { Effect, GameState } from '../../game/types'
 import { reducedMotion } from '../../store'
-import { UI_TIMING, buildBeats, type Beat, type PlaybackContext } from './beats'
+import { deriveBeatPresentation, PLAYBACK_TIMING } from './beat-presentation'
+import { buildBeats, type Beat, type PlaybackContext } from './beats'
 import { projectPlaybackState } from './project-state'
 
 export interface Playback {
@@ -102,10 +103,8 @@ export class PlaybackController {
     const spotlight = beat.kind !== 'flow'
     if (spotlight && !playback.confirmed) return
     const delay = spotlight
-      ? UI_TIMING.afterConfirmMs
-      : playback.reduced
-        ? UI_TIMING.reducedFlowMs
-        : UI_TIMING.flowMs
+      ? PLAYBACK_TIMING.afterConfirmMs
+      : deriveBeatPresentation(beat, playback.reduced).durationMs
     this.clearTimer()
     this.timer = setTimeout(() => this.advance(), delay)
   }

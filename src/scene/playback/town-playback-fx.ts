@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { reducedMotion } from '../../store'
 import { COLORS } from '../tokens'
 import type { FxEntry } from '../town/fx-map'
+import type { BeatImportance } from './beat-presentation'
 import {
   FACILITY_PLOTS,
   footprintDiamond,
@@ -35,12 +36,13 @@ export class TownPlaybackFx extends Phaser.GameObjects.Container {
     this.redrawFocus()
   }
 
-  play(entry: FxEntry, color: number): void {
+  play(entry: FxEntry, color: number, importance: BeatImportance): void {
     if (reducedMotion() || !entry.facility) return
     const anchor = FACILITY_PLOTS.find((plot) => plot.id === entry.facility)
     if (!anchor) return
-    this.pulse(anchor, color, 980)
+    this.pulse(anchor, color, importance === 'major' ? 1500 : importance === 'minor' ? 620 : 980)
     if (entry.kind === 'work') this.workBurst(anchor, color)
+    if (importance === 'major') this.workBurst(anchor, COLORS.gold)
   }
 
   playArrival(): void {

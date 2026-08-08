@@ -4,6 +4,7 @@ import { COLORS, TEXT_SIZE } from '../tokens'
 import { drawArtSlot } from '../ui/art-slot'
 import { PixelButton } from '../ui/button'
 import { pixelText } from '../ui/pixel-text'
+import type { BeatImportance } from './beat-presentation'
 import type { FlowPresentationModel, FlowTone } from './flow-model'
 
 export interface FlowPresentationCallbacks {
@@ -103,21 +104,26 @@ export class FlowPresentation extends Phaser.GameObjects.Container {
     this.scene.tweens.killTweensOf(this.dynamic)
     this.dynamic.removeAll(true)
     const accent = flowAccent(model.tone)
-    const panel = this.panelRect()
-    this.redrawFrame(panel, accent)
-    if (this.deviceClass === 'wide') this.renderWide(model, panel)
+    const panel = this.panelRect(model.importance)
+    this.redrawFrame(panel, accent, model.importance)
+    if (model.importance === 'minor') this.renderMinor(model, panel)
+    else if (this.deviceClass === 'wide') this.renderWide(model, panel)
     else this.renderNarrow(model, panel)
 
     const wide = this.deviceClass === 'wide'
     this.skipButton.setLabel('結果を送る ▶▶')
     this.skipButton.setPosition(panel.x + panel.width - (wide ? 94 : 82), panel.y + 30)
     this.skipButton.setSize(wide ? 154 : 132, 44)
+    this.skipButton.setVisible(model.importance !== 'minor')
 
     const progress = pixelText(this.scene, `RESULT ${index + 1} / ${total}`, {
       fontSize: wide ? TEXT_SIZE.labelWide : TEXT_SIZE.labelNarrow,
       color: COLORS.inkDim,
     })
-    progress.setPosition(panel.x + panel.width - (wide ? 174 : 16), panel.y + 58)
+    progress.setPosition(
+      panel.x + panel.width - (wide ? (model.importance === 'minor' ? 18 : 174) : 16),
+      panel.y + (model.importance === 'minor' ? 12 : 58),
+    )
     progress.setOrigin(1, 0)
     this.dynamic.add(progress)
 
@@ -139,49 +145,109 @@ export class FlowPresentation extends Phaser.GameObjects.Container {
   }
 
   private renderWide(model: FlowPresentationModel, panel: Phaser.Geom.Rectangle): void {
-    const portraitWidth = model.primaryActor ? 138 : 0
+    const major = model.importance === 'major'
+    const portraitWidth = model.primaryActor ? (major ? 176 : 138) : 0
     const portraitX = panel.x + 18
-    const portraitY = panel.y - 46
+    const portraitY = major ? panel.y + 18 : panel.y - 46
     if (model.primaryActor) {
-      this.drawPortraitFrame(portraitX, portraitY, portraitWidth, 190, flowAccent(model.tone))
+      const portraitHeight = major ? 226 : 190
+      this.drawPortraitFrame(
+        portraitX,
+        portraitY,
+        portraitWidth,
+        portraitHeight,
+        flowAccent(model.tone),
+      )
       drawArtSlot(
         this.scene,
         this.dynamic,
         'portrait',
         model.primaryActor.portrait,
         portraitX + portraitWidth / 2,
-        portraitY + 95,
-        { width: portraitWidth - 14, height: 176, glyphSize: 48, fallbackGlyph: '人' },
+        portraitY + portraitHeight / 2,
+        {
+          width: portraitWidth - 14,
+          height: portraitHeight - 14,
+          glyphSize: major ? 66 : 48,
+          fallbackGlyph: '人',
+        },
       )
     }
 
-    const textX = panel.x + (model.primaryActor ? 178 : 28)
+    const textX = panel.x + (model.primaryActor ? (major ? 222 : 178) : 28)
     const textWidth = panel.x + panel.width - 206 - textX
-    this.drawHeading(model, textX, panel.y + 22, textWidth, false)
-    this.drawDeltas(model, textX, panel.y + 116, panel.x + panel.width - 24 - textX, 6)
+    if (major) this.drawImportanceLabel(textX, panel.y + 18, '重大な変化')
+    this.drawHeading(model, textX, panel.y + (major ? 46 : 22), textWidth, false)
+    this.drawDeltas(
+      model,
+      textX,
+      panel.y + (major ? 154 : 116),
+      panel.x + panel.width - 24 - textX,
+      6,
+    )
   }
 
   private renderNarrow(model: FlowPresentationModel, panel: Phaser.Geom.Rectangle): void {
+    const major = model.importance === 'major'
     const hasActor = model.primaryActor !== null
     if (model.primaryActor) {
       const portraitX = panel.x + 14
-      const portraitY = panel.y + 14
-      this.drawPortraitFrame(portraitX, portraitY, 86, 118, flowAccent(model.tone))
+      const portraitY = panel.y + (major ? 38 : 14)
+      const portraitW = major ? 110 : 86
+      const portraitH = major ? 150 : 118
+      this.drawPortraitFrame(portraitX, portraitY, portraitW, portraitH, flowAccent(model.tone))
       drawArtSlot(
         this.scene,
         this.dynamic,
         'portrait',
         model.primaryActor.portrait,
-        portraitX + 43,
-        portraitY + 59,
-        { width: 76, height: 108, glyphSize: 34, fallbackGlyph: '人' },
+        portraitX + portraitW / 2,
+        portraitY + portraitH / 2,
+        {
+          width: portraitW - 10,
+          height: portraitH - 10,
+          glyphSize: major ? 44 : 34,
+          fallbackGlyph: '人',
+        },
       )
     }
-    const textX = panel.x + (hasActor ? 112 : 16)
+    const textX = panel.x + (hasActor ? (major ? 140 : 112) : 16)
     const textRight = panel.x + panel.width - 158
     const textWidth = Math.max(104, textRight - textX)
-    this.drawHeading(model, textX, panel.y + 16, textWidth, true)
-    this.drawDeltas(model, panel.x + 14, panel.y + 142, panel.width - 28, 3)
+    if (major) this.drawImportanceLabel(textX, panel.y + 18, '重大な変化')
+    this.drawHeading(model, textX, panel.y + (major ? 46 : 16), textWidth, true)
+    this.drawDeltas(model, panel.x + 14, panel.y + (major ? 208 : 142), panel.width - 28, 3)
+  }
+
+  private renderMinor(model: FlowPresentationModel, panel: Phaser.Geom.Rectangle): void {
+    const wide = this.deviceClass === 'wide'
+    const title = pixelText(this.scene, model.title, {
+      fontSize: wide ? TEXT_SIZE.bodyWide : TEXT_SIZE.bodyNarrow,
+      color: COLORS.ink,
+    })
+    title.setPosition(panel.x + 16, panel.y + 14)
+    this.dynamic.add(title)
+    const summary = pixelText(this.scene, model.summary, {
+      fontSize: TEXT_SIZE.labelNarrow,
+      color: COLORS.inkDim,
+      wordWrapWidth: wide ? panel.width * 0.42 : panel.width - 32,
+    })
+    summary.setPosition(panel.x + 16, panel.y + 42)
+    this.dynamic.add(summary)
+    const deltaX = wide ? panel.x + panel.width * 0.48 : panel.x + 14
+    const deltaY = wide ? panel.y + 30 : panel.y + 72
+    this.drawDeltas(model, deltaX, deltaY, panel.x + panel.width - 16 - deltaX, wide ? 5 : 3)
+  }
+
+  private drawImportanceLabel(x: number, y: number, label: string): void {
+    const text = pixelText(this.scene, label, {
+      fontSize: TEXT_SIZE.labelNarrow,
+      color: COLORS.gold,
+      backgroundColor: '#31260f',
+    })
+    text.setPadding(6, 3, 6, 3)
+    text.setPosition(x, y)
+    this.dynamic.add(text)
   }
 
   private drawHeading(
@@ -277,9 +343,16 @@ export class FlowPresentation extends Phaser.GameObjects.Container {
     this.dynamic.add(g)
   }
 
-  private redrawFrame(panel: Phaser.Geom.Rectangle, accent: number): void {
+  private redrawFrame(
+    panel: Phaser.Geom.Rectangle,
+    accent: number,
+    importance: BeatImportance,
+  ): void {
     this.backdrop.clear()
-    this.backdrop.fillStyle(COLORS.night900, 0.14)
+    this.backdrop.fillStyle(
+      COLORS.night900,
+      importance === 'major' ? 0.36 : importance === 'minor' ? 0 : 0.14,
+    )
     this.backdrop.fillRect(0, 0, this.viewportWidth, this.viewportHeight)
 
     this.frame.clear()
@@ -287,7 +360,10 @@ export class FlowPresentation extends Phaser.GameObjects.Container {
     this.frame.fillRect(panel.x + 7, panel.y + 7, panel.width, panel.height)
     this.frame.fillStyle(COLORS.night900, 0.97)
     this.frame.fillRect(panel.x, panel.y, panel.width, panel.height)
-    this.frame.lineStyle(3, COLORS.frameHi)
+    this.frame.lineStyle(
+      importance === 'major' ? 4 : 3,
+      importance === 'major' ? accent : COLORS.frameHi,
+    )
     this.frame.strokeRect(panel.x + 1, panel.y + 1, panel.width - 2, panel.height - 2)
     this.frame.lineStyle(2, COLORS.frameLo)
     this.frame.strokeRect(panel.x + 6, panel.y + 6, panel.width - 12, panel.height - 12)
@@ -295,22 +371,24 @@ export class FlowPresentation extends Phaser.GameObjects.Container {
     this.frame.fillRect(panel.x + 8, panel.y + 8, panel.width - 16, 5)
   }
 
-  private panelRect(): Phaser.Geom.Rectangle {
+  private panelRect(importance: BeatImportance): Phaser.Geom.Rectangle {
     const safe = this.safeInsets
     const innerWidth = this.viewportWidth - safe.left - safe.right
     if (this.deviceClass === 'wide') {
+      const height = importance === 'minor' ? 104 : importance === 'major' ? 268 : 166
       return new Phaser.Geom.Rectangle(
         safe.left + 34,
-        this.viewportHeight - safe.bottom - 188,
+        this.viewportHeight - safe.bottom - height - 22,
         innerWidth - 68,
-        166,
+        height,
       )
     }
+    const height = importance === 'minor' ? 142 : importance === 'major' ? 338 : 250
     return new Phaser.Geom.Rectangle(
       safe.left + 8,
-      this.viewportHeight - safe.bottom - 260,
+      this.viewportHeight - safe.bottom - height - 10,
       innerWidth - 16,
-      250,
+      height,
     )
   }
 }

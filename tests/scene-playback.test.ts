@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PlaybackController } from '../src/scene/playback/playback'
-import { UI_TIMING, buildBeats, playbackContextForPlan } from '../src/scene/playback/beats'
+import { PLAYBACK_TIMING } from '../src/scene/playback/beat-presentation'
+import { buildBeats, playbackContextForPlan } from '../src/scene/playback/beats'
 import { createInitialState } from '../src/game/state'
 import type { DayPlan, Effect } from '../src/game/types'
 
@@ -121,10 +122,10 @@ describe('PlaybackController', () => {
     controller.start(createInitialState(1), flowEffects)
     expect(controller.current?.index).toBe(0)
 
-    vi.advanceTimersByTime(UI_TIMING.flowMs)
+    vi.advanceTimersByTime(PLAYBACK_TIMING.normalMs)
     expect(controller.current?.index).toBe(1)
 
-    vi.advanceTimersByTime(UI_TIMING.flowMs)
+    vi.advanceTimersByTime(PLAYBACK_TIMING.minorMs)
     expect(controller.current).toBeNull()
   })
 
@@ -133,15 +134,15 @@ describe('PlaybackController', () => {
     const controller = new PlaybackController()
     controller.start(createInitialState(1), eventEffects)
 
-    vi.advanceTimersByTime(UI_TIMING.flowMs)
+    vi.advanceTimersByTime(PLAYBACK_TIMING.normalMs)
     expect(controller.current?.index).toBe(1)
     expect(controller.waiting).toBe(true)
 
-    vi.advanceTimersByTime(UI_TIMING.flowMs * 3)
+    vi.advanceTimersByTime(PLAYBACK_TIMING.normalMs * 3)
     expect(controller.current?.index).toBe(1)
 
     controller.confirm()
-    vi.advanceTimersByTime(UI_TIMING.afterConfirmMs)
+    vi.advanceTimersByTime(PLAYBACK_TIMING.afterConfirmMs)
     expect(controller.current).toBeNull()
   })
 
@@ -170,7 +171,7 @@ describe('PlaybackController', () => {
     controller.start(createInitialState(1), flowEffects)
     controller.pause()
 
-    vi.advanceTimersByTime(UI_TIMING.reducedFlowMs * 2)
+    vi.advanceTimersByTime(PLAYBACK_TIMING.reducedMs * 2)
     expect(controller.current?.index).toBe(0)
   })
 
@@ -181,7 +182,7 @@ describe('PlaybackController', () => {
     expect(controller.current?.index).toBe(0)
     expect(controller.current?.reduced).toBe(true)
 
-    vi.advanceTimersByTime(UI_TIMING.reducedFlowMs)
+    vi.advanceTimersByTime(PLAYBACK_TIMING.reducedMs)
     expect(controller.current?.index).toBe(1)
   })
 })
