@@ -26,6 +26,7 @@ interface PlaySceneInternals {
   playback?: {
     current: unknown | null
     cancel: () => void
+    pause: () => void
     start: (state: GameState, effects: Effect[]) => void
   }
   presentation?: { mode: PresentationMode }
@@ -218,6 +219,7 @@ function showFixture(game: Phaser.Game, name: PresentationFixtureName): void {
   play.plan = fixture.plan ?? emptyPlan()
   if (fixture.beat && fixture.baseState) {
     play.playback?.start(fixture.baseState, fixture.beat.effects)
+    play.playback?.pause()
   } else {
     play.refresh?.()
   }

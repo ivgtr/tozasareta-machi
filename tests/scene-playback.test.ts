@@ -164,6 +164,16 @@ describe('PlaybackController', () => {
     expect(controller.current).toBeNull()
   })
 
+  it('pause は現在のビートを時間経過で進めない', () => {
+    stubMotion(true)
+    const controller = new PlaybackController()
+    controller.start(createInitialState(1), flowEffects)
+    controller.pause()
+
+    vi.advanceTimersByTime(UI_TIMING.reducedFlowMs * 2)
+    expect(controller.current?.index).toBe(0)
+  })
+
   it('reduced-motion でも内容を省略せず、短い静的表示として再生する', () => {
     stubMotion(true)
     const controller = new PlaybackController()

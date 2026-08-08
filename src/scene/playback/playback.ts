@@ -78,6 +78,10 @@ export class PlaybackController {
     this.onChange()
   }
 
+  pause(): void {
+    this.clearTimer()
+  }
+
   confirm(): void {
     if (!this.playback || this.beat?.kind === 'flow') return
     this.playback = { ...this.playback, confirmed: true }
