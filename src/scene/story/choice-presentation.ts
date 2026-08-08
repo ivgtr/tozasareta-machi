@@ -6,13 +6,15 @@ import { drawArtSlot } from '../ui/art-slot'
 import { PixelButton } from '../ui/button'
 import { pixelText } from '../ui/pixel-text'
 import { PresentationSurface } from './presentation-surface'
+import { deriveStoryPresentation, type StoryPresentationModel } from './story-metadata'
 
-class ChoiceCard extends Phaser.GameObjects.Container {
+export class ChoiceCard extends Phaser.GameObjects.Container {
   constructor(
     scene: Phaser.Scene,
     option: ChoiceOption,
     width: number,
     height: number,
+    focused: boolean,
     onChoose: () => void,
   ) {
     super(scene)
@@ -37,14 +39,15 @@ class ChoiceCard extends Phaser.GameObjects.Container {
     )
 
     const redraw = (hovered: boolean): void => {
+      const active = hovered || focused
       bg.clear()
-      bg.fillStyle(hovered ? COLORS.night600 : COLORS.night800)
+      bg.fillStyle(active ? COLORS.night600 : COLORS.night800)
       bg.fillRect(0, 0, width, height)
-      bg.lineStyle(2, hovered ? COLORS.gold : COLORS.frameLo)
+      bg.lineStyle(focused ? 3 : 2, focused ? COLORS.cyan : hovered ? COLORS.gold : COLORS.frameLo)
       bg.strokeRect(1, 1, width - 2, height - 2)
-      bg.fillStyle(hovered ? COLORS.gold : COLORS.amber)
+      bg.fillStyle(active ? COLORS.gold : COLORS.amber)
       bg.fillRect(0, 0, 6, height)
-      title.setColor(colorCss(hovered ? COLORS.ink : COLORS.gold))
+      title.setColor(colorCss(active ? COLORS.ink : COLORS.gold))
     }
     redraw(false)
     this.on('pointerover', () => redraw(true))
@@ -72,6 +75,8 @@ export class ChoicePresentation extends PresentationSurface {
   private page = 0
   private eventId: string | null = null
   private currentState: GameState | null = null
+  private keyboardIndex = -1
+  private currentOptions: ChoiceOption[] = []
 
   constructor(scene: Phaser.Scene, callbacks: ChoicePresentationCallbacks) {
     super(scene)
@@ -93,18 +98,43 @@ export class ChoicePresentation extends PresentationSurface {
     if (this.eventId !== event.id) {
       this.eventId = event.id
       this.page = 0
+      this.keyboardIndex = -1
     }
     const options = choiceOptions(state, event).filter((option) =>
       pending.optionIds.includes(option.id),
     )
+    this.currentOptions = options
     this.render(state, options)
+  }
+
+  moveKeyboardSelection(delta: -1 | 1): string | null {
+    if (this.currentOptions.length === 0) return null
+    const next =
+      this.keyboardIndex < 0
+        ? delta > 0
+          ? 0
+          : this.currentOptions.length - 1
+        : this.keyboardIndex + delta
+    this.keyboardIndex = Phaser.Math.Wrap(next, 0, this.currentOptions.length)
+    const perPage = this.deviceClass === 'wide' ? 6 : 4
+    this.page = Math.floor(this.keyboardIndex / perPage)
+    if (this.currentState) this.render(this.currentState, this.currentOptions)
+    return this.currentOptions[this.keyboardIndex]?.id ?? null
+  }
+
+  confirmKeyboardSelection(): boolean {
+    const option = this.currentOptions[this.keyboardIndex]
+    if (!option) return false
+    this.callbacks.onChoose(option.id)
+    return true
   }
 
   private render(state: GameState, options: ChoiceOption[]): void {
     const pending = state.pendingChoice
     if (!pending) return
-    const event = findEvent(pending.eventId)
-    if (!event) return
+    const model = deriveStoryPresentation(pending.eventId, state)
+    if (!model) return
+    const event = model.event
     this.begin(COLORS.amber)
     const p = this.panel
     const pad = this.deviceClass === 'wide' ? 26 : 16
@@ -113,10 +143,16 @@ export class ChoicePresentation extends PresentationSurface {
     this.page = Math.min(this.page, pageCount - 1)
     const visible = options.slice(this.page * perPage, (this.page + 1) * perPage)
 
-    const kicker = pixelText(this.scene, '対策会議・判断を求められている', {
-      fontSize: TEXT_SIZE.labelWide,
-      color: COLORS.cyan,
-    })
+    const kicker = pixelText(
+      this.scene,
+      model.speaker
+        ? `${model.speaker.name}から判断を求められている`
+        : '対策会議・判断を求められている',
+      {
+        fontSize: TEXT_SIZE.labelWide,
+        color: COLORS.cyan,
+      },
+    )
     kicker.setPosition(p.x + pad, p.y + pad)
     this.content.add(kicker)
 
@@ -128,33 +164,41 @@ export class ChoicePresentation extends PresentationSurface {
     title.setPosition(p.x + pad, p.y + pad + 28)
     this.content.add(title)
 
-    if (this.deviceClass === 'wide') this.renderWide(event.desc, event.id, visible, pageCount)
-    else this.renderNarrow(event.desc, event.id, visible, pageCount)
+    if (this.deviceClass === 'wide') this.renderWide(model, visible, pageCount)
+    else this.renderNarrow(model, visible, pageCount)
   }
 
   private renderWide(
-    desc: string | undefined,
-    eventId: string,
+    model: StoryPresentationModel,
     options: ChoiceOption[],
     pageCount: number,
   ): void {
     const p = this.panel
     const pad = 26
-    const leftW = Math.min(360, Math.floor(p.width * 0.32))
+    const leftW = Math.min(340, Math.floor(p.width * 0.31))
     const artX = p.x + pad
     const artY = p.y + 92
-    const artH = 210
+    const artH = model.speaker ? 250 : 210
     this.drawArtFrame(artX, artY, leftW, artH, COLORS.amber)
-    drawArtSlot(this.scene, this.content, 'event', eventId, artX + leftW / 2, artY + artH / 2, {
-      width: leftW - 16,
-      height: artH - 16,
-      glyphSize: 68,
-      fallbackGlyph: '？',
-    })
-    const descText = pixelText(this.scene, desc ?? '町の今後を左右する判断です。', {
+    drawArtSlot(
+      this.scene,
+      this.content,
+      model.speaker ? 'portrait' : 'event',
+      model.speaker?.portrait ?? model.event.id,
+      artX + leftW / 2,
+      artY + artH / 2,
+      {
+        width: leftW - 16,
+        height: artH - 16,
+        glyphSize: model.speaker ? 86 : 68,
+        fallbackGlyph: model.speaker ? '人' : '？',
+      },
+    )
+    const descText = pixelText(this.scene, model.event.desc ?? '町の今後を左右する判断です。', {
       fontSize: TEXT_SIZE.bodyWide,
       color: COLORS.inkDim,
       wordWrapWidth: leftW,
+      advancedWrap: true,
     })
     descText.setPosition(artX, artY + artH + 18)
     this.content.add(descText)
@@ -167,8 +211,13 @@ export class ChoicePresentation extends PresentationSurface {
     options.forEach((option, index) => {
       const col = index % 2
       const row = Math.floor(index / 2)
-      const card = new ChoiceCard(this.scene, option, cardW, cardH, () =>
-        this.callbacks.onChoose(option.id),
+      const card = new ChoiceCard(
+        this.scene,
+        option,
+        cardW,
+        cardH,
+        option.id === this.keyboardOptionId(),
+        () => this.callbacks.onChoose(option.id),
       )
       card.setPosition(gridX + col * (cardW + gap), artY + row * (cardH + gap))
       this.content.add(card)
@@ -177,28 +226,36 @@ export class ChoicePresentation extends PresentationSurface {
   }
 
   private renderNarrow(
-    desc: string | undefined,
-    eventId: string,
+    model: StoryPresentationModel,
     options: ChoiceOption[],
     pageCount: number,
   ): void {
     const p = this.panel
     const pad = 16
-    const artW = 118
-    const artH = 88
+    const artW = model.speaker ? 126 : 118
+    const artH = model.speaker ? 154 : 88
     const artX = p.x + pad
     const artY = p.y + 88
     this.drawArtFrame(artX, artY, artW, artH, COLORS.amber)
-    drawArtSlot(this.scene, this.content, 'event', eventId, artX + artW / 2, artY + artH / 2, {
-      width: artW - 12,
-      height: artH - 12,
-      glyphSize: 40,
-      fallbackGlyph: '？',
-    })
-    const descText = pixelText(this.scene, desc ?? '町の今後を左右する判断です。', {
+    drawArtSlot(
+      this.scene,
+      this.content,
+      model.speaker ? 'portrait' : 'event',
+      model.speaker?.portrait ?? model.event.id,
+      artX + artW / 2,
+      artY + artH / 2,
+      {
+        width: artW - 12,
+        height: artH - 12,
+        glyphSize: model.speaker ? 54 : 40,
+        fallbackGlyph: model.speaker ? '人' : '？',
+      },
+    )
+    const descText = pixelText(this.scene, model.event.desc ?? '町の今後を左右する判断です。', {
       fontSize: TEXT_SIZE.bodyNarrow,
       color: COLORS.inkDim,
       wordWrapWidth: p.width - artW - pad * 3,
+      advancedWrap: true,
     })
     descText.setPosition(artX + artW + 14, artY + 4)
     this.content.add(descText)
@@ -207,8 +264,13 @@ export class ChoicePresentation extends PresentationSurface {
     const cardW = p.width - pad * 2
     const cardH = 92
     options.forEach((option, index) => {
-      const card = new ChoiceCard(this.scene, option, cardW, cardH, () =>
-        this.callbacks.onChoose(option.id),
+      const card = new ChoiceCard(
+        this.scene,
+        option,
+        cardW,
+        cardH,
+        option.id === this.keyboardOptionId(),
+        () => this.callbacks.onChoose(option.id),
       )
       card.setPosition(p.x + pad, listY + index * (cardH + 10))
       this.content.add(card)
@@ -253,6 +315,10 @@ export class ChoicePresentation extends PresentationSurface {
     prev.setPosition(right - 68, bottom - 20)
     next.setPosition(right - 20, bottom - 20)
     this.content.add([prev, next])
+  }
+
+  private keyboardOptionId(): string | null {
+    return this.currentOptions[this.keyboardIndex]?.id ?? null
   }
 
   override hide(): void {

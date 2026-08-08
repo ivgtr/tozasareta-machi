@@ -1,13 +1,15 @@
 import Phaser from 'phaser'
-import type { Aptitude, GameState, Unit } from '../../game/types'
+import type { Aptitude, GameState } from '../../game/types'
 import { APTITUDE_LABEL } from '../../game/data/units'
-import { expeditionUnits, unassignedUnits, type PlanState } from '../plan'
+import type { PlanState } from '../plan'
 import type { DeviceClass } from '../layout'
+import { TASK_LABEL } from '../task-presentation'
 import { drawArtSlot } from '../ui/art-slot'
 import { PixelButton } from '../ui/button'
 import { pixelText } from '../ui/pixel-text'
 import { COLORS, TEXT_SIZE, colorCss } from '../tokens'
 import { unitVisualState } from '../unit-visual'
+import { deriveCharacterRoster, type RosterEntry, type RosterStatus } from './roster'
 
 export interface CharacterDeckCallbacks {
   onCharacterPointerDown: (unitId: string, worldX: number, worldY: number) => void
@@ -34,28 +36,32 @@ class CharacterCard extends Phaser.GameObjects.Container {
 
   constructor(
     scene: Phaser.Scene,
-    unit: Unit,
+    entry: RosterEntry,
     width: number,
     height: number,
     selected: boolean,
-    away: boolean,
+    focused: boolean,
     deviceClass: DeviceClass,
     onPointerDown: CharacterDeckCallbacks['onCharacterPointerDown'],
   ) {
     super(scene)
+    const { unit, status } = entry
     this.unitId = unit.id
+    const away = status.kind === 'expedition'
     const visual = unitVisualState(unit)
     const border = selected
       ? COLORS.gold
-      : unit.condition === 'injured'
-        ? COLORS.red
-        : unit.unique
-          ? COLORS.amber
-          : COLORS.frameLo
+      : focused
+        ? COLORS.cyan
+        : unit.condition === 'injured'
+          ? COLORS.red
+          : unit.unique
+            ? COLORS.amber
+            : COLORS.frameLo
     const bg = scene.add.graphics()
     bg.fillStyle(COLORS.night900, away ? 0.72 : 0.94)
     bg.fillRect(0, 0, width, height)
-    bg.lineStyle(selected ? 3 : 2, border, away ? 0.6 : 1)
+    bg.lineStyle(selected || focused ? 3 : 2, border, away ? 0.6 : 1)
     bg.strokeRect(1, 1, width - 2, height - 2)
     if (unit.unique) {
       bg.fillStyle(COLORS.amber, away ? 0.5 : 1)
@@ -78,14 +84,14 @@ class CharacterCard extends Phaser.GameObjects.Container {
       align: 'center',
     })
     name.setOrigin(0.5, 0)
-    name.setPosition(width / 2, height - 28)
+    name.setPosition(width / 2, height - 32)
     this.add(name)
 
     const badgeLabel = `${APTITUDE_LABEL[visual.topAptitude].slice(0, 1)}${unit.apt[visual.topAptitude]}`
-    const badge = pixelText(scene, away ? '探索' : badgeLabel, {
+    const badge = pixelText(scene, badgeLabel, {
       fontSize: TEXT_SIZE.labelNarrow,
       color: COLORS.night900,
-      backgroundColor: colorCss(away ? COLORS.cyan : APT_COLOR[visual.topAptitude]),
+      backgroundColor: colorCss(APT_COLOR[visual.topAptitude]),
     })
     badge.setOrigin(1, 0)
     badge.setPosition(width - 4, 4)
@@ -101,16 +107,29 @@ class CharacterCard extends Phaser.GameObjects.Container {
       this.add(injured)
     }
 
+    const statusBadge = pixelText(scene, statusLabel(status), {
+      fontSize: TEXT_SIZE.labelNarrow,
+      color: COLORS.night900,
+      backgroundColor: colorCss(
+        status.kind === 'assigned'
+          ? COLORS.green
+          : status.kind === 'expedition'
+            ? COLORS.cyan
+            : COLORS.inkDim,
+      ),
+    })
+    statusBadge.setOrigin(0.5, 0)
+    statusBadge.setPosition(width / 2, height - 15)
+    this.add(statusBadge)
+
     this.setSize(width, height)
-    this.setInteractive(
-      new Phaser.Geom.Rectangle(0, 0, width, height),
-      Phaser.Geom.Rectangle.Contains,
-    )
+    const hitTarget = scene.add.zone(width / 2, height / 2, width, height)
+    this.add(hitTarget)
     if (away) {
-      this.disableInteractive()
       this.setAlpha(0.7)
     } else {
-      this.on(
+      hitTarget.setInteractive()
+      hitTarget.on(
         'pointerdown',
         (
           pointer: Phaser.Input.Pointer,
@@ -127,6 +146,12 @@ class CharacterCard extends Phaser.GameObjects.Container {
   }
 }
 
+function statusLabel(status: RosterStatus): string {
+  if (status.kind === 'expedition') return '探索中'
+  if (status.kind === 'assigned') return `配置 ${TASK_LABEL[status.task]}`
+  return '待機'
+}
+
 export class CharacterDeck extends Phaser.GameObjects.Container {
   private readonly bg: Phaser.GameObjects.Graphics
   private readonly content: Phaser.GameObjects.Container
@@ -137,8 +162,9 @@ export class CharacterDeck extends Phaser.GameObjects.Container {
   private deckHeight = 0
   private deviceClass: DeviceClass = 'narrow'
   private page = 0
-  private lastUnits: Unit[] = []
+  private lastEntries: RosterEntry[] = []
   private lastSelectedUnitId: string | null = null
+  private keyboardFocusedUnitId: string | null = null
 
   constructor(scene: Phaser.Scene, callbacks: CharacterDeckCallbacks) {
     super(scene)
@@ -176,10 +202,44 @@ export class CharacterDeck extends Phaser.GameObjects.Container {
   }
 
   update(state: GameState, plan: PlanState, selectedUnitId: string | null): void {
-    this.lastUnits = [...unassignedUnits(state, plan), ...expeditionUnits(state)]
+    this.lastEntries = deriveCharacterRoster(state, plan)
     this.lastSelectedUnitId = selectedUnitId
+    if (!this.lastEntries.some((entry) => entry.unit.id === this.keyboardFocusedUnitId)) {
+      this.keyboardFocusedUnitId = null
+    }
     this.clampPage()
     this.render()
+  }
+
+  moveKeyboardFocus(delta: -1 | 1): string | null {
+    const eligible = this.lastEntries.filter((entry) => entry.status.kind !== 'expedition')
+    if (eligible.length === 0) return null
+    const current = eligible.findIndex((entry) => entry.unit.id === this.keyboardFocusedUnitId)
+    const next = current < 0 ? (delta > 0 ? 0 : eligible.length - 1) : current + delta
+    const entry = eligible[Phaser.Math.Wrap(next, 0, eligible.length)]
+    if (!entry) return null
+    this.keyboardFocusedUnitId = entry.unit.id
+    const rosterIndex = this.lastEntries.findIndex(
+      (candidate) => candidate.unit.id === entry.unit.id,
+    )
+    const { capacity } = this.paging()
+    this.page = Math.floor(rosterIndex / capacity)
+    this.render()
+    return entry.unit.id
+  }
+
+  activateKeyboardFocus(): string | null {
+    return this.keyboardFocusedUnitId
+  }
+
+  clearKeyboardFocus(): void {
+    if (!this.keyboardFocusedUnitId) return
+    this.keyboardFocusedUnitId = null
+    this.render()
+  }
+
+  get keyboardFocus(): string | null {
+    return this.keyboardFocusedUnitId
   }
 
   private redraw(): void {
@@ -201,13 +261,13 @@ export class CharacterDeck extends Phaser.GameObjects.Container {
 
   private paging(): { capacity: number; hasNav: boolean } {
     const withoutNav = this.capacity(false)
-    if (this.lastUnits.length <= withoutNav) return { capacity: withoutNav, hasNav: false }
+    if (this.lastEntries.length <= withoutNav) return { capacity: withoutNav, hasNav: false }
     return { capacity: this.capacity(true), hasNav: true }
   }
 
   private maxPage(): number {
     const { capacity } = this.paging()
-    return Math.max(0, Math.ceil(this.lastUnits.length / capacity) - 1)
+    return Math.max(0, Math.ceil(this.lastEntries.length / capacity) - 1)
   }
 
   private clampPage(): void {
@@ -228,23 +288,22 @@ export class CharacterDeck extends Phaser.GameObjects.Container {
     const maxPage = this.maxPage()
     this.page = Math.min(this.page, maxPage)
     const start = this.page * capacity
-    const units = this.lastUnits.slice(start, start + capacity)
+    const entries = this.lastEntries.slice(start, start + capacity)
     const cardW = CARD_WIDTH[this.deviceClass]
     const cardH = this.deckHeight - EDGE * 2
     const xStart = hasNav ? NAV_WIDTH : EDGE
     const available = this.deckWidth - xStart - (hasNav ? NAV_WIDTH : EDGE)
-    const totalW = units.length * cardW + Math.max(0, units.length - 1) * GAP
+    const totalW = entries.length * cardW + Math.max(0, entries.length - 1) * GAP
     const offset = Math.max(0, (available - totalW) / 2)
-    const awayIds = new Set(this.lastUnits.filter((unit) => unit.expedition).map((unit) => unit.id))
 
-    units.forEach((unit, index) => {
+    entries.forEach((entry, index) => {
       const card = new CharacterCard(
         this.scene,
-        unit,
+        entry,
         cardW,
         cardH,
-        this.lastSelectedUnitId === unit.id,
-        awayIds.has(unit.id),
+        this.lastSelectedUnitId === entry.unit.id,
+        this.keyboardFocusedUnitId === entry.unit.id,
         this.deviceClass,
         this.callbacks.onCharacterPointerDown,
       )

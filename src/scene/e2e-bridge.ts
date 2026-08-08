@@ -1,8 +1,17 @@
 import Phaser from 'phaser'
+import type { Effect, GameState } from '../game/types'
+import { getSettings } from '../store'
+import type { PlaybackContext } from './playback/beats'
 import { KEYS } from './keys'
 import { deviceClassOf } from './layout'
 import type { PresentationMode } from './presentation'
+import { emptyPlan, type PlanState } from './plan'
 import { sharedStore } from './store-bridge'
+import { ChoiceCard } from './story/choice-presentation'
+import {
+  buildPresentationFixture,
+  type PresentationFixtureName,
+} from './testing/presentation-fixtures'
 import { PixelButton } from './ui/button'
 
 interface CssBounds {
@@ -13,13 +22,23 @@ interface CssBounds {
 }
 
 interface PlaySceneInternals {
-  menu?: { isOpen: boolean }
+  menu?: { isOpen: boolean; show: (state: GameState) => void; hide: () => void }
   confirm?: { isOpen: boolean }
   characterFocus?: { isOpen: boolean }
-  playback?: { current: unknown | null }
+  log?: { isOpen: boolean }
+  deck?: { keyboardFocus: string | null }
+  playback?: {
+    current: unknown | null
+    cancel: () => void
+    pause: () => void
+    start: (state: GameState, effects: Effect[], context?: PlaybackContext) => void
+  }
   presentation?: { mode: PresentationMode }
   selectedUnitId?: string | null
+  selectedFacility?: string | null
+  plan?: PlanState
   startNewGame?: () => void
+  refresh?: () => void
 }
 
 interface E2ESnapshot {
@@ -30,9 +49,13 @@ interface E2ESnapshot {
   menuOpen: boolean
   confirmOpen: boolean
   characterFocusOpen: boolean
+  logOpen: boolean
   presentationMode: PresentationMode
   busy: boolean
+  soundEnabled: boolean
   selectedUnitId: string | null
+  keyboardFocusedUnitId: string | null
+  plannedAssignments: number
   deviceClass: 'wide' | 'narrow'
   gameSize: { width: number; height: number }
   canvas: {
@@ -53,7 +76,9 @@ interface E2EBridge {
   textBounds(text: string, exact?: boolean): CssBounds | null
   firstUnitBounds(): CssBounds | null
   buttonSizes(): E2EButtonSize[]
+  choiceSizes(): E2EButtonSize[]
   restartNewGame(): void
+  showFixture(name: PresentationFixtureName): void
 }
 
 type E2EWindow = Window & {
@@ -137,6 +162,17 @@ function visibleButtonSizes(game: Phaser.Game): E2EButtonSize[] {
     .map((button) => ({ width: button.buttonWidth, height: button.buttonHeight }))
 }
 
+function visibleChoiceSizes(game: Phaser.Game): E2EButtonSize[] {
+  return visibleObjects(game)
+    .filter((object): object is ChoiceCard => object instanceof ChoiceCard)
+    .flatMap((object) => {
+      const hitArea = object.input?.hitArea as { width?: unknown; height?: unknown } | undefined
+      return typeof hitArea?.width === 'number' && typeof hitArea.height === 'number'
+        ? [{ width: hitArea.width, height: hitArea.height }]
+        : []
+    })
+}
+
 function snapshot(game: Phaser.Game): E2ESnapshot {
   const store = sharedStore().get()
   const play = game.scene.getScene(KEYS.play) as unknown as PlaySceneInternals
@@ -149,9 +185,16 @@ function snapshot(game: Phaser.Game): E2ESnapshot {
     menuOpen: play.menu?.isOpen ?? false,
     confirmOpen: play.confirm?.isOpen ?? false,
     characterFocusOpen: play.characterFocus?.isOpen ?? false,
+    logOpen: play.log?.isOpen ?? false,
     presentationMode: play.presentation?.mode ?? 'planning',
     busy: play.playback?.current != null,
+    soundEnabled: getSettings().sound,
     selectedUnitId: play.selectedUnitId ?? null,
+    keyboardFocusedUnitId: play.deck?.keyboardFocus ?? null,
+    plannedAssignments: Object.values(play.plan?.placements ?? {}).reduce(
+      (total, ids) => total + (ids?.length ?? 0),
+      0,
+    ),
     deviceClass: deviceClassOf(window.innerWidth),
     gameSize: {
       width: Number(game.scale.gameSize.width),
@@ -171,6 +214,33 @@ function restartNewGame(game: Phaser.Game): void {
   play.startNewGame?.()
 }
 
+function showFixture(game: Phaser.Game, name: PresentationFixtureName): void {
+  const fixture = buildPresentationFixture(name)
+  const current = sharedStore().get()
+  current.state = fixture.state
+  current.history = []
+
+  if (fixture.scene === 'title') {
+    const active = activeScene(game)
+    active?.scene.start(KEYS.title)
+    return
+  }
+
+  const play = game.scene.getScene(KEYS.play) as unknown as PlaySceneInternals
+  play.playback?.cancel()
+  play.menu?.hide()
+  play.selectedUnitId = fixture.selectedUnitId ?? null
+  play.selectedFacility = fixture.selectedFacility ?? null
+  play.plan = fixture.plan ?? emptyPlan()
+  if (fixture.beat && fixture.baseState) {
+    play.playback?.start(fixture.baseState, fixture.beat.effects, fixture.playbackContext)
+    play.playback?.pause()
+  } else {
+    play.refresh?.()
+  }
+  if (fixture.menuOpen) play.menu?.show(fixture.state)
+}
+
 export function installE2EBridge(game: Phaser.Game): void {
   const target = window as E2EWindow
   target.__TOZASARETA_MACHI_E2E__ = {
@@ -178,7 +248,9 @@ export function installE2EBridge(game: Phaser.Game): void {
     textBounds: (text, exact = true) => findTextBounds(game, text, exact),
     firstUnitBounds: () => findFirstUnitBounds(game),
     buttonSizes: () => visibleButtonSizes(game),
+    choiceSizes: () => visibleChoiceSizes(game),
     restartNewGame: () => restartNewGame(game),
+    showFixture: (name) => showFixture(game, name),
   }
   game.events.once(Phaser.Core.Events.DESTROY, () => {
     delete target.__TOZASARETA_MACHI_E2E__

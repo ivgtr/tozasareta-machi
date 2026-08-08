@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { BALANCE } from '../../game/data/balance'
 import type { GameState } from '../../game/types'
 import { getSettings, updateSettings } from '../../store'
+import type { AudioDirector } from '../audio/audio-director'
 import { NO_INSETS, logicalSafeInsetsForCanvas, type DeviceClass, type SafeInsets } from '../layout'
 import { COLORS, TEXT_SIZE } from '../tokens'
 import { PixelButton } from '../ui/button'
@@ -23,6 +24,7 @@ export class MenuPresentation extends Phaser.GameObjects.Container {
   private readonly note: Phaser.GameObjects.Text
   private readonly closeButton: PixelButton
   private readonly motionButton: PixelButton
+  private readonly soundButton: PixelButton
   private readonly titleButton: PixelButton
   private readonly restartButton: PixelButton
   private viewportWidth = 1280
@@ -32,7 +34,11 @@ export class MenuPresentation extends Phaser.GameObjects.Container {
   private currentState: GameState | null = null
   private openFlag = false
 
-  constructor(scene: Phaser.Scene, callbacks: MenuPresentationCallbacks) {
+  constructor(
+    scene: Phaser.Scene,
+    callbacks: MenuPresentationCallbacks,
+    private readonly audio: AudioDirector,
+  ) {
     super(scene)
     this.backdrop = scene.add.rectangle(0, 0, 10, 10, COLORS.night900, 0.76).setOrigin(0)
     this.backdrop.setInteractive()
@@ -92,6 +98,23 @@ export class MenuPresentation extends Phaser.GameObjects.Container {
         this.motionButton.setSelected(animations)
       },
     })
+    this.soundButton = new PixelButton(scene, {
+      label: this.soundLabel(),
+      width: 260,
+      height: 40,
+      variant: 'toggle',
+      selected: getSettings().sound,
+      fontSize: TEXT_SIZE.labelWide,
+      onAction: () => {
+        const sound = !getSettings().sound
+        if (!sound) this.audio.play('cancel')
+        updateSettings({ sound })
+        this.audio.syncSettings()
+        if (sound) this.audio.play('confirm')
+        this.soundButton.setLabel(this.soundLabel())
+        this.soundButton.setSelected(sound)
+      },
+    })
     this.titleButton = new PixelButton(scene, {
       label: 'タイトルに戻る',
       width: 260,
@@ -117,6 +140,7 @@ export class MenuPresentation extends Phaser.GameObjects.Container {
       this.note,
       this.closeButton,
       this.motionButton,
+      this.soundButton,
       this.titleButton,
       this.restartButton,
     ])
@@ -139,6 +163,8 @@ export class MenuPresentation extends Phaser.GameObjects.Container {
     this.updateStatus(state)
     this.motionButton.setLabel(this.motionLabel())
     this.motionButton.setSelected(getSettings().animations)
+    this.soundButton.setLabel(this.soundLabel())
+    this.soundButton.setSelected(getSettings().sound)
     this.safeInsets = logicalSafeInsetsForCanvas(
       this.scene.game.canvas,
       this.viewportWidth,
@@ -159,6 +185,10 @@ export class MenuPresentation extends Phaser.GameObjects.Container {
 
   private motionLabel(): string {
     return `文字送り・演出 ${getSettings().animations ? 'ON' : 'OFF'}`
+  }
+
+  private soundLabel(): string {
+    return `サウンド ${getSettings().sound ? 'ON' : 'OFF'}`
   }
 
   private updateStatus(state: GameState): void {
@@ -228,9 +258,11 @@ export class MenuPresentation extends Phaser.GameObjects.Container {
     this.titleButton.setSize(buttonW, 44)
     this.titleButton.setPosition(panelX + panelW / 2, bottom - 76)
     this.motionButton.setSize(buttonW, 44)
-    this.motionButton.setPosition(panelX + panelW / 2, bottom - 130)
+    this.soundButton.setSize(buttonW, 44)
+    this.soundButton.setPosition(panelX + panelW / 2, bottom - 130)
+    this.motionButton.setPosition(panelX + panelW / 2, bottom - 184)
     this.closeButton.setSize(buttonW, 46)
-    this.closeButton.setPosition(panelX + panelW / 2, bottom - 187)
+    this.closeButton.setPosition(panelX + panelW / 2, bottom - 241)
 
     if (this.currentState) this.updateStatus(this.currentState)
   }

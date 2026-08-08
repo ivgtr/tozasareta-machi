@@ -81,15 +81,29 @@ export class EndingPresentation extends PresentationSurface {
       color: model.accent,
     })
     day.setPosition(columnX, artY + 26)
+    const witnessW = model.witness ? 112 : 0
+    if (model.witness) {
+      this.drawArtFrame(columnX, artY + 70, witnessW, 146, model.accent)
+      drawArtSlot(
+        this.scene,
+        this.content,
+        'portrait',
+        model.witness.portrait,
+        columnX + witnessW / 2,
+        artY + 143,
+        { width: witnessW - 12, height: 134, glyphSize: 44, fallbackGlyph: '人' },
+      )
+    }
     const flavor = pixelText(this.scene, model.flavor, {
       fontSize: TEXT_SIZE.bodyWide,
       color: COLORS.ink,
-      wordWrapWidth: columnW,
+      wordWrapWidth: columnW - witnessW - (model.witness ? 16 : 0),
+      advancedWrap: true,
     })
-    flavor.setPosition(columnX, artY + 78)
+    flavor.setPosition(columnX + witnessW + (model.witness ? 16 : 0), artY + 78)
     this.content.add([dayLabel, day, flavor])
 
-    const resourceY = artY + 160
+    const resourceY = artY + 234
     model.resources.forEach((metric, index) => {
       const col = index % 2
       const row = Math.floor(index / 2)
@@ -144,6 +158,22 @@ export class EndingPresentation extends PresentationSurface {
         fallbackGlyph: '了',
       },
     )
+    if (model.witness) {
+      const portraitW = 98
+      const portraitH = 132
+      const portraitX = artX + 14
+      const portraitY = artY + artH - portraitH - 14
+      this.drawArtFrame(portraitX, portraitY, portraitW, portraitH, model.accent)
+      drawArtSlot(
+        this.scene,
+        this.content,
+        'portrait',
+        model.witness.portrait,
+        portraitX + portraitW / 2,
+        portraitY + portraitH / 2,
+        { width: portraitW - 10, height: portraitH - 10, glyphSize: 38, fallbackGlyph: '人' },
+      )
+    }
 
     const day = pixelText(this.scene, `DAY ${model.reachedDay}`, {
       fontFamily: FONT_DISPLAY,
@@ -155,6 +185,7 @@ export class EndingPresentation extends PresentationSurface {
       fontSize: TEXT_SIZE.bodyNarrow,
       color: COLORS.ink,
       wordWrapWidth: contentW,
+      advancedWrap: true,
     })
     flavor.setPosition(p.x + pad, artY + artH + 52)
     this.content.add([day, flavor])

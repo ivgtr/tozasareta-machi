@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { BALANCE } from '../../game/data/balance'
 import { getSettings, randomSeed, updateSettings } from '../../store'
+import { audioDirectorFor, type AudioDirector } from '../audio/audio-director'
 import { textureKey } from '../art/assets'
 import { fadeInScene, transitionToScene } from '../global/scene-transition'
 import { KEYS, SCENE_EVENTS } from '../keys'
@@ -34,6 +35,8 @@ export class TitleScene extends Phaser.Scene {
   private resumeButton!: PixelButton
   private newButton!: PixelButton
   private motionButton!: PixelButton
+  private soundButton!: PixelButton
+  private audio!: AudioDirector
   private canResume = false
   private transitioning = false
 
@@ -42,6 +45,8 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.audio = audioDirectorFor(this.game)
+    this.audio.setMood('silent')
     this.cameras.main.setBackgroundColor(COLORS.night900)
     this.background = this.add.image(0, 0, textureKey('scene', 'night')).setOrigin(0.5)
     this.shade = this.add.graphics()
@@ -121,6 +126,34 @@ export class TitleScene extends Phaser.Scene {
       },
     })
 
+    this.soundButton = new PixelButton(this, {
+      label: this.soundLabel(),
+      width: 220,
+      height: 44,
+      variant: 'toggle',
+      selected: getSettings().sound,
+      fontSize: TEXT_SIZE.labelWide,
+      onAction: () => {
+        const sound = !getSettings().sound
+        if (!sound) this.audio.play('cancel')
+        updateSettings({ sound })
+        this.audio.syncSettings()
+        if (sound) this.audio.play('confirm')
+        this.soundButton.setLabel(this.soundLabel())
+        this.soundButton.setSelected(sound)
+      },
+    })
+
+    this.input.keyboard?.on('keydown-ENTER', (event: KeyboardEvent) => {
+      if (event.repeat) return
+      event.preventDefault()
+      void this.audio.unlock()
+      const handled = this.canResume
+        ? this.resumeButton.triggerFromKeyboard()
+        : this.newButton.triggerFromKeyboard()
+      if (!handled) this.audio.play('invalid')
+    })
+
     this.layout()
     fadeInScene(this)
     this.game.events.on(SCENE_EVENTS.deviceClass, this.layout, this)
@@ -133,10 +166,16 @@ export class TitleScene extends Phaser.Scene {
     return `文字送り・演出 ${getSettings().animations ? 'ON' : 'OFF'}`
   }
 
+  private soundLabel(): string {
+    return `サウンド ${getSettings().sound ? 'ON' : 'OFF'}`
+  }
+
   private enterPlay(): void {
     if (this.transitioning) return
     this.transitioning = true
     sessionStarted = true
+    void this.audio.unlock()
+    this.audio.play('confirm')
     transitionToScene(this, KEYS.play)
   }
 
@@ -189,6 +228,7 @@ export class TitleScene extends Phaser.Scene {
     this.resumeButton.setSize(220, 50)
     this.newButton.setSize(220, 50)
     this.motionButton.setSize(220, 44)
+    this.soundButton.setSize(220, 44)
     this.kicker.setPosition(left, 68 + topShift)
     this.kicker.setFontSize(TEXT_SIZE.labelWide)
     this.titleText.setPosition(left, 106 + topShift)
@@ -239,6 +279,7 @@ export class TitleScene extends Phaser.Scene {
       this.newButton.setPosition(left + 110, actionsY)
     }
     this.motionButton.setPosition(left + 110, actionsY + 62)
+    this.soundButton.setPosition(left + 346, actionsY + 62)
   }
 
   private layoutNarrow(width: number, height: number, safeInsets: SafeInsets): void {
@@ -280,7 +321,7 @@ export class TitleScene extends Phaser.Scene {
     this.briefingText.setFontSize(TEXT_SIZE.bodyNarrow)
     this.briefingText.setWordWrapWidth(cardW - 36)
 
-    const actionsY = height - safeInsets.bottom - (this.canResume ? 194 : 136)
+    const actionsY = height - safeInsets.bottom - (this.canResume ? 250 : 192)
     const buttonW = width - safeInsets.left - safeInsets.right - 48
     if (this.canResume) {
       this.resumeButton.setSize(buttonW, 48)
@@ -294,6 +335,10 @@ export class TitleScene extends Phaser.Scene {
         width / 2 + (safeInsets.left - safeInsets.right) / 2,
         actionsY + 116,
       )
+      this.soundButton.setPosition(
+        width / 2 + (safeInsets.left - safeInsets.right) / 2,
+        actionsY + 176,
+      )
     } else {
       this.newButton.setSize(buttonW, 48)
       this.newButton.setPosition(width / 2 + (safeInsets.left - safeInsets.right) / 2, actionsY)
@@ -301,7 +346,12 @@ export class TitleScene extends Phaser.Scene {
         width / 2 + (safeInsets.left - safeInsets.right) / 2,
         actionsY + 60,
       )
+      this.soundButton.setPosition(
+        width / 2 + (safeInsets.left - safeInsets.right) / 2,
+        actionsY + 116,
+      )
     }
     this.motionButton.setSize(buttonW, 44)
+    this.soundButton.setSize(buttonW, 44)
   }
 }

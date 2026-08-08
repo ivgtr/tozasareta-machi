@@ -7,6 +7,7 @@ export interface PixelTextOptions {
   color?: number
   align?: 'left' | 'center' | 'right'
   wordWrapWidth?: number
+  advancedWrap?: boolean
   trackingEm?: number
   backgroundColor?: string
 }
@@ -23,7 +24,14 @@ export function pixelText(
     color: colorCss(options.color ?? COLORS.ink),
     align: options.align ?? 'left',
     letterSpacing: options.trackingEm ? Math.round(fontSize * options.trackingEm) : 0,
-    ...(options.wordWrapWidth !== undefined ? { wordWrap: { width: options.wordWrapWidth } } : {}),
+    ...(options.wordWrapWidth !== undefined
+      ? {
+          wordWrap: {
+            width: options.wordWrapWidth,
+            useAdvancedWrap: options.advancedWrap ?? false,
+          },
+        }
+      : {}),
     ...(options.backgroundColor !== undefined ? { backgroundColor: options.backgroundColor } : {}),
   })
   view.setResolution(Math.min(window.devicePixelRatio || 1, 2))

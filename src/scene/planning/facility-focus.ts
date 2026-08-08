@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import type { GameState } from '../../game/types'
-import { resolvePlacement, taskCost } from '../../game/actions'
+import { placementValue, resolvePlacement, taskCost } from '../../game/actions'
 import { isTaskDisabled } from '../../game/modifiers'
 import type { DeviceClass } from '../layout'
 import { formatDelta } from '../labels'
@@ -22,6 +22,8 @@ const VIEW_LABEL: Record<FacilityViewId, string> = {
   restored: '復旧済み',
 }
 
+const PROGRESS_VISUAL_TARGET = 40
+
 export interface FacilityFocusContext {
   state: GameState
   plan: PlanState
@@ -31,6 +33,7 @@ export interface FacilityFocusContext {
 export interface FacilityFocusCallbacks {
   onClose: () => void
   onSelectUnit: (unitId: string) => void
+  onUnassignUnit: (unitId: string) => void
 }
 
 export class FacilityFocus extends Phaser.GameObjects.Container {
@@ -64,11 +67,11 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
   setBounds(town: Rect, deviceClass: DeviceClass): void {
     if (deviceClass === 'wide') {
       this.panelWidth = Math.min(420, Math.max(360, town.width * 0.34))
-      this.panelHeight = Math.min(286, Math.max(244, town.height * 0.52))
+      this.panelHeight = Math.min(350, Math.max(328, town.height * 0.65))
       this.setPosition(town.x + town.width - this.panelWidth - 16, town.y + 16)
     } else {
       this.panelWidth = Math.max(320, town.width - 24)
-      this.panelHeight = 264
+      this.panelHeight = 328
       this.setPosition(town.x + (town.width - this.panelWidth) / 2, town.y + 12)
     }
     this.closeButton.setPosition(this.panelWidth - 50, 24)
@@ -146,6 +149,7 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
     const cost = taskCost(task)
     const disabled = isTaskDisabled(ctx.state.modifiers, task)
     const effects = unitIds.length > 0 ? resolvePlacement(ctx.state, { task, unitIds }) : []
+    const progress = unitIds.length > 0 ? placementValue(ctx.state, { task, unitIds }) : 0
     const outputs = effects
       .filter((effect) => effect.target !== 'budget' && effect.target !== 'stockpile')
       .map((effect) => formatDelta(effect.target, effect.delta))
@@ -155,46 +159,58 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
       color: disabled ? COLORS.red : COLORS.ink,
       wordWrapWidth: wrapW,
     })
-    action.setPosition(inset, inset + 58)
+    action.setPosition(inset, inset + 56)
     d.add(action)
 
-    const costParts = [
-      cost.budget > 0 ? `予算 −${cost.budget}` : '',
-      cost.stockpile > 0 ? `備蓄 −${cost.stockpile}` : '',
-      disabled ? '現在は実行不可' : '',
-    ].filter(Boolean)
-    const costText = pixelText(this.scene, costParts.join('  /  ') || '追加コストなし', {
-      fontSize: TEXT_SIZE.labelWide,
-      color: disabled ? COLORS.red : COLORS.inkDim,
-      wordWrapWidth: wrapW,
-    })
-    costText.setPosition(inset, inset + 84)
-    d.add(costText)
-
-    const outputText = pixelText(
+    const forecastTitle = pixelText(
       this.scene,
-      unitIds.length === 0
-        ? '人物を配置すると、この日の予測効果を表示'
-        : outputs.length > 0
-          ? `予測  ${outputs.join('  /  ')}`
-          : '予測効果なし',
+      unitIds.length === 0 ? '実行見込  未配置' : `実行見込  ${TASK_LABEL[task]} +${progress}`,
       {
-        fontSize: TEXT_SIZE.bodyWide,
+        fontSize: TEXT_SIZE.labelWide,
         color: unitIds.length > 0 ? COLORS.green : COLORS.inkDim,
         wordWrapWidth: wrapW,
       },
     )
-    outputText.setPosition(inset, inset + 110)
-    d.add(outputText)
+    forecastTitle.setPosition(inset, inset + 84)
+    d.add(forecastTitle)
+
+    const progressBar = this.scene.add.graphics()
+    const progressWidth = wrapW
+    progressBar.fillStyle(COLORS.night800)
+    progressBar.fillRect(inset, inset + 106, progressWidth, 12)
+    progressBar.fillStyle(disabled ? COLORS.red : COLORS.green)
+    progressBar.fillRect(
+      inset + 2,
+      inset + 108,
+      Math.round((progressWidth - 4) * Math.min(1, progress / PROGRESS_VISUAL_TARGET)),
+      8,
+    )
+    progressBar.lineStyle(1, COLORS.frameLo)
+    progressBar.strokeRect(inset, inset + 106, progressWidth, 12)
+    d.add(progressBar)
+
+    const detailParts = [
+      ...outputs,
+      cost.budget > 0 ? `予算 −${cost.budget}` : '',
+      cost.stockpile > 0 ? `備蓄 −${cost.stockpile}` : '',
+      disabled ? '現在は実行不可' : '',
+    ].filter(Boolean)
+    const details = pixelText(this.scene, detailParts.join('  /  ') || '追加コストなし', {
+      fontSize: TEXT_SIZE.labelWide,
+      color: disabled ? COLORS.red : COLORS.inkDim,
+      wordWrapWidth: wrapW,
+    })
+    details.setPosition(inset, inset + 126)
+    d.add(details)
 
     const head = pixelText(this.scene, `担当 ${unitIds.length}人`, {
       fontSize: TEXT_SIZE.labelWide,
       color: unitIds.length > 0 ? COLORS.amber : COLORS.inkDim,
     })
-    head.setPosition(inset, inset + 146)
+    head.setPosition(inset, inset + 154)
     d.add(head)
 
-    this.renderAssignedUnits(d, ctx.state, unitIds, inset, inset + 166, wrapW)
+    this.renderAssignmentSlots(d, ctx.state, unitIds, inset, inset + 176, wrapW)
   }
 
   private renderPassiveFacility(
@@ -217,7 +233,7 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
     host.add(text)
   }
 
-  private renderAssignedUnits(
+  private renderAssignmentSlots(
     host: Phaser.GameObjects.Container,
     state: GameState,
     unitIds: string[],
@@ -225,29 +241,26 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
     y: number,
     wrapWidth: number,
   ): void {
-    if (unitIds.length === 0) {
-      const empty = pixelText(this.scene, '未配置', {
-        fontSize: TEXT_SIZE.bodyWide,
-        color: COLORS.inkDim,
-      })
-      empty.setPosition(x, y + 16)
-      host.add(empty)
-      return
-    }
-    const visible = unitIds.slice(0, 5)
+    const visible = unitIds.slice(0, 4)
+    const slotCount = Math.min(5, visible.length + 1)
     const gap = 8
-    const slotW = Math.min(
-      62,
-      Math.floor((wrapWidth - gap * (visible.length - 1)) / visible.length),
-    )
+    const slotW = Math.min(70, Math.floor((wrapWidth - gap * (slotCount - 1)) / slotCount))
+    const slotsWidth = slotCount * slotW + (slotCount - 1) * gap
+    const startX = x + (wrapWidth - slotsWidth) / 2
     visible.forEach((unitId, index) => {
       const unit = state.units.find((candidate) => candidate.id === unitId)
       if (!unit) return
-      const slotX = x + index * (slotW + gap)
-      drawArtSlot(this.scene, host, 'portrait', unit.portrait, slotX + slotW / 2, y + 28, {
-        width: Math.min(46, slotW),
-        height: 58,
-        glyphSize: 28,
+      const slotX = startX + index * (slotW + gap)
+      const slot = this.scene.add.graphics()
+      slot.fillStyle(COLORS.night800, 0.9)
+      slot.fillRect(slotX, y, slotW, 108)
+      slot.lineStyle(2, unit.unique ? COLORS.amber : COLORS.frameLo)
+      slot.strokeRect(slotX, y, slotW, 108)
+      host.add(slot)
+      drawArtSlot(this.scene, host, 'portrait', unit.portrait, slotX + slotW / 2, y + 25, {
+        width: Math.min(42, slotW - 8),
+        height: 48,
+        glyphSize: 24,
         fallbackGlyph: '人',
       })
       const name = pixelText(this.scene, unit.name, {
@@ -257,9 +270,9 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
         align: 'center',
       })
       name.setOrigin(0.5, 0)
-      name.setPosition(slotX + slotW / 2, y + 60)
+      name.setPosition(slotX + slotW / 2, y + 50)
       host.add(name)
-      const zone = this.scene.add.zone(slotX + slotW / 2, y + 38, slotW, 82)
+      const zone = this.scene.add.zone(slotX + slotW / 2, y + 31, slotW, 62)
       zone.setInteractive()
       zone.on(
         'pointerdown',
@@ -274,7 +287,40 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
         },
       )
       host.add(zone)
+      const remove = new PixelButton(this.scene, {
+        label: '外す',
+        width: Math.max(44, slotW - 8),
+        height: 44,
+        variant: 'quiet',
+        fontSize: TEXT_SIZE.labelNarrow,
+        onAction: () => this.callbacks.onUnassignUnit(unitId),
+      })
+      remove.setPosition(slotX + slotW / 2, y + 84)
+      host.add(remove)
     })
+    const emptyX = startX + visible.length * (slotW + gap)
+    const emptySlot = this.scene.add.graphics()
+    emptySlot.fillStyle(COLORS.night800, 0.55)
+    emptySlot.fillRect(emptyX, y, slotW, 108)
+    emptySlot.lineStyle(1, COLORS.frameLo, 0.8)
+    emptySlot.strokeRect(emptyX, y, slotW, 108)
+    host.add(emptySlot)
+    const plus = pixelText(this.scene, '＋', {
+      fontSize: 24,
+      color: COLORS.inkDim,
+    })
+    plus.setOrigin(0.5)
+    plus.setPosition(emptyX + slotW / 2, y + 32)
+    host.add(plus)
+    const hint = pixelText(this.scene, 'Deckから\n配置', {
+      fontSize: TEXT_SIZE.labelNarrow,
+      color: COLORS.inkDim,
+      align: 'center',
+      wordWrapWidth: slotW - 4,
+    })
+    hint.setOrigin(0.5, 0)
+    hint.setPosition(emptyX + slotW / 2, y + 52)
+    host.add(hint)
     if (unitIds.length > visible.length) {
       const more = pixelText(this.scene, `+${unitIds.length - visible.length}`, {
         fontSize: TEXT_SIZE.labelWide,

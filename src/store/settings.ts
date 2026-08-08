@@ -1,9 +1,10 @@
 export interface Settings {
   animations: boolean
+  sound: boolean
 }
 
 const KEY = 'tozasareta-machi:settings'
-const DEFAULT: Settings = { animations: true }
+const DEFAULT: Settings = { animations: true, sound: true }
 
 function loadSettings(): Settings {
   try {

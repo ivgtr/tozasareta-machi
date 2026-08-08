@@ -25,6 +25,7 @@ export class PixelButton extends Phaser.GameObjects.Container {
   private readonly label: Phaser.GameObjects.Text
   private hovered = false
   private pressed = false
+  private focused = false
   private enabled = true
 
   constructor(scene: Phaser.Scene, options: PixelButtonOptions) {
@@ -75,6 +76,7 @@ export class PixelButton extends Phaser.GameObjects.Container {
       ) => {
         if (!this.enabled) return
         event.stopPropagation()
+        this.focused = false
         this.pressed = true
         this.redraw()
       },
@@ -117,6 +119,7 @@ export class PixelButton extends Phaser.GameObjects.Container {
     if (!value) {
       this.hovered = false
       this.pressed = false
+      this.focused = false
     }
     this.setAlpha(value ? 1 : BUTTON.disabledAlpha)
     this.redraw()
@@ -136,12 +139,32 @@ export class PixelButton extends Phaser.GameObjects.Container {
     this.redraw()
   }
 
+  setFocused(focused: boolean): void {
+    this.focused = focused && this.enabled
+    this.redraw()
+  }
+
+  triggerFromKeyboard(): boolean {
+    if (!this.enabled || !this.visible || !this.active) return false
+    this.focused = true
+    this.pressed = true
+    this.redraw()
+    this.scene.time.delayedCall(90, () => {
+      if (!this.active) return
+      this.pressed = false
+      this.focused = false
+      this.redraw()
+    })
+    this.onAction()
+    return true
+  }
+
   private redraw(): void {
     const g = this.bg
     const w = this.innerWidth
     const h = this.innerHeight
     const b = BUTTON.border
-    const active = this.enabled && this.hovered
+    const active = this.enabled && (this.hovered || this.focused)
     const shift = this.enabled && this.pressed ? BUTTON.pressShift : 0
     const shadow = this.enabled && this.pressed ? BUTTON.shadowPressed : BUTTON.shadow
     const palette = this.palette(active)
@@ -156,6 +179,10 @@ export class PixelButton extends Phaser.GameObjects.Container {
     g.fillRect(x, y, w, h)
     g.fillStyle(palette.body)
     g.fillRect(x + b, y + b, w - b * 2, h - b * 2)
+    if (this.focused) {
+      g.lineStyle(2, COLORS.cyan)
+      g.strokeRect(x - 2, y - 2, w + 4, h + 4)
+    }
     this.label.setColor(colorCss(palette.text))
     this.label.setPosition(shift, shift)
   }
