@@ -823,6 +823,37 @@ try {
     })
   }
 
+  await test('終了後にタイトルを経由して新しいゲームを開始できる', async () => {
+    await withGame('restart-after-ending-via-title', {}, async (page) => {
+      await startNewGame(page)
+      await showFixture(page, 'ending')
+      await clickText(page, 'タイトルへ')
+      await page.waitForFunction(
+        (name) => globalThis[name]?.snapshot().activeScenes.includes('Title'),
+        BRIDGE,
+      )
+      page.once('dialog', (dialog) => void dialog.accept())
+      await clickText(page, '▶ 指揮所へ')
+      await page.waitForFunction(
+        (name) => {
+          const value = globalThis[name]?.snapshot()
+          return (
+            value &&
+            value.activeScenes.includes('Play') &&
+            value.day === 1 &&
+            value.phase === 'planning' &&
+            value.presentationMode === 'planning' &&
+            !value.busy
+          )
+        },
+        BRIDGE,
+        { timeout: 5_000 },
+      )
+      const state = await snapshot(page)
+      assert.equal(state.historyLength, 0)
+    })
+  })
+
   await test('Playback中の新規ゲームで再生状態を持ち越さない', async () => {
     await withGame('restart-playback', { animations: true }, async (page) => {
       await startNewGame(page)
