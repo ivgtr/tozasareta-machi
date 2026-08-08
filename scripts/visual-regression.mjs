@@ -22,6 +22,7 @@ const MAX_DIFF_RATIO = 0.003
 const fixtures = [
   'title',
   'planning',
+  'planning-assigned',
   'unit-focus',
   'facility-focus',
   'minor-result',
@@ -39,6 +40,7 @@ const layouts = [
   { name: 'narrow', viewport: { width: 480, height: 854 } },
 ]
 
+const failures = []
 let server = null
 
 function delay(ms) {
@@ -100,7 +102,13 @@ async function showFixture(page, name) {
       ({ bridge, fixture }) => {
         const value = globalThis[bridge].snapshot()
         if (fixture === 'menu') return value.menuOpen
-        return value.presentationMode === (fixture.endsWith('-result') ? 'flow' : fixture)
+        const expectedMode =
+          fixture === 'planning-assigned'
+            ? 'planning'
+            : fixture.endsWith('-result')
+              ? 'flow'
+              : fixture
+        return value.presentationMode === expectedMode
       },
       { bridge: BRIDGE, fixture: name },
     )
@@ -123,13 +131,20 @@ async function compare(name, actualBuffer) {
   try {
     baselineBuffer = await readFile(baselinePath)
   } catch {
-    throw new Error(`Missing baseline ${name}. Run npm run test:visual:update.`)
+    failures.push(`Missing baseline ${name}. Run npm run test:visual:update.`)
+    process.stdout.write(`  missing ${name}\n`)
+    return
   }
 
   const baseline = PNG.sync.read(baselineBuffer)
   const actual = PNG.sync.read(actualBuffer)
-  assert.equal(actual.width, baseline.width, `${name}: screenshot width changed`)
-  assert.equal(actual.height, baseline.height, `${name}: screenshot height changed`)
+  try {
+    assert.equal(actual.width, baseline.width, `${name}: screenshot width changed`)
+    assert.equal(actual.height, baseline.height, `${name}: screenshot height changed`)
+  } catch (error) {
+    failures.push(error instanceof Error ? error.message : String(error))
+    return
+  }
 
   const diff = new PNG({ width: baseline.width, height: baseline.height })
   const changed = pixelmatch(
@@ -146,11 +161,11 @@ async function compare(name, actualBuffer) {
   const ratio = changed / (baseline.width * baseline.height)
   if (ratio > MAX_DIFF_RATIO) {
     await writeFile(path.join(OUTPUT_DIR, `${name}-diff.png`), PNG.sync.write(diff))
+    failures.push(
+      `${name}: ${(ratio * 100).toFixed(3)}% of pixels changed; inspect test-results/visual/${name}-diff.png`,
+    )
+    return
   }
-  assert.ok(
-    ratio <= MAX_DIFF_RATIO,
-    `${name}: ${(ratio * 100).toFixed(3)}% of pixels changed; inspect test-results/visual/${name}-diff.png`,
-  )
   process.stdout.write(`  matched ${name} (${changed} pixels)\n`)
 }
 
@@ -214,6 +229,10 @@ try {
 } finally {
   await browser?.close()
   await stopServer()
+}
+
+if (failures.length > 0) {
+  throw new Error(`Visual regression failed:\n- ${failures.join('\n- ')}`)
 }
 
 process.stdout.write(UPDATE ? '\nVisual baselines updated.\n' : '\nVisual regression passed.\n')
