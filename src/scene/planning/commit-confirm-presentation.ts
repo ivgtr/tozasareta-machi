@@ -16,6 +16,8 @@ export class CommitConfirmPresentation extends ModalCard {
   private readonly headText: Phaser.GameObjects.Text
   private readonly planText: Phaser.GameObjects.Text
   private openFlag = false
+  private viewportWidth = 1280
+  private viewportHeight = 720
 
   constructor(scene: Phaser.Scene, callbacks: CommitConfirmCallbacks) {
     super(scene, callbacks.onCancel)
@@ -57,10 +59,14 @@ export class CommitConfirmPresentation extends ModalCard {
     this.openFlag = true
     this.headText.setText(`${remaining}人の人員が未配置です`)
     this.planText.setText(planSummary)
-    const { width, height } = this.scene.scale.gameSize
-    this.begin(width, height, CARD_W, CARD_W, false)
-    this.finish(height, CARD_H - 32, 32)
+    this.layout()
     this.showCard()
+  }
+
+  setViewport(width: number, height: number): void {
+    this.viewportWidth = width
+    this.viewportHeight = height
+    if (this.openFlag) this.layout()
   }
 
   hide(): void {
@@ -70,5 +76,10 @@ export class CommitConfirmPresentation extends ModalCard {
 
   get isOpen(): boolean {
     return this.openFlag
+  }
+
+  private layout(): void {
+    this.begin(this.viewportWidth, this.viewportHeight, CARD_W, CARD_W, false)
+    this.finish(this.viewportHeight, CARD_H - 32, 32)
   }
 }

@@ -573,6 +573,7 @@ export class PlayScene extends Phaser.Scene {
       Math.min(440, regions.hud.width - 16),
     )
     this.menu.setViewport(width, height, deviceClass)
+    this.confirm.setViewport(width, height)
     this.story.setViewport(width, height, deviceClass)
     this.flow.setViewport(width, height, deviceClass)
   }

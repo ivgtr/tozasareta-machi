@@ -99,6 +99,10 @@ export class PixelButton extends Phaser.GameObjects.Container {
     return this.innerHeight
   }
 
+  get isHovered(): boolean {
+    return this.hovered
+  }
+
   setSize(width: number, height: number): this {
     this.innerWidth = Math.max(width, BUTTON.minTouchSize)
     this.innerHeight = Math.max(height, BUTTON.minTouchSize)
