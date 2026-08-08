@@ -141,6 +141,14 @@ async function facilityArtPoint(page, id) {
   return handle.jsonValue()
 }
 
+async function facilityFootprintPoint(page, id) {
+  const handle = await page.waitForFunction(
+    ({ name, facility }) => globalThis[name]?.facilityFootprintPoint(facility) ?? false,
+    { name: BRIDGE, facility: id },
+  )
+  return handle.jsonValue()
+}
+
 async function clickText(page, text, exact = true) {
   const bounds = await textBounds(page, text, exact)
   await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
@@ -452,16 +460,58 @@ try {
         async (page) => {
           await startNewGame(page)
           const point = await facilityArtPoint(page, 'hq')
-          if (options.hasTouch) await page.touchscreen.tap(point.x, point.y)
-          else await page.mouse.click(point.x, point.y)
+          if (options.hasTouch) {
+            await page.touchscreen.tap(point.x, point.y)
+          } else {
+            assert.equal(await optionalTextBounds(page, '本部'), null)
+            await page.mouse.move(point.x, point.y)
+            await textBounds(page, '本部')
+            await page.mouse.click(point.x, point.y)
+          }
           await page.waitForFunction(
             (name) => globalThis[name]?.snapshot().selectedFacility === 'hq',
+            BRIDGE,
+            { timeout: 3_000 },
+          )
+          await page.keyboard.press('Escape')
+          await page.waitForFunction(
+            (name) => globalThis[name]?.snapshot().selectedFacility === null,
+            BRIDGE,
+          )
+          const footprintPoint = await facilityFootprintPoint(page, 'road')
+          if (options.hasTouch) {
+            await page.touchscreen.tap(footprintPoint.x, footprintPoint.y)
+          } else {
+            await page.mouse.click(footprintPoint.x, footprintPoint.y)
+          }
+          await page.waitForFunction(
+            (name) => globalThis[name]?.snapshot().selectedFacility === 'road',
             BRIDGE,
             { timeout: 3_000 },
           )
         },
       )
     }
+  })
+
+  await test('施設入力の統合後もDnDで人物を配置できる', async () => {
+    await withGame('facility-hit-drag', {}, async (page) => {
+      await startNewGame(page)
+      const source = await firstUnitBounds(page)
+      const target = await facilityFootprintPoint(page, 'road')
+      await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2)
+      await page.mouse.down()
+      await page.mouse.move(target.x, target.y, { steps: 10 })
+      await page.mouse.up()
+      await page.waitForFunction(
+        (name) => globalThis[name]?.snapshot().plannedAssignments === 1,
+        BRIDGE,
+      )
+      await page.waitForFunction(
+        (name) => globalThis[name]?.facilityTexture('road') === 'facility/road-working',
+        BRIDGE,
+      )
+    })
   })
 
   await test('Turn Playbackが行動結果を専用Presentationで表示する', async () => {
