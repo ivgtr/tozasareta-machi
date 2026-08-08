@@ -2,12 +2,7 @@ import Phaser from 'phaser'
 import { BALANCE } from '../../game/data/balance'
 import type { GameState } from '../../game/types'
 import { getSettings, updateSettings } from '../../store'
-import {
-  NO_INSETS,
-  logicalSafeInsetsForCanvas,
-  type DeviceClass,
-  type SafeInsets,
-} from '../layout'
+import { NO_INSETS, logicalSafeInsetsForCanvas, type DeviceClass, type SafeInsets } from '../layout'
 import { COLORS, TEXT_SIZE } from '../tokens'
 import { PixelButton } from '../ui/button'
 import { pixelText } from '../ui/pixel-text'

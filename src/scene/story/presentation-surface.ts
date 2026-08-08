@@ -1,10 +1,5 @@
 import Phaser from 'phaser'
-import {
-  NO_INSETS,
-  logicalSafeInsetsForCanvas,
-  type DeviceClass,
-  type SafeInsets,
-} from '../layout'
+import { NO_INSETS, logicalSafeInsetsForCanvas, type DeviceClass, type SafeInsets } from '../layout'
 import { COLORS } from '../tokens'
 
 export interface PresentationRect {

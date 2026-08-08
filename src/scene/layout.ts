@@ -35,14 +35,17 @@ export const NO_INSETS: SafeInsets = { top: 0, right: 0, bottom: 0, left: 0 }
 
 export const SCREEN_EDGE_GUARD = 8
 
+function guardEdge(value: number): number {
+  if (value <= 0) return 0
+  return Math.max(value, SCREEN_EDGE_GUARD)
+}
+
 export function guardSafeInsets(insets: SafeInsets): SafeInsets {
-  const guard = (value: number): number =>
-    value > 0 ? Math.max(value, SCREEN_EDGE_GUARD) : 0
   return {
-    top: guard(insets.top),
-    right: guard(insets.right),
-    bottom: guard(insets.bottom),
-    left: guard(insets.left),
+    top: guardEdge(insets.top),
+    right: guardEdge(insets.right),
+    bottom: guardEdge(insets.bottom),
+    left: guardEdge(insets.left),
   }
 }
 

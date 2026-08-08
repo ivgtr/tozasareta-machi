@@ -1,10 +1,5 @@
 import Phaser from 'phaser'
-import {
-  NO_INSETS,
-  logicalSafeInsetsForCanvas,
-  type DeviceClass,
-  type SafeInsets,
-} from '../layout'
+import { NO_INSETS, logicalSafeInsetsForCanvas, type DeviceClass, type SafeInsets } from '../layout'
 import { COLORS, TEXT_SIZE } from '../tokens'
 import { drawArtSlot } from '../ui/art-slot'
 import { PixelButton } from '../ui/button'
