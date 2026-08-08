@@ -123,6 +123,11 @@ export class PlayScene extends Phaser.Scene {
         this.selectedUnitId = unitId
         this.refresh()
       },
+      onUnassignUnit: (unitId) => {
+        if (this.busy) return
+        this.plan = withRemove(this.plan, unitId)
+        this.refresh()
+      },
     })
     this.log = new LogDrawer(this)
     this.hud = new HudBar(this, {
@@ -252,6 +257,7 @@ export class PlayScene extends Phaser.Scene {
       if (next) {
         this.plan = next
         this.selectedUnitId = null
+        this.selectedFacility = id
       }
       this.refresh()
       return

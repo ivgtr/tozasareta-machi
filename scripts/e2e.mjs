@@ -368,14 +368,22 @@ try {
       await assertMinimumTouchTargets(page)
       await capture(page, 'planning-ui')
 
+      await clickFirstUnit(page)
+      await page.waitForFunction(
+        (name) => globalThis[name]?.snapshot().presentationMode === 'unit-focus',
+        BRIDGE,
+      )
       await clickText(page, '崩落地点')
       await page.waitForFunction(
         (name) => globalThis[name]?.snapshot().presentationMode === 'facility-focus',
         BRIDGE,
       )
       assert.ok(await optionalTextBounds(page, '道路復旧'))
+      assert.ok(await optionalTextBounds(page, '外す'))
       await assertMinimumTouchTargets(page)
       await capture(page, 'facility-focus-road')
+      await clickText(page, '外す')
+      assert.ok(await textBounds(page, '実行見込  未配置'))
     })
   })
 
