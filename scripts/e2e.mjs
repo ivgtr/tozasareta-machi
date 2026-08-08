@@ -158,6 +158,15 @@ async function buttonTarget(page, label) {
   return handle.jsonValue()
 }
 
+async function choiceTarget(page, label) {
+  const handle = await page.waitForFunction(
+    ({ name, text }) =>
+      globalThis[name]?.choiceTargets().find((target) => target.label === text) ?? false,
+    { name: BRIDGE, text: label },
+  )
+  return handle.jsonValue()
+}
+
 async function townTokenArtPoint(page) {
   const handle = await page.waitForFunction(
     (name) => globalThis[name]?.townTokenArtPoint() ?? false,
@@ -475,6 +484,57 @@ try {
         assertWithinViewport(actionBounds, viewport, `${entry.fixture} after resize`)
       }
     })
+  })
+
+  await test('選択肢カードの外形と入力判定をwide/narrow・DPR 1/2で一致させる', async () => {
+    for (const options of [
+      { viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 },
+      { viewport: { width: 1280, height: 720 }, deviceScaleFactor: 2 },
+      { viewport: { width: 600, height: 900 }, deviceScaleFactor: 1, hasTouch: true },
+      { viewport: { width: 600, height: 900 }, deviceScaleFactor: 2, hasTouch: true },
+    ]) {
+      await withGame(
+        `choice-hit-${options.viewport.width}-${options.deviceScaleFactor}`,
+        options,
+        async (page) => {
+          await startNewGame(page)
+          await showFixture(page, 'choice')
+          const target = await choiceTarget(page, '食料を買う')
+          const point = {
+            x: target.visualBounds.x + target.visualBounds.width - 4,
+            y: target.visualBounds.y + target.visualBounds.height - 4,
+          }
+          if (options.hasTouch) {
+            await page.touchscreen.tap(point.x, point.y)
+          } else {
+            await page.mouse.move(
+              target.visualBounds.x - 4,
+              target.visualBounds.y + target.visualBounds.height / 2,
+            )
+            assert.equal((await choiceTarget(page, '食料を買う')).hovered, false)
+            await page.mouse.move(
+              target.visualBounds.x + target.visualBounds.width / 2,
+              target.visualBounds.y - 4,
+            )
+            assert.equal((await choiceTarget(page, '食料を買う')).hovered, false)
+            await page.mouse.move(point.x, point.y)
+            await page.waitForFunction(
+              ({ name, label }) =>
+                globalThis[name]
+                  ?.choiceTargets()
+                  .some((choice) => choice.label === label && choice.hovered),
+              { name: BRIDGE, label: '食料を買う' },
+            )
+            await page.mouse.click(point.x, point.y)
+          }
+          await page.waitForFunction(
+            (name) => globalThis[name]?.snapshot().phase !== 'choice',
+            BRIDGE,
+            { timeout: 3_000 },
+          )
+        },
+      )
+    }
   })
 
   await test('タッチ操作で人物フォーカスを開ける', async () => {

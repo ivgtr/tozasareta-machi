@@ -9,6 +9,10 @@ import { PresentationSurface } from './presentation-surface'
 import { deriveStoryPresentation, type StoryPresentationModel } from './story-metadata'
 
 export class ChoiceCard extends Phaser.GameObjects.Container {
+  readonly cardWidth: number
+  readonly cardHeight: number
+  private hovered = false
+
   constructor(
     scene: Phaser.Scene,
     option: ChoiceOption,
@@ -18,6 +22,8 @@ export class ChoiceCard extends Phaser.GameObjects.Container {
     onChoose: () => void,
   ) {
     super(scene)
+    this.cardWidth = width
+    this.cardHeight = height
     const bg = scene.add.graphics()
     const title = pixelText(scene, option.label, {
       fontSize: TEXT_SIZE.bodyWide,
@@ -32,7 +38,6 @@ export class ChoiceCard extends Phaser.GameObjects.Container {
     title.setPosition(18, 13)
     desc.setPosition(18, Math.min(height - 30, 42))
     this.add([bg, title, desc])
-    this.setSize(width, height)
     this.setInteractive(
       new Phaser.Geom.Rectangle(0, 0, width, height),
       Phaser.Geom.Rectangle.Contains,
@@ -50,8 +55,14 @@ export class ChoiceCard extends Phaser.GameObjects.Container {
       title.setColor(colorCss(active ? COLORS.ink : COLORS.gold))
     }
     redraw(false)
-    this.on('pointerover', () => redraw(true))
-    this.on('pointerout', () => redraw(false))
+    this.on('pointerover', () => {
+      this.hovered = true
+      redraw(true)
+    })
+    this.on('pointerout', () => {
+      this.hovered = false
+      redraw(false)
+    })
     this.on(
       'pointerdown',
       (
@@ -63,6 +74,10 @@ export class ChoiceCard extends Phaser.GameObjects.Container {
     )
     this.on('pointerup', onChoose)
     scene.add.existing(this)
+  }
+
+  get isHovered(): boolean {
+    return this.hovered
   }
 }
 

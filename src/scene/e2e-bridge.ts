@@ -81,6 +81,12 @@ interface E2EButtonTarget {
   hovered: boolean
 }
 
+interface E2EChoiceTarget {
+  label: string
+  visualBounds: CssBounds
+  hovered: boolean
+}
+
 interface E2EBridge {
   snapshot(): E2ESnapshot
   textBounds(text: string, exact?: boolean): CssBounds | null
@@ -88,6 +94,7 @@ interface E2EBridge {
   buttonSizes(): E2EButtonSize[]
   buttonTargets(): E2EButtonTarget[]
   choiceSizes(): E2EButtonSize[]
+  choiceTargets(): E2EChoiceTarget[]
   townTokenArtPoint(): { unitId: string; x: number; y: number } | null
   facilityArtPoint(id: FacilityId): { x: number; y: number } | null
   facilityFootprintPoint(id: FacilityId): { x: number; y: number } | null
@@ -224,6 +231,28 @@ function visibleChoiceSizes(game: Phaser.Game): E2EButtonSize[] {
       return typeof hitArea?.width === 'number' && typeof hitArea.height === 'number'
         ? [{ width: hitArea.width, height: hitArea.height }]
         : []
+    })
+}
+
+function visibleChoiceTargets(game: Phaser.Game): E2EChoiceTarget[] {
+  return visibleObjects(game)
+    .filter((object): object is ChoiceCard => object instanceof ChoiceCard)
+    .flatMap((card) => {
+      const label = card.list.find(
+        (object): object is Phaser.GameObjects.Text => object instanceof Phaser.GameObjects.Text,
+      )
+      if (!label) return []
+      const visualBounds = transformedBounds(
+        card,
+        new Phaser.Geom.Rectangle(0, 0, card.cardWidth, card.cardHeight),
+      )
+      return [
+        {
+          label: label.text,
+          visualBounds: toCssBounds(game, visualBounds),
+          hovered: card.isHovered,
+        },
+      ]
     })
 }
 
@@ -401,6 +430,7 @@ export function installE2EBridge(game: Phaser.Game): void {
     buttonSizes: () => visibleButtonSizes(game),
     buttonTargets: () => visibleButtonTargets(game),
     choiceSizes: () => visibleChoiceSizes(game),
+    choiceTargets: () => visibleChoiceTargets(game),
     townTokenArtPoint: () => townTokenArtPoint(game),
     facilityArtPoint: (id) => facilityArtPoint(game, id),
     facilityFootprintPoint: (id) => facilityFootprintPoint(game, id),
