@@ -1,8 +1,9 @@
 import Phaser from 'phaser'
 import { KEYS } from './keys'
 import { deviceClassOf } from './layout'
-import { sharedStore } from './store-bridge'
 import type { PresentationMode } from './presentation'
+import { sharedStore } from './store-bridge'
+import { PixelButton } from './ui/button'
 
 interface CssBounds {
   x: number
@@ -42,10 +43,16 @@ interface E2ESnapshot {
   }
 }
 
+interface E2EButtonSize {
+  width: number
+  height: number
+}
+
 interface E2EBridge {
   snapshot(): E2ESnapshot
   textBounds(text: string, exact?: boolean): CssBounds | null
   firstUnitBounds(): CssBounds | null
+  buttonSizes(): E2EButtonSize[]
   restartNewGame(): void
 }
 
@@ -124,6 +131,12 @@ function findFirstUnitBounds(game: Phaser.Game): CssBounds | null {
   return bounds ? toCssBounds(game, bounds) : null
 }
 
+function visibleButtonSizes(game: Phaser.Game): E2EButtonSize[] {
+  return visibleObjects(game)
+    .filter((object): object is PixelButton => object instanceof PixelButton)
+    .map((button) => ({ width: button.buttonWidth, height: button.buttonHeight }))
+}
+
 function snapshot(game: Phaser.Game): E2ESnapshot {
   const store = sharedStore().get()
   const play = game.scene.getScene(KEYS.play) as unknown as PlaySceneInternals
@@ -164,6 +177,7 @@ export function installE2EBridge(game: Phaser.Game): void {
     snapshot: () => snapshot(game),
     textBounds: (text, exact = true) => findTextBounds(game, text, exact),
     firstUnitBounds: () => findFirstUnitBounds(game),
+    buttonSizes: () => visibleButtonSizes(game),
     restartNewGame: () => restartNewGame(game),
   }
   game.events.once(Phaser.Core.Events.DESTROY, () => {

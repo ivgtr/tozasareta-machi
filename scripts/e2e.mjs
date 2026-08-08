@@ -12,6 +12,7 @@ const PORT = Number(process.env.E2E_PORT ?? 4173)
 const BASE_URL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${PORT}`
 const APP_URL = `${BASE_URL.replace(/\/$/, '')}/?e2e=1`
 const BRIDGE = '__TOZASARETA_MACHI_E2E__'
+const MIN_TOUCH_TARGET = 44
 
 let server = null
 let browser = null
@@ -67,10 +68,12 @@ async function openGame({
   viewport = { width: 1280, height: 720 },
   deviceScaleFactor = 1,
   animations = false,
+  hasTouch = false,
 } = {}) {
   const context = await browser.newContext({
     viewport,
     deviceScaleFactor,
+    hasTouch,
     locale: 'ja-JP',
     colorScheme: 'dark',
     reducedMotion: animations ? 'no-preference' : 'reduce',
@@ -122,18 +125,38 @@ async function optionalTextBounds(page, text, exact = true) {
   )
 }
 
+async function firstUnitBounds(page) {
+  const handle = await page.waitForFunction(
+    (name) => globalThis[name]?.firstUnitBounds() ?? false,
+    BRIDGE,
+  )
+  return handle.jsonValue()
+}
+
 async function clickText(page, text, exact = true) {
   const bounds = await textBounds(page, text, exact)
   await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
 }
 
 async function clickFirstUnit(page) {
-  const handle = await page.waitForFunction(
-    (name) => globalThis[name]?.firstUnitBounds() ?? false,
-    BRIDGE,
-  )
-  const bounds = await handle.jsonValue()
+  const bounds = await firstUnitBounds(page)
   await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
+}
+
+async function tapFirstUnit(page) {
+  const bounds = await firstUnitBounds(page)
+  await page.touchscreen.tap(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
+}
+
+async function assertMinimumTouchTargets(page) {
+  const sizes = await page.evaluate((name) => globalThis[name]?.buttonSizes() ?? [], BRIDGE)
+  assert.ok(sizes.length > 0, 'no visible buttons found')
+  for (const size of sizes) {
+    assert.ok(
+      size.width >= MIN_TOUCH_TARGET && size.height >= MIN_TOUCH_TARGET,
+      `button target is too small: ${size.width}x${size.height}`,
+    )
+  }
 }
 
 async function startNewGame(page) {
@@ -238,6 +261,40 @@ try {
   await startServer()
   browser = await chromium.launch({ headless: true })
 
+  await test('タイトルと指揮所メニューをwide/narrowで維持する', async () => {
+    await withGame('global-presentation-wide', {}, async (page) => {
+      assert.ok(await optionalTextBounds(page, '孤立した町の30日間'))
+      await assertMinimumTouchTargets(page)
+      await capture(page, 'title-wide')
+      await startNewGame(page)
+      await clickText(page, 'メニュー')
+      await page.waitForFunction((name) => globalThis[name]?.snapshot().menuOpen, BRIDGE)
+      assert.ok(await optionalTextBounds(page, '指揮所メニュー'))
+      await assertMinimumTouchTargets(page)
+      await capture(page, 'menu-wide')
+      await page.keyboard.press('Escape')
+      await page.waitForFunction((name) => !globalThis[name]?.snapshot().menuOpen, BRIDGE)
+    })
+
+    await withGame(
+      'global-presentation-narrow',
+      { viewport: { width: 600, height: 900 } },
+      async (page) => {
+        assert.ok(await optionalTextBounds(page, '孤立した町の30日間'))
+        await assertMinimumTouchTargets(page)
+        await capture(page, 'title-narrow')
+        await startNewGame(page)
+        assert.ok(await optionalTextBounds(page, 'メニュー'))
+        await clickText(page, 'メニュー')
+        await page.waitForFunction((name) => globalThis[name]?.snapshot().menuOpen, BRIDGE)
+        await assertMinimumTouchTargets(page)
+        await capture(page, 'menu-narrow')
+        await page.keyboard.press('Escape')
+        await page.waitForFunction((name) => !globalThis[name]?.snapshot().menuOpen, BRIDGE)
+      },
+    )
+  })
+
   await test('人物フォーカスを閉じた後に再表示できる', async () => {
     await withGame('character-focus', {}, async (page) => {
       await startNewGame(page)
@@ -254,7 +311,26 @@ try {
       await clickFirstUnit(page)
       await page.waitForFunction((name) => globalThis[name]?.snapshot().characterFocusOpen, BRIDGE)
       await capture(page, 'character-focus-second-open')
+      await page.keyboard.press('Escape')
+      await page.waitForFunction((name) => !globalThis[name]?.snapshot().characterFocusOpen, BRIDGE)
     })
+  })
+
+  await test('タッチ操作で人物フォーカスを開ける', async () => {
+    await withGame(
+      'touch-character-focus',
+      { viewport: { width: 600, height: 900 }, hasTouch: true },
+      async (page) => {
+        await startNewGame(page)
+        await tapFirstUnit(page)
+        await page.waitForFunction(
+          (name) => globalThis[name]?.snapshot().presentationMode === 'unit-focus',
+          BRIDGE,
+        )
+        await assertMinimumTouchTargets(page)
+        await capture(page, 'touch-character-focus')
+      },
+    )
   })
 
   await test('計画操作と施設フォーカスがPlanning画面で機能する', async () => {
@@ -264,6 +340,7 @@ try {
       assert.ok(await optionalTextBounds(page, '調達 OFF'))
       assert.ok(await optionalTextBounds(page, '自動配置'))
       assert.ok(await optionalTextBounds(page, '今日を終える ▶'))
+      await assertMinimumTouchTargets(page)
       await capture(page, 'planning-ui')
 
       await clickText(page, '崩落地点')
@@ -272,6 +349,7 @@ try {
         BRIDGE,
       )
       assert.ok(await optionalTextBounds(page, '道路復旧'))
+      await assertMinimumTouchTargets(page)
       await capture(page, 'facility-focus-road')
     })
   })
@@ -287,15 +365,16 @@ try {
       assert.ok(await optionalTextBounds(page, '結果を送る ▶▶'))
       assert.ok(await optionalTextBounds(page, 'RESULT', false))
       assert.equal(await optionalTextBounds(page, '今日を終える ▶'), null)
+      await assertMinimumTouchTargets(page)
       await capture(page, 'turn-playback-flow-wide')
       await finishPlayback(page)
     })
   })
 
-  await test('narrowでもTurn Playbackの情報を維持する', async () => {
+  await test('reduced-motionのnarrowでもTurn Playbackの情報を維持する', async () => {
     await withGame(
       'turn-playback-flow-narrow',
-      { viewport: { width: 600, height: 900 }, animations: true },
+      { viewport: { width: 600, height: 900 }, animations: false },
       async (page) => {
         await startNewGame(page)
         await commitWithAutoAssign(page)
@@ -304,6 +383,7 @@ try {
           BRIDGE,
         )
         assert.ok(await optionalTextBounds(page, '結果を送る ▶▶'))
+        await assertMinimumTouchTargets(page)
         await capture(page, 'turn-playback-flow-narrow')
         await finishPlayback(page)
       },
@@ -363,7 +443,7 @@ try {
     })
   })
 
-  await test('wide/narrowとDPR 1/2で論理寸法を維持する', async () => {
+  await test('wide/narrow・中間viewport・DPR 1/2で論理寸法を維持する', async () => {
     const dpr1 = await openGame({ deviceScaleFactor: 1 })
     const dpr2 = await openGame({ deviceScaleFactor: 2 })
     try {
@@ -381,6 +461,14 @@ try {
       await capture(dpr1.page, 'wide-dpr1')
       await capture(dpr2.page, 'wide-dpr2')
 
+      await dpr1.page.setViewportSize({ width: 1024, height: 768 })
+      await dpr1.page.waitForFunction((name) => {
+        const value = globalThis[name]?.snapshot()
+        return value && value.deviceClass === 'wide' && value.gameSize.width === 1280
+      }, BRIDGE)
+      assert.ok(await optionalTextBounds(dpr1.page, 'メニュー'))
+      await capture(dpr1.page, 'wide-intermediate')
+
       await Promise.all([
         dpr1.page.setViewportSize({ width: 600, height: 900 }),
         dpr2.page.setViewportSize({ width: 600, height: 900 }),
@@ -395,16 +483,24 @@ try {
       )
       const narrow1 = await snapshot(dpr1.page)
       const narrow2 = await snapshot(dpr2.page)
-      const narrowMenu1 = await textBounds(dpr1.page, 'メニュ')
-      const narrowMenu2 = await textBounds(dpr2.page, 'メニュ')
+      const narrowMenu1 = await textBounds(dpr1.page, 'メニュー')
+      const narrowMenu2 = await textBounds(dpr2.page, 'メニュー')
 
       assert.deepEqual(narrow1.gameSize, { width: 480, height: 854 })
       assert.deepEqual(narrow2.gameSize, { width: 480, height: 854 })
-      assert.equal(await optionalTextBounds(dpr1.page, 'メニュー'), null)
-      assert.equal(await optionalTextBounds(dpr2.page, 'メニュー'), null)
       assert.ok(Math.abs(narrowMenu1.height - narrowMenu2.height) <= 1)
+      await assertMinimumTouchTargets(dpr1.page)
+      await assertMinimumTouchTargets(dpr2.page)
       await capture(dpr1.page, 'narrow-dpr1')
       await capture(dpr2.page, 'narrow-dpr2')
+
+      await dpr1.page.setViewportSize({ width: 390, height: 844 })
+      await dpr1.page.waitForFunction((name) => {
+        const value = globalThis[name]?.snapshot()
+        return value && value.deviceClass === 'narrow' && value.gameSize.width === 480
+      }, BRIDGE)
+      assert.ok(await optionalTextBounds(dpr1.page, 'メニュー'))
+      await capture(dpr1.page, 'narrow-compact')
       assertNoPageErrors(dpr1.pageErrors)
       assertNoPageErrors(dpr2.pageErrors)
     } finally {
