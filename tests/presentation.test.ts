@@ -26,7 +26,9 @@ function input(overrides: Partial<PresentationInput> = {}): PresentationInput {
 }
 
 function beat(kind: Beat['kind']): Beat {
-  if (kind === 'flow') return { kind, effects: [effect] }
+  if (kind === 'flow') {
+    return { kind, source: effect.source, actorIds: [], effects: [effect] }
+  }
   if (kind === 'event') return { kind, id: 'test_event', effects: [effect] }
   return { kind, unitId: 'u1', effects: [effect] }
 }

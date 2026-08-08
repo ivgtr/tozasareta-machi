@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PlaybackController } from '../src/scene/playback/playback'
-import { UI_TIMING, buildBeats } from '../src/scene/playback/beats'
+import { UI_TIMING, buildBeats, playbackContextForPlan } from '../src/scene/playback/beats'
 import { createInitialState } from '../src/game/state'
-import type { Effect } from '../src/game/types'
+import type { DayPlan, Effect } from '../src/game/types'
 
 const stubMotion = (reduced: boolean) =>
   vi.stubGlobal('matchMedia', (query: string) => ({
@@ -40,6 +40,40 @@ afterEach(() => {
 })
 
 describe('buildBeats', () => {
+  it('同一行動の複数効果を担当人物つきの1フロービートにまとめる', () => {
+    const plan: DayPlan = {
+      placements: [{ task: 'repair_power', unitIds: ['engineer', 'mayor'] }],
+      ration: false,
+      procure: false,
+    }
+    const effects: Effect[] = [
+      {
+        day: 1,
+        source: 'task:repair_power',
+        target: 'budget',
+        delta: -10,
+        reason: '予算を使った',
+      },
+      {
+        day: 1,
+        source: 'task:repair_power',
+        target: 'power',
+        delta: 18,
+        reason: '発電設備を修理した',
+      },
+    ]
+
+    const beats = buildBeats(effects, playbackContextForPlan(plan))
+    expect(beats).toHaveLength(1)
+    const beat = beats[0]
+    expect(beat?.kind).toBe('flow')
+    if (beat?.kind === 'flow') {
+      expect(beat.source).toBe('task:repair_power')
+      expect(beat.actorIds).toEqual(['engineer', 'mayor'])
+      expect(beat.effects).toHaveLength(2)
+    }
+  })
+
   it('同一イベントの複数効果は1ビートにまとまる', () => {
     const beats = buildBeats(eventEffects)
     expect(beats).toHaveLength(2)
@@ -81,16 +115,16 @@ describe('buildBeats', () => {
 })
 
 describe('PlaybackController', () => {
-  it('フローは1ビートずつ進み、完了で null に戻る', () => {
+  it('フローは行動単位で進み、完了で null に戻る', () => {
     stubMotion(false)
     const controller = new PlaybackController()
     controller.start(createInitialState(1), flowEffects)
     expect(controller.current?.index).toBe(0)
 
-    vi.advanceTimersByTime(UI_TIMING.effectMs)
+    vi.advanceTimersByTime(UI_TIMING.flowMs)
     expect(controller.current?.index).toBe(1)
 
-    vi.advanceTimersByTime(UI_TIMING.effectMs)
+    vi.advanceTimersByTime(UI_TIMING.flowMs)
     expect(controller.current).toBeNull()
   })
 
@@ -99,11 +133,11 @@ describe('PlaybackController', () => {
     const controller = new PlaybackController()
     controller.start(createInitialState(1), eventEffects)
 
-    vi.advanceTimersByTime(UI_TIMING.effectMs)
+    vi.advanceTimersByTime(UI_TIMING.flowMs)
     expect(controller.current?.index).toBe(1)
     expect(controller.waiting).toBe(true)
 
-    vi.advanceTimersByTime(UI_TIMING.effectMs * 3)
+    vi.advanceTimersByTime(UI_TIMING.flowMs * 3)
     expect(controller.current?.index).toBe(1)
 
     controller.confirm()
@@ -111,18 +145,33 @@ describe('PlaybackController', () => {
     expect(controller.current).toBeNull()
   })
 
-  it('skip で即座に終わる', () => {
+  it('フロースキップは次のStoryビートで止まり、イベントを消さない', () => {
+    stubMotion(false)
+    const controller = new PlaybackController()
+    controller.start(createInitialState(1), eventEffects)
+
+    controller.skipFlow()
+    expect(controller.current?.index).toBe(1)
+    expect(controller.beat?.kind).toBe('event')
+    expect(controller.waiting).toBe(true)
+  })
+
+  it('cancel は再生全体を即座に破棄する', () => {
     stubMotion(false)
     const controller = new PlaybackController()
     controller.start(createInitialState(1), flowEffects)
-    controller.skip()
+    controller.cancel()
     expect(controller.current).toBeNull()
   })
 
-  it('reduced-motion では再生しない', () => {
+  it('reduced-motion でも内容を省略せず、短い静的表示として再生する', () => {
     stubMotion(true)
     const controller = new PlaybackController()
     controller.start(createInitialState(1), flowEffects)
-    expect(controller.current).toBeNull()
+    expect(controller.current?.index).toBe(0)
+    expect(controller.current?.reduced).toBe(true)
+
+    vi.advanceTimersByTime(UI_TIMING.reducedFlowMs)
+    expect(controller.current?.index).toBe(1)
   })
 })

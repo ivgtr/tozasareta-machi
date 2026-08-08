@@ -1,93 +1,119 @@
 import type { Effect, GameState } from '../../game/types'
 import { reducedMotion } from '../../store'
-import { UI_TIMING, buildBeats, type Beat } from './beats'
+import { UI_TIMING, buildBeats, type Beat, type PlaybackContext } from './beats'
 import { projectPlaybackState } from './project-state'
 
 export interface Playback {
-  prev: GameState
   base: GameState
   beats: Beat[]
   index: number
   confirmed: boolean
+  reduced: boolean
 }
 
 export class PlaybackController {
-  private pb: Playback | null = null
+  private playback: Playback | null = null
   private timer: ReturnType<typeof setTimeout> | null = null
   onChange: () => void = () => undefined
 
   get current(): Playback | null {
-    return this.pb
+    return this.playback
   }
 
   get beat(): Beat | undefined {
-    return this.pb ? (this.pb.beats[this.pb.index] ?? undefined) : undefined
+    return this.playback ? (this.playback.beats[this.playback.index] ?? undefined) : undefined
+  }
+
+  get projectedState(): GameState | null {
+    const playback = this.playback
+    if (!playback) return null
+    const effects = playback.beats.slice(0, playback.index + 1).flatMap((beat) => beat.effects)
+    return projectPlaybackState(playback.base, effects)
   }
 
   get waiting(): boolean {
     const beat = this.beat
-    return this.pb !== null && beat !== undefined && beat.kind !== 'flow' && !this.pb.confirmed
+    return (
+      this.playback !== null &&
+      beat !== undefined &&
+      beat.kind !== 'flow' &&
+      !this.playback.confirmed
+    )
   }
 
-  start(prev: GameState, effects: Effect[]): void {
+  start(previous: GameState, effects: Effect[], context?: PlaybackContext): void {
     this.clearTimer()
-    if (effects.length === 0 || reducedMotion()) {
-      this.pb = null
+    const beats = buildBeats(effects, context)
+    if (beats.length === 0) {
+      this.playback = null
       this.onChange()
       return
     }
-    this.pb = { prev, base: prev, beats: buildBeats(effects), index: 0, confirmed: false }
-    this.syncProjection()
+    this.playback = {
+      base: previous,
+      beats,
+      index: 0,
+      confirmed: false,
+      reduced: reducedMotion(),
+    }
     this.schedule()
     this.onChange()
   }
 
-  skip(): void {
+  skipFlow(): void {
+    const playback = this.playback
+    if (!playback || this.beat?.kind !== 'flow') return
     this.clearTimer()
-    this.pb = null
+    let next = playback.index + 1
+    while (next < playback.beats.length && playback.beats[next]?.kind === 'flow') next++
+    this.playback =
+      next >= playback.beats.length ? null : { ...playback, index: next, confirmed: false }
+    this.schedule()
+    this.onChange()
+  }
+
+  cancel(): void {
+    this.clearTimer()
+    this.playback = null
     this.onChange()
   }
 
   confirm(): void {
-    if (!this.pb) return
-    this.pb = { ...this.pb, confirmed: true }
+    if (!this.playback || this.beat?.kind === 'flow') return
+    this.playback = { ...this.playback, confirmed: true }
     this.schedule()
     this.onChange()
   }
 
   destroy(): void {
     this.clearTimer()
-    this.pb = null
+    this.playback = null
   }
 
   private schedule(): void {
-    const pb = this.pb
-    if (!pb) return
-    const beat = pb.beats[pb.index]
+    const playback = this.playback
+    if (!playback) return
+    const beat = playback.beats[playback.index]
     if (!beat) return
     const spotlight = beat.kind !== 'flow'
-    if (spotlight && !pb.confirmed) return
-    const delay = spotlight ? UI_TIMING.afterConfirmMs : UI_TIMING.effectMs
+    if (spotlight && !playback.confirmed) return
+    const delay = spotlight
+      ? UI_TIMING.afterConfirmMs
+      : playback.reduced
+        ? UI_TIMING.reducedFlowMs
+        : UI_TIMING.flowMs
     this.clearTimer()
-    this.timer = setTimeout(() => {
-      const cur = this.pb
-      if (!cur) return
-      const next = cur.index + 1
-      this.pb = next >= cur.beats.length ? null : { ...cur, index: next, confirmed: false }
-      if (this.pb) {
-        this.syncProjection()
-        this.schedule()
-      }
-      this.onChange()
-    }, delay)
+    this.timer = setTimeout(() => this.advance(), delay)
   }
 
-  private syncProjection(): void {
-    const pb = this.pb
-    if (!pb) return
-    const effects = pb.beats.slice(0, pb.index + 1).flatMap((beat) => beat.effects)
-    const projected = projectPlaybackState(pb.base, effects)
-    this.pb = { ...pb, prev: { ...pb.base, units: projected.units } }
+  private advance(): void {
+    const playback = this.playback
+    if (!playback) return
+    const next = playback.index + 1
+    this.playback =
+      next >= playback.beats.length ? null : { ...playback, index: next, confirmed: false }
+    this.schedule()
+    this.onChange()
   }
 
   private clearTimer(): void {
