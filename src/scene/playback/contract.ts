@@ -8,13 +8,13 @@ export function buildPlaybackEffects(
 ): Effect[] {
   const previousIds = new Set(previous.units.map((unit) => unit.id))
   const changes = unitChangesBetween(previous.units, final.units)
-  const arrivals: UnitChange[] = []
+  const immediate: UnitChange[] = []
   const deferred: UnitChange[] = []
 
   for (const change of changes) {
-    if (change.kind === 'sync' && !previousIds.has(change.unit.id)) arrivals.push(change)
+    if (change.kind === 'remove' || !previousIds.has(change.unit.id)) immediate.push(change)
     else deferred.push(change)
   }
 
-  return attachUnitChangesToLast(attachUnitChanges(effects, arrivals), deferred)
+  return attachUnitChangesToLast(attachUnitChanges(effects, immediate), deferred)
 }

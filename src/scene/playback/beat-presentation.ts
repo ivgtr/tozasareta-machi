@@ -16,14 +16,6 @@ export const PLAYBACK_TIMING = {
   afterConfirmMs: 250,
 } as const
 
-function hasDeath(effects: readonly Effect[]): boolean {
-  return effects.some(
-    (effect) =>
-      (effect.target === 'flag:casualties' && effect.delta > 0) ||
-      effect.unitChanges?.some((change) => change.kind === 'remove'),
-  )
-}
-
 function hasLargeChange(effects: readonly Effect[]): boolean {
   return effects.some(
     (effect) =>
@@ -34,12 +26,9 @@ function hasLargeChange(effects: readonly Effect[]): boolean {
 }
 
 export function deriveBeatImportance(beat: Beat): BeatImportance {
-  if (beat.kind === 'arrival') return 'major'
-  if (beat.kind === 'event')
-    return hasDeath(beat.effects) || hasLargeChange(beat.effects) ? 'major' : 'normal'
-  if (hasDeath(beat.effects) || beat.source.startsWith('act_') || hasLargeChange(beat.effects)) {
-    return 'major'
-  }
+  if (beat.kind === 'death' || beat.kind === 'arrival') return 'major'
+  if (beat.kind === 'event') return hasLargeChange(beat.effects) ? 'major' : 'normal'
+  if (beat.source.startsWith('act_') || hasLargeChange(beat.effects)) return 'major'
   if (beat.source === 'settlement') return 'minor'
   return 'normal'
 }

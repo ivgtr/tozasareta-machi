@@ -43,15 +43,15 @@ function sameUnit(a: Unit, b: Unit): boolean {
 }
 
 function changeUnitId(change: UnitChange): string {
-  return change.kind === 'sync' ? change.unit.id : change.unitId
+  return change.unit.id
 }
 
 export function syncUnitChange(unit: Unit): UnitChange {
   return { kind: 'sync', unit: cloneUnit(unit) }
 }
 
-export function removeUnitChange(unitId: string): UnitChange {
-  return { kind: 'remove', unitId }
+export function removeUnitChange(unit: Unit): UnitChange {
+  return { kind: 'remove', unit: cloneUnit(unit) }
 }
 
 export function unitChangesBetween(previous: readonly Unit[], next: readonly Unit[]): UnitChange[] {
@@ -64,7 +64,7 @@ export function unitChangesBetween(previous: readonly Unit[], next: readonly Uni
     if (!before || !sameUnit(before, unit)) changes.push(syncUnitChange(unit))
   }
   for (const unit of previous) {
-    if (!nextById.has(unit.id)) changes.push(removeUnitChange(unit.id))
+    if (!nextById.has(unit.id)) changes.push(removeUnitChange(unit))
   }
   return changes
 }
