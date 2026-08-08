@@ -24,7 +24,9 @@ const fixtures = [
   'planning',
   'unit-focus',
   'facility-focus',
-  'flow',
+  'minor-result',
+  'normal-result',
+  'major-result',
   'event',
   'choice',
   'arrival',
@@ -98,7 +100,7 @@ async function showFixture(page, name) {
       ({ bridge, fixture }) => {
         const value = globalThis[bridge].snapshot()
         if (fixture === 'menu') return value.menuOpen
-        return value.presentationMode === fixture
+        return value.presentationMode === (fixture.endsWith('-result') ? 'flow' : fixture)
       },
       { bridge: BRIDGE, fixture: name },
     )

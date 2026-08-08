@@ -98,6 +98,7 @@ export class EndingPresentation extends PresentationSurface {
       fontSize: TEXT_SIZE.bodyWide,
       color: COLORS.ink,
       wordWrapWidth: columnW - witnessW - (model.witness ? 16 : 0),
+      advancedWrap: true,
     })
     flavor.setPosition(columnX + witnessW + (model.witness ? 16 : 0), artY + 78)
     this.content.add([dayLabel, day, flavor])
@@ -184,6 +185,7 @@ export class EndingPresentation extends PresentationSurface {
       fontSize: TEXT_SIZE.bodyNarrow,
       color: COLORS.ink,
       wordWrapWidth: contentW,
+      advancedWrap: true,
     })
     flavor.setPosition(p.x + pad, artY + artH + 52)
     this.content.add([day, flavor])

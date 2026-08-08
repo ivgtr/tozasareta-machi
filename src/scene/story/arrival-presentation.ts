@@ -173,6 +173,7 @@ export class ArrivalPresentation extends PresentationSurface {
         fontSize: TEXT_SIZE.labelWide,
         color: COLORS.ink,
         wordWrapWidth: width,
+        advancedWrap: true,
       })
       traits.setPosition(x, y)
       this.content.add(traits)
@@ -183,6 +184,7 @@ export class ArrivalPresentation extends PresentationSurface {
         fontSize: TEXT_SIZE.bodyWide,
         color: COLORS.inkDim,
         wordWrapWidth: width,
+        advancedWrap: true,
       })
       flavor.setPosition(x, y)
       this.content.add(flavor)

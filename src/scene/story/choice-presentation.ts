@@ -170,6 +170,7 @@ export class ChoicePresentation extends PresentationSurface {
       fontSize: TEXT_SIZE.bodyWide,
       color: COLORS.inkDim,
       wordWrapWidth: leftW,
+      advancedWrap: true,
     })
     descText.setPosition(artX, artY + artH + 18)
     this.content.add(descText)
@@ -221,6 +222,7 @@ export class ChoicePresentation extends PresentationSurface {
       fontSize: TEXT_SIZE.bodyNarrow,
       color: COLORS.inkDim,
       wordWrapWidth: p.width - artW - pad * 3,
+      advancedWrap: true,
     })
     descText.setPosition(artX + artW + 14, artY + 4)
     this.content.add(descText)

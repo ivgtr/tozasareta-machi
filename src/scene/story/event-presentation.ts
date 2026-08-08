@@ -86,6 +86,7 @@ export class EventPresentation extends PresentationSurface {
         fontSize: wide ? TEXT_SIZE.bodyWide : TEXT_SIZE.bodyNarrow,
         color: COLORS.ink,
         wordWrapWidth: textW,
+        advancedWrap: true,
       })
       desc.setPosition(textX, y)
       this.content.add(desc)
@@ -149,6 +150,7 @@ export class EventPresentation extends PresentationSurface {
         fontSize: wide ? TEXT_SIZE.bodyWide : TEXT_SIZE.bodyNarrow,
         color: COLORS.inkDim,
         wordWrapWidth: textW,
+        advancedWrap: true,
       })
       desc.setPosition(textX, y)
       this.content.add(desc)
@@ -191,6 +193,7 @@ export class EventPresentation extends PresentationSurface {
         fontSize: this.deviceClass === 'wide' ? TEXT_SIZE.bodyWide : TEXT_SIZE.bodyNarrow,
         color: COLORS.ink,
         wordWrapWidth: textW,
+        advancedWrap: true,
       })
       reason.setPosition(textX, y)
       this.content.add(reason)

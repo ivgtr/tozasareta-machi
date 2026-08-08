@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { Effect, GameState } from '../game/types'
+import type { PlaybackContext } from './playback/beats'
 import { KEYS } from './keys'
 import { deviceClassOf } from './layout'
 import type { PresentationMode } from './presentation'
@@ -27,7 +28,7 @@ interface PlaySceneInternals {
     current: unknown | null
     cancel: () => void
     pause: () => void
-    start: (state: GameState, effects: Effect[]) => void
+    start: (state: GameState, effects: Effect[], context?: PlaybackContext) => void
   }
   presentation?: { mode: PresentationMode }
   selectedUnitId?: string | null
@@ -218,7 +219,7 @@ function showFixture(game: Phaser.Game, name: PresentationFixtureName): void {
   play.selectedFacility = fixture.selectedFacility ?? null
   play.plan = fixture.plan ?? emptyPlan()
   if (fixture.beat && fixture.baseState) {
-    play.playback?.start(fixture.baseState, fixture.beat.effects)
+    play.playback?.start(fixture.baseState, fixture.beat.effects, fixture.playbackContext)
     play.playback?.pause()
   } else {
     play.refresh?.()

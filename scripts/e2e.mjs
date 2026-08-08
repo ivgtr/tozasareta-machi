@@ -178,7 +178,7 @@ async function showFixture(page, fixture) {
   await page.waitForFunction(
     ({ name, value }) => {
       const state = globalThis[name]?.snapshot()
-      return state && state.presentationMode === value
+      return state && state.presentationMode === (value.endsWith('-result') ? 'flow' : value)
     },
     { name: BRIDGE, value: fixture },
   )
@@ -421,6 +421,34 @@ try {
         await finishPlayback(page)
       },
     )
+  })
+
+  await test('Playback重要度をwide/narrow・reduced-motionで単独表示する', async () => {
+    for (const layout of [
+      { name: 'wide', options: { animations: true } },
+      {
+        name: 'narrow-reduced-motion',
+        options: { viewport: { width: 600, height: 900 }, animations: false, hasTouch: true },
+      },
+    ]) {
+      await withGame(`playback-importance-${layout.name}`, layout.options, async (page) => {
+        await startNewGame(page)
+
+        await showFixture(page, 'minor-result')
+        assert.ok(await optionalTextBounds(page, '一日の清算'))
+        assert.equal(await optionalTextBounds(page, '結果を送る ▶▶'), null)
+
+        await showFixture(page, 'normal-result')
+        assert.ok(await optionalTextBounds(page, '発電所の修理'))
+        assert.ok(await optionalTextBounds(page, '結果を送る ▶▶'))
+
+        await showFixture(page, 'major-result')
+        assert.ok(await optionalTextBounds(page, '重大な変化'))
+        assert.ok(await optionalTextBounds(page, '結果を送る ▶▶'))
+        await assertMinimumTouchTargets(page)
+        await capture(page, `playback-major-${layout.name}`)
+      })
+    }
   })
 
   const storyFixtures = [

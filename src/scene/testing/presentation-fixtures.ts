@@ -1,7 +1,7 @@
 import { UNIQUE_UNITS, cloneUnit } from '../../game/data/units'
 import { createInitialState } from '../../game/state'
 import type { Effect, GameState } from '../../game/types'
-import type { Beat } from '../playback/beats'
+import type { Beat, PlaybackContext } from '../playback/beats'
 import type { PlanState } from '../plan'
 import type { FacilityId } from '../town/layout'
 
@@ -9,7 +9,9 @@ export const PRESENTATION_FIXTURE_NAMES = [
   'planning',
   'unit-focus',
   'facility-focus',
-  'flow',
+  'minor-result',
+  'normal-result',
+  'major-result',
   'event',
   'choice',
   'arrival',
@@ -25,6 +27,7 @@ export interface PresentationFixture {
   state: GameState
   baseState?: GameState
   beat?: Beat
+  playbackContext?: PlaybackContext
   selectedUnitId?: string
   selectedFacility?: FacilityId
   plan?: PlanState
@@ -82,9 +85,20 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
       plan: { placements: { restore_road: [firstUnitId] }, ration: false, procure: false },
     }
   }
-  if (name === 'flow') {
+  if (name === 'minor-result') {
+    const effects = [effect('settlement', 'food', -8, '人々が食料を消費した')]
+    return {
+      name,
+      state,
+      baseState: state,
+      beat: { kind: 'flow', source: 'settlement', actorIds: [], effects },
+      scene: 'play',
+    }
+  }
+  if (name === 'normal-result' || name === 'major-result') {
+    const delta = name === 'major-result' ? 30 : 14
     const effects = [
-      effect('task:repair_power', 'power', 14, '技術班が仮設発電機を修復した'),
+      effect('task:repair_power', 'power', delta, '技術班が仮設発電機を修復した'),
       effect('task:repair_power', 'budget', -5, '修復資材を購入した'),
     ]
     return {
@@ -92,6 +106,7 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
       state,
       baseState: state,
       beat: { kind: 'flow', source: 'task:repair_power', actorIds: [firstUnitId], effects },
+      playbackContext: { taskActors: { repair_power: [firstUnitId] } },
       scene: 'play',
     }
   }
@@ -152,4 +167,9 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
     }
   }
   return { name, state, scene: 'play' }
+}
+
+export function fixturePresentationMode(name: PresentationFixtureName): string {
+  if (name.endsWith('-result')) return 'flow'
+  return name
 }

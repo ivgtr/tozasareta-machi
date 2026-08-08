@@ -21,6 +21,7 @@
 - **Issue #1 町中心UI再設計 完了**（docs/22〜24）: Phaser 3 フル移行 + アイソメ町 + Presentation刷新。Reactは撤去済み。
 - **Issue #19 PR10 Presentation品質基盤**（docs/26）: 主要10画面の決定論的fixture、wide/narrow 20枚のVisual Regression、Story系単独E2Eを導入。
 - **Issue #19 PR11 Planning体験の完成**: Adaptive Town Viewport、Stable Roster、2段narrow HUD、Planning Forecast、FacilityFocus編成UIを統合。
+- **Issue #19 PR12 Story / Playback体験の完成**: Story表示metadata、人物駆動Event / Choice、Arrival / Ending統一、Playback重要度と可変テンポを統合。
 - 正典: ゲームコアは [12-ユニット設計](./12-ユニット設計.md) を正とし、06/09 の作業員・人員記述は旧モデル。
 
 ## ドキュメント構成

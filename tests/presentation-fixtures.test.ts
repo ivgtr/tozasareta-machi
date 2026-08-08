@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildPresentationFixture,
+  fixturePresentationMode,
   PRESENTATION_FIXTURE_NAMES,
 } from '../src/scene/testing/presentation-fixtures'
 
@@ -26,6 +27,14 @@ describe('presentation fixtures', () => {
       phase: 'ended',
       ending: 'full_recovery',
     })
+  })
+
+  it('builds minor, normal, and major playback results independently', () => {
+    for (const name of ['minor-result', 'normal-result', 'major-result'] as const) {
+      const fixture = buildPresentationFixture(name)
+      expect(fixture.beat?.kind).toBe('flow')
+      expect(fixturePresentationMode(name)).toBe('flow')
+    }
   })
 
   it('focus fixtures share a deterministic assignment', () => {

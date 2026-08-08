@@ -20,9 +20,10 @@ import {
   withRemove,
   type PlanState,
 } from '../plan'
-import { deriveFlowPresentation, type FlowPresentationModel } from '../playback/flow-model'
-import { FlowPresentation, flowAccent } from '../playback/flow-presentation'
+import type { FlowPresentationModel } from '../playback/flow-model'
+import { FlowPresentation } from '../playback/flow-presentation'
 import { PlaybackController } from '../playback/playback'
+import { PlaybackPresentationCoordinator } from '../playback/presentation-coordinator'
 import { TownPlaybackFx } from '../playback/town-playback-fx'
 import { CommitConfirmPresentation } from '../planning/commit-confirm-presentation'
 import { FacilityFocus } from '../planning/facility-focus'
@@ -68,7 +69,7 @@ export class PlayScene extends Phaser.Scene {
   private confirm!: CommitConfirmPresentation
   private story!: StoryPresentations
   private flow!: FlowPresentation
-  private lastBeatKey: string | null = null
+  private playbackPresentation!: PlaybackPresentationCoordinator
   private townViewportKey: string | null = null
   private readonly playback = new PlaybackController()
   private readonly presentation = new PresentationDirector()
@@ -190,6 +191,7 @@ export class PlayScene extends Phaser.Scene {
     this.flow = new FlowPresentation(this, {
       onSkip: () => this.playback.skipFlow(),
     })
+    this.playbackPresentation = new PlaybackPresentationCoordinator(this.flow, this.playbackFx)
     this.playback.onChange = () => {
       if (!this.playback.current) this.clearPlan()
       this.refresh()
@@ -382,20 +384,6 @@ export class PlayScene extends Phaser.Scene {
     this.flow.setViewport(width, height, deviceClass)
   }
 
-  private triggerPlaybackFx(model: FlowPresentationModel | null): void {
-    const playback = this.playback.current
-    const beat = this.playback.beat
-    const beatKey = playback && beat ? `${playback.base.day}:${playback.index}:${beat.kind}` : null
-    if (playback && beat && beatKey !== this.lastBeatKey) {
-      if (beat.kind === 'flow' && model) {
-        this.playbackFx.play(model.fx, flowAccent(model.tone), model.importance)
-      } else if (beat.kind === 'arrival') {
-        this.playbackFx.playArrival()
-      }
-    }
-    this.lastBeatKey = beatKey
-  }
-
   private viewportPreset(
     mode: ReturnType<PresentationDirector['resolve']>['mode'],
     flowModel: FlowPresentationModel | null,
@@ -461,8 +449,8 @@ export class PlayScene extends Phaser.Scene {
     })
     const facilityView = deriveFacilityView(view, this.plan)
     const storyMode = isStoryPresentation(frame.mode)
-    const flowBeat = frame.mode === 'flow' && beat?.kind === 'flow' ? beat : null
-    const flowModel = flowBeat ? deriveFlowPresentation(flowBeat, view) : null
+    const fallbackFacility = frame.mode === 'facility-focus' ? this.selectedFacility : null
+    const flowModel = this.playbackPresentation.update(this.playback, view, fallbackFacility)
     const planningChrome = !storyMode && flowModel === null
 
     this.applyTownViewport(this.viewportPreset(frame.mode, flowModel))
@@ -508,16 +496,5 @@ export class PlayScene extends Phaser.Scene {
 
     this.log.update(view.report)
     this.story.update(frame.mode, state, beat)
-    const playback = this.playback.current
-    this.flow.update(
-      flowModel,
-      playback?.index ?? 0,
-      playback?.beats.length ?? 0,
-      playback?.reduced ?? false,
-    )
-    const focusedFacility =
-      flowModel?.facility ?? (frame.mode === 'facility-focus' ? this.selectedFacility : null)
-    this.playbackFx.setFocus(focusedFacility, flowModel ? flowAccent(flowModel.tone) : COLORS.cyan)
-    this.triggerPlaybackFx(flowModel)
   }
 }
