@@ -42,11 +42,12 @@ describe('unit display contract', () => {
   it('Unit差分は表示用のsync/remove契約へ変換される', () => {
     const previous = createInitialState(1)
     const changed = { ...previous.units[0]!, condition: 'injured' as const }
+    const removed = previous.units[1]!
     const next = [changed, ...previous.units.slice(2)]
     const changes = unitChangesBetween(previous.units, next)
 
     expect(changes).toContainEqual({ kind: 'sync', unit: changed })
-    expect(changes).toContainEqual({ kind: 'remove', unitId: previous.units[1]!.id })
+    expect(changes).toContainEqual({ kind: 'remove', unit: removed })
   })
 })
 
@@ -65,5 +66,32 @@ describe('playback contract', () => {
     const playback = buildPlaybackEffects(previous, final, effects)
     expect(playback[0]?.unitChanges).toEqual([{ kind: 'sync', unit: newcomer }])
     expect(playback[1]?.unitChanges).toContainEqual({ kind: 'sync', unit: changed })
+  })
+
+  it('死亡によるremoveは死亡unitターゲットへ結び付ける', () => {
+    const previous = createInitialState(1)
+    const dead = previous.units[0]!
+    const final = { ...previous, units: previous.units.slice(1) }
+    const effects: Effect[] = [
+      {
+        day: 1,
+        source: 'death:starvation',
+        target: `unit:${dead.id}`,
+        delta: 0,
+        reason: '死亡',
+      },
+      {
+        day: 1,
+        source: 'death:starvation',
+        target: 'flag:casualties',
+        delta: 1,
+        reason: '犠牲者',
+      },
+      { day: 1, source: 'settlement', target: 'morale', delta: -8, reason: '喪失' },
+    ]
+
+    const playback = buildPlaybackEffects(previous, final, effects)
+    expect(playback[0]?.unitChanges).toEqual([{ kind: 'remove', unit: dead }])
+    expect(playback[2]?.unitChanges).toBeUndefined()
   })
 })

@@ -15,7 +15,7 @@ export function projectPlaybackState(
 
   for (const effect of processedEffects) {
     for (const change of effect.unitChanges ?? []) {
-      const unitId = change.kind === 'sync' ? change.unit.id : change.unitId
+      const unitId = change.unit.id
       const index = indexById.get(unitId)
       if (change.kind === 'remove') {
         if (index === undefined) continue

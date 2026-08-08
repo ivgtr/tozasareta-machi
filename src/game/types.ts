@@ -29,7 +29,7 @@ export interface Unit {
   expedition?: number
 }
 
-export type UnitChange = { kind: 'sync'; unit: Unit } | { kind: 'remove'; unitId: string }
+export type UnitChange = { kind: 'sync'; unit: Unit } | { kind: 'remove'; unit: Unit }
 
 export type NumericFlag =
   'daysWithoutMedical' | 'daysFoodCut' | 'casualties' | 'refugeesAccepted' | 'cooperation'

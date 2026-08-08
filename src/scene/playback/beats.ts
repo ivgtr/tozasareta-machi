@@ -1,5 +1,6 @@
 import { isTaskId } from '../../game/data/tasks'
-import type { DayPlan, Effect, TaskId } from '../../game/types'
+import { deathCauseFromSource, type DeathCause } from '../../game/death'
+import type { DayPlan, Effect, TaskId, Unit } from '../../game/types'
 
 export interface PlaybackContext {
   taskActors: Partial<Record<TaskId, readonly string[]>>
@@ -12,10 +13,18 @@ export interface FlowBeat {
   effects: Effect[]
 }
 
+export interface DeathBeat {
+  kind: 'death'
+  cause: DeathCause
+  unit: Unit
+  effects: Effect[]
+}
+
 export type Beat =
   | FlowBeat
   | { kind: 'event'; id: string; effects: Effect[] }
   | { kind: 'arrival'; unitId: string; effects: Effect[] }
+  | DeathBeat
 
 export function playbackContextForPlan(plan: DayPlan): PlaybackContext {
   const taskActors: Partial<Record<TaskId, readonly string[]>> = {}
@@ -28,6 +37,14 @@ function actorsFor(source: string, context: PlaybackContext): string[] {
   const task = source.slice('task:'.length)
   if (!isTaskId(task)) return []
   return [...(context.taskActors[task] ?? [])]
+}
+
+function removedUnit(effects: readonly Effect[]): Unit | null {
+  for (const effect of effects) {
+    const change = effect.unitChanges?.find((candidate) => candidate.kind === 'remove')
+    if (change?.kind === 'remove') return change.unit
+  }
+  return null
 }
 
 export function buildBeats(
@@ -45,6 +62,14 @@ export function buildBeats(
       const effect = effects[index]
       if (effect) group.push(effect)
       index++
+    }
+
+    const deathCause = deathCauseFromSource(source)
+    if (deathCause) {
+      const unit = removedUnit(group)
+      if (!unit) throw new Error(`Death beat is missing its removed unit: ${source}`)
+      beats.push({ kind: 'death', cause: deathCause, unit, effects: group })
+      continue
     }
 
     if (source.startsWith('event:')) {

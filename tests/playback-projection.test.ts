@@ -14,17 +14,16 @@ describe('projectPlaybackState', () => {
     const effect = withUnitChange(
       {
         day: previous.day,
-        source: 'settlement',
-        target: 'flag:casualties',
-        delta: 1,
+        source: 'death:starvation',
+        target: `unit:${dead.id}`,
+        delta: 0,
         reason: '犠牲者が出た',
       },
-      [{ kind: 'remove', unitId: dead.id }],
+      [{ kind: 'remove', unit: dead }],
     )
 
     const projected = projectPlaybackState(previous, [effect])
     expect(projected.units.some((unit) => unit.id === dead.id)).toBe(false)
-    expect(projected.flags.casualties).toBe(previous.flags.casualties + 1)
   })
 
   it('負傷と治療をEffectの順序どおりに投影し、未来の状態を先取りしない', () => {

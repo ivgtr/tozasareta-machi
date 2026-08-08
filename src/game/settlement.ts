@@ -5,6 +5,7 @@ import { TASK_APT, isOnExpedition } from './actions'
 import { clamp } from './state'
 import { nextRandom } from './rng'
 import { queryAdd, queryMult } from './modifiers'
+import { DEATH_SOURCES } from './death'
 
 export const EXPEDITION_RETURN_SOURCE = 'event:expedition_return'
 
@@ -161,9 +162,23 @@ function settleFood(context: SettlementContext): void {
   const [deathRoll, nextRng] = nextRandom(context.rng)
   context.rng = nextRng
   const dead = present[Math.floor(deathRoll * present.length)]
-  context.units = context.units.filter((unit) => unit.id !== dead?.id)
+  if (!dead) return
+  context.units = context.units.filter((unit) => unit.id !== dead.id)
   context.flags.casualties += 1
-  addEffect(context, 'flag:casualties', 1, `食料が尽き、${dead?.name ?? '仲間'}が亡くなった`)
+  addEffect(
+    context,
+    `unit:${dead.id}`,
+    0,
+    `${dead.name}が食料不足により亡くなった`,
+    DEATH_SOURCES.starvation,
+  )
+  addEffect(
+    context,
+    'flag:casualties',
+    1,
+    '食料不足による犠牲者が1人増えた',
+    DEATH_SOURCES.starvation,
+  )
   addMorale(context, BALANCE.morale.hunger, '仲間を飢えで失った')
 }
 
@@ -307,10 +322,17 @@ function settleDangerousExpedition(context: SettlementContext, unit: Unit): bool
     context.flags.casualties += 1
     addEffect(
       context,
+      `unit:${unit.id}`,
+      0,
+      `${unit.name}が探索中の事故で亡くなった`,
+      DEATH_SOURCES.expedition,
+    )
+    addEffect(
+      context,
       'flag:casualties',
       1,
-      `${unit.name}が探索で命を落とした`,
-      EXPEDITION_RETURN_SOURCE,
+      '探索中の事故による犠牲者が1人増えた',
+      DEATH_SOURCES.expedition,
     )
     addMorale(context, BALANCE.morale.hunger, '仲間を探索で失った')
     return true
