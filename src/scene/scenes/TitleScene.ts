@@ -5,7 +5,12 @@ import { textureKey } from '../art/assets'
 import { fadeInScene, transitionToScene } from '../global/scene-transition'
 import { KEYS, SCENE_EVENTS } from '../keys'
 import { CONFIRM_NEW_GAME } from '../labels'
-import { deviceClassOf, type DeviceClass } from '../layout'
+import {
+  deviceClassOf,
+  logicalSafeInsetsForCanvas,
+  type DeviceClass,
+  type SafeInsets,
+} from '../layout'
 import { sharedStore } from '../store-bridge'
 import { COLORS, TEXT_SIZE, fitSize } from '../tokens'
 import { PixelButton } from '../ui/button'
@@ -104,7 +109,7 @@ export class TitleScene extends Phaser.Scene {
     this.motionButton = new PixelButton(this, {
       label: this.motionLabel(),
       width: 220,
-      height: 36,
+      height: 44,
       variant: 'toggle',
       selected: getSettings().animations,
       fontSize: TEXT_SIZE.labelWide,
@@ -138,12 +143,18 @@ export class TitleScene extends Phaser.Scene {
   private layout(): void {
     const { width, height } = this.scale.gameSize
     const deviceClass = deviceClassOf(window.innerWidth)
-    this.layoutBackground(width, height, deviceClass)
-    if (deviceClass === 'wide') this.layoutWide(width, height)
-    else this.layoutNarrow(width, height)
+    const safeInsets = logicalSafeInsetsForCanvas(this.game.canvas, width, height)
+    this.layoutBackground(width, height, deviceClass, safeInsets)
+    if (deviceClass === 'wide') this.layoutWide(width, height, safeInsets)
+    else this.layoutNarrow(width, height, safeInsets)
   }
 
-  private layoutBackground(width: number, height: number, deviceClass: DeviceClass): void {
+  private layoutBackground(
+    width: number,
+    height: number,
+    deviceClass: DeviceClass,
+    safeInsets: SafeInsets,
+  ): void {
     const source = this.background.texture.getSourceImage() as { width: number; height: number }
     const scale = Math.max(width / source.width, height / source.height)
     this.background.setPosition(width / 2, height / 2)
@@ -153,32 +164,42 @@ export class TitleScene extends Phaser.Scene {
     this.shade.fillStyle(COLORS.night900, deviceClass === 'wide' ? 0.56 : 0.68)
     this.shade.fillRect(0, 0, width, height)
     this.shade.fillStyle(COLORS.night900, 0.88)
-    this.shade.fillRect(0, 0, width, deviceClass === 'wide' ? 42 : 28)
-    this.shade.fillRect(0, height - 34, width, 34)
+    this.shade.fillRect(0, 0, width, safeInsets.top + (deviceClass === 'wide' ? 42 : 28))
+    this.shade.fillRect(0, height - safeInsets.bottom - 34, width, safeInsets.bottom + 34)
 
+    const frameX = safeInsets.left + 14
+    const frameY = safeInsets.top + 14
+    const frameW = width - safeInsets.left - safeInsets.right - 28
+    const frameH = height - safeInsets.top - safeInsets.bottom - 28
     this.frame.clear()
     this.frame.lineStyle(2, COLORS.frameLo, 0.75)
-    this.frame.strokeRect(14, 14, width - 28, height - 28)
+    this.frame.strokeRect(frameX, frameY, frameW, frameH)
     this.frame.lineStyle(1, COLORS.cyan, 0.45)
-    this.frame.lineBetween(24, 42, width - 24, 42)
+    this.frame.lineBetween(
+      safeInsets.left + 24,
+      safeInsets.top + 42,
+      width - safeInsets.right - 24,
+      safeInsets.top + 42,
+    )
   }
 
-  private layoutWide(width: number, height: number): void {
-    const left = 72
+  private layoutWide(width: number, height: number, safeInsets: SafeInsets): void {
+    const left = Math.max(72, safeInsets.left + 24)
+    const topShift = Math.max(0, safeInsets.top - 14)
     this.resumeButton.setSize(220, 50)
     this.newButton.setSize(220, 50)
-    this.motionButton.setSize(220, 36)
-    this.kicker.setPosition(left, 68)
+    this.motionButton.setSize(220, 44)
+    this.kicker.setPosition(left, 68 + topShift)
     this.kicker.setFontSize(TEXT_SIZE.labelWide)
-    this.titleText.setPosition(left, 106)
+    this.titleText.setPosition(left, 106 + topShift)
     this.titleText.setFontSize(38)
     this.titleText.setWordWrapWidth(650)
-    this.subtitleText.setPosition(left, 164)
+    this.subtitleText.setPosition(left, 164 + topShift)
     this.subtitleText.setFontSize(TEXT_SIZE.bodyWide)
     this.subtitleText.setWordWrapWidth(560)
 
     const cardX = left
-    const cardY = 252
+    const cardY = 252 + topShift
     const cardW = 560
     const cardH = 190
     this.frame.fillStyle(COLORS.night900, 0.82)
@@ -194,8 +215,8 @@ export class TitleScene extends Phaser.Scene {
 
     const portraitW = 290
     const portraitH = 390
-    const portraitX = width - 238
-    const portraitBottom = height - 112
+    const portraitX = width - 238 - safeInsets.right
+    const portraitBottom = height - safeInsets.bottom - 112
     const source = this.mayor.texture.getSourceImage() as { width: number; height: number }
     const fit = fitSize(source.width, source.height, portraitW, portraitH)
     this.mayor.setDisplaySize(fit.width, fit.height)
@@ -210,7 +231,7 @@ export class TitleScene extends Phaser.Scene {
     this.frame.fillStyle(COLORS.night900, 0.62)
     this.frame.fillRect(portraitFrameX, portraitBottom + 4, portraitW + 36, 38)
 
-    const actionsY = height - 150
+    const actionsY = height - safeInsets.bottom - 150
     if (this.canResume) {
       this.resumeButton.setPosition(left + 110, actionsY)
       this.newButton.setPosition(left + 346, actionsY)
@@ -220,21 +241,22 @@ export class TitleScene extends Phaser.Scene {
     this.motionButton.setPosition(left + 110, actionsY + 62)
   }
 
-  private layoutNarrow(width: number, height: number): void {
-    const left = 24
-    this.kicker.setPosition(left, 46)
+  private layoutNarrow(width: number, height: number, safeInsets: SafeInsets): void {
+    const left = Math.max(24, safeInsets.left + 18)
+    const topShift = Math.max(0, safeInsets.top - 14)
+    this.kicker.setPosition(left, 46 + topShift)
     this.kicker.setFontSize(TEXT_SIZE.labelNarrow)
-    this.titleText.setPosition(left, 78)
+    this.titleText.setPosition(left, 78 + topShift)
     this.titleText.setFontSize(27)
-    this.titleText.setWordWrapWidth(width - 48)
-    this.subtitleText.setPosition(left, 126)
+    this.titleText.setWordWrapWidth(width - left - safeInsets.right - 24)
+    this.subtitleText.setPosition(left, 126 + topShift)
     this.subtitleText.setFontSize(TEXT_SIZE.bodyNarrow)
-    this.subtitleText.setWordWrapWidth(width - 48)
+    this.subtitleText.setWordWrapWidth(width - left - safeInsets.right - 24)
 
     const portraitW = 150
     const portraitH = 200
-    const portraitX = width - 92
-    const portraitBottom = 344
+    const portraitX = width - 92 - safeInsets.right
+    const portraitBottom = 344 + topShift
     const source = this.mayor.texture.getSourceImage() as { width: number; height: number }
     const fit = fitSize(source.width, source.height, portraitW, portraitH)
     this.mayor.setDisplaySize(fit.width, fit.height)
@@ -242,9 +264,9 @@ export class TitleScene extends Phaser.Scene {
     this.mayorLabel.setPosition(portraitX, portraitBottom + 8)
     this.mayorLabel.setFontSize(TEXT_SIZE.labelNarrow)
 
-    const cardX = 18
-    const cardY = 386
-    const cardW = width - 36
+    const cardX = safeInsets.left + 18
+    const cardY = 386 + topShift
+    const cardW = width - safeInsets.left - safeInsets.right - 36
     const cardH = 194
     this.frame.fillStyle(COLORS.night900, 0.88)
     this.frame.fillRect(cardX, cardY, cardW, cardH)
@@ -258,18 +280,28 @@ export class TitleScene extends Phaser.Scene {
     this.briefingText.setFontSize(TEXT_SIZE.bodyNarrow)
     this.briefingText.setWordWrapWidth(cardW - 36)
 
-    const actionsY = height - (this.canResume ? 194 : 136)
+    const actionsY = height - safeInsets.bottom - (this.canResume ? 194 : 136)
+    const buttonW = width - safeInsets.left - safeInsets.right - 48
     if (this.canResume) {
-      this.resumeButton.setSize(width - 48, 48)
-      this.resumeButton.setPosition(width / 2, actionsY)
-      this.newButton.setSize(width - 48, 48)
-      this.newButton.setPosition(width / 2, actionsY + 56)
-      this.motionButton.setPosition(width / 2, actionsY + 116)
+      this.resumeButton.setSize(buttonW, 48)
+      this.resumeButton.setPosition(width / 2 + (safeInsets.left - safeInsets.right) / 2, actionsY)
+      this.newButton.setSize(buttonW, 48)
+      this.newButton.setPosition(
+        width / 2 + (safeInsets.left - safeInsets.right) / 2,
+        actionsY + 56,
+      )
+      this.motionButton.setPosition(
+        width / 2 + (safeInsets.left - safeInsets.right) / 2,
+        actionsY + 116,
+      )
     } else {
-      this.newButton.setSize(width - 48, 48)
-      this.newButton.setPosition(width / 2, actionsY)
-      this.motionButton.setPosition(width / 2, actionsY + 60)
+      this.newButton.setSize(buttonW, 48)
+      this.newButton.setPosition(width / 2 + (safeInsets.left - safeInsets.right) / 2, actionsY)
+      this.motionButton.setPosition(
+        width / 2 + (safeInsets.left - safeInsets.right) / 2,
+        actionsY + 60,
+      )
     }
-    this.motionButton.setSize(width - 48, 36)
+    this.motionButton.setSize(buttonW, 44)
   }
 }

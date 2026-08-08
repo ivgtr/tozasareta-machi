@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { NO_INSETS, deviceClassOf, designSizeOf, toLogicalSafeInsets } from '../src/scene/layout'
+import {
+  NO_INSETS,
+  deviceClassOf,
+  designSizeOf,
+  guardSafeInsets,
+  toLogicalSafeInsets,
+} from '../src/scene/layout'
 import { computeRegions } from '../src/scene/regions'
 import { colorCss, colorNum } from '../src/scene/tokens'
 
@@ -33,6 +39,15 @@ describe('safe-area conversion', () => {
     expect(insets.right).toBe(0)
     expect(insets.top).toBeCloseTo((20 * 854) / 780)
     expect(insets.bottom).toBe(0)
+  })
+
+  it('safe-area が存在する辺だけ最低8pxの操作ガードを確保する', () => {
+    expect(guardSafeInsets({ top: 4, right: 0, bottom: 12, left: 1 })).toEqual({
+      top: 8,
+      right: 0,
+      bottom: 12,
+      left: 8,
+    })
   })
 })
 

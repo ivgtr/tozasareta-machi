@@ -110,10 +110,10 @@ export class HudBar extends Phaser.GameObjects.Container {
     this.setPosition(rect.x, rect.y)
     this.redrawFrame()
     if (deviceClass === 'wide') {
-      this.menuButton.setSize(76, 34)
+      this.menuButton.setSize(76, 44)
       this.menuButton.setLabel('メニュー')
-      this.logButton.setSize(64, 34)
-      this.undoButton.setSize(82, 34)
+      this.logButton.setSize(64, 44)
+      this.undoButton.setSize(82, 44)
       this.undoButton.setVisible(true)
       let x = rect.width - SPACING.sm
       for (const button of [this.menuButton, this.logButton, this.undoButton]) {
@@ -123,12 +123,16 @@ export class HudBar extends Phaser.GameObjects.Container {
       }
     } else {
       this.undoButton.setVisible(false)
-      this.logButton.setSize(48, 32)
+      this.logButton.setSize(52, 44)
       this.logButton.setLabel('記録')
-      this.menuButton.setSize(52, 32)
-      this.menuButton.setLabel('メニュ')
-      this.menuButton.setPosition(rect.width - 30, rect.height / 2)
-      this.logButton.setPosition(rect.width - 84, rect.height / 2)
+      this.menuButton.setSize(68, 44)
+      this.menuButton.setLabel('メニュー')
+      let x = rect.width - SPACING.sm
+      for (const button of [this.menuButton, this.logButton]) {
+        x -= button.buttonWidth
+        button.setPosition(x + button.buttonWidth / 2, rect.height / 2)
+        x -= SPACING.xs
+      }
     }
   }
 

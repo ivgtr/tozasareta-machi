@@ -29,7 +29,7 @@ export class PixelButton extends Phaser.GameObjects.Container {
 
   constructor(scene: Phaser.Scene, options: PixelButtonOptions) {
     super(scene)
-    this.innerWidth = options.width
+    this.innerWidth = Math.max(options.width, BUTTON.minTouchSize)
     this.variant = options.variant ?? 'default'
     this.selected = options.selected ?? false
     this.onAction = options.onAction
@@ -39,14 +39,18 @@ export class PixelButton extends Phaser.GameObjects.Container {
       trackingEm: BUTTON.trackingEm,
       ...(options.wordWrapWidth !== undefined ? { wordWrapWidth: options.wordWrapWidth } : {}),
     })
-    this.innerHeight = Math.max(options.height, Math.ceil(this.label.height) + BUTTON.labelVPad * 2)
+    this.innerHeight = Math.max(
+      options.height,
+      Math.ceil(this.label.height) + BUTTON.labelVPad * 2,
+      BUTTON.minTouchSize,
+    )
     this.label.setOrigin(0.5)
     this.add([this.bg, this.label])
     this.setInteractive(
       new Phaser.Geom.Rectangle(
-        -options.width / 2,
+        -this.innerWidth / 2,
         -this.innerHeight / 2,
-        options.width,
+        this.innerWidth,
         this.innerHeight,
       ),
       Phaser.Geom.Rectangle.Contains,
@@ -94,10 +98,15 @@ export class PixelButton extends Phaser.GameObjects.Container {
   }
 
   setSize(width: number, height: number): this {
-    this.innerWidth = width
-    this.innerHeight = height
+    this.innerWidth = Math.max(width, BUTTON.minTouchSize)
+    this.innerHeight = Math.max(height, BUTTON.minTouchSize)
     if (this.input) {
-      this.input.hitArea = new Phaser.Geom.Rectangle(-width / 2, -height / 2, width, height)
+      this.input.hitArea = new Phaser.Geom.Rectangle(
+        -this.innerWidth / 2,
+        -this.innerHeight / 2,
+        this.innerWidth,
+        this.innerHeight,
+      )
     }
     this.redraw()
     return this

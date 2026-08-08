@@ -1,5 +1,10 @@
 import Phaser from 'phaser'
-import type { DeviceClass } from '../layout'
+import {
+  NO_INSETS,
+  logicalSafeInsetsForCanvas,
+  type DeviceClass,
+  type SafeInsets,
+} from '../layout'
 import { COLORS, TEXT_SIZE } from '../tokens'
 import { drawArtSlot } from '../ui/art-slot'
 import { PixelButton } from '../ui/button'
@@ -24,6 +29,7 @@ export class FlowPresentation extends Phaser.GameObjects.Container {
   private deviceClass: DeviceClass = 'wide'
   private viewportWidth = 1280
   private viewportHeight = 720
+  private safeInsets: SafeInsets = NO_INSETS
   private currentKey: string | null = null
 
   constructor(scene: Phaser.Scene, callbacks: FlowPresentationCallbacks) {
@@ -34,7 +40,7 @@ export class FlowPresentation extends Phaser.GameObjects.Container {
     this.skipButton = new PixelButton(scene, {
       label: '結果を送る ▶▶',
       width: 154,
-      height: 36,
+      height: 44,
       variant: 'quiet',
       fontSize: TEXT_SIZE.labelWide,
       onAction: callbacks.onSkip,
@@ -58,6 +64,7 @@ export class FlowPresentation extends Phaser.GameObjects.Container {
     this.viewportWidth = width
     this.viewportHeight = height
     this.deviceClass = deviceClass
+    this.safeInsets = logicalSafeInsetsForCanvas(this.scene.game.canvas, width, height)
     this.currentKey = null
     this.backdrop.setInteractive(
       new Phaser.Geom.Rectangle(0, 0, width, height),
@@ -78,6 +85,11 @@ export class FlowPresentation extends Phaser.GameObjects.Container {
     const key = `${index}:${model.title}:${model.summary}`
     if (this.visible && this.currentKey === key) return
     this.currentKey = key
+    this.safeInsets = logicalSafeInsetsForCanvas(
+      this.scene.game.canvas,
+      this.viewportWidth,
+      this.viewportHeight,
+    )
     this.render(model, index, total, reduced)
   }
 
@@ -104,7 +116,7 @@ export class FlowPresentation extends Phaser.GameObjects.Container {
     const wide = this.deviceClass === 'wide'
     this.skipButton.setLabel('結果を送る ▶▶')
     this.skipButton.setPosition(panel.x + panel.width - (wide ? 94 : 82), panel.y + 30)
-    this.skipButton.setSize(wide ? 154 : 132, 36)
+    this.skipButton.setSize(wide ? 154 : 132, 44)
 
     const progress = pixelText(this.scene, `RESULT ${index + 1} / ${total}`, {
       fontSize: wide ? TEXT_SIZE.labelWide : TEXT_SIZE.labelNarrow,
@@ -289,9 +301,21 @@ export class FlowPresentation extends Phaser.GameObjects.Container {
   }
 
   private panelRect(): Phaser.Geom.Rectangle {
+    const safe = this.safeInsets
+    const innerWidth = this.viewportWidth - safe.left - safe.right
     if (this.deviceClass === 'wide') {
-      return new Phaser.Geom.Rectangle(34, this.viewportHeight - 188, this.viewportWidth - 68, 166)
+      return new Phaser.Geom.Rectangle(
+        safe.left + 34,
+        this.viewportHeight - safe.bottom - 188,
+        innerWidth - 68,
+        166,
+      )
     }
-    return new Phaser.Geom.Rectangle(8, this.viewportHeight - 260, this.viewportWidth - 16, 250)
+    return new Phaser.Geom.Rectangle(
+      safe.left + 8,
+      this.viewportHeight - safe.bottom - 260,
+      innerWidth - 16,
+      250,
+    )
   }
 }

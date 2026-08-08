@@ -35,6 +35,17 @@ export const NO_INSETS: SafeInsets = { top: 0, right: 0, bottom: 0, left: 0 }
 
 export const SCREEN_EDGE_GUARD = 8
 
+export function guardSafeInsets(insets: SafeInsets): SafeInsets {
+  const guard = (value: number): number =>
+    value > 0 ? Math.max(value, SCREEN_EDGE_GUARD) : 0
+  return {
+    top: guard(insets.top),
+    right: guard(insets.right),
+    bottom: guard(insets.bottom),
+    left: guard(insets.left),
+  }
+}
+
 export function readSafeInsets(): SafeInsets {
   if (typeof document === 'undefined' || typeof getComputedStyle === 'undefined') return NO_INSETS
   const probe = document.createElement('div')
@@ -76,4 +87,21 @@ export function toLogicalSafeInsets(
     top: Math.max(0, insets.top - topMargin) * scaleY,
     bottom: Math.max(0, insets.bottom - bottomMargin) * scaleY,
   }
+}
+
+export function logicalSafeInsetsForCanvas(
+  canvas: HTMLCanvasElement,
+  logicalWidth: number,
+  logicalHeight: number,
+): SafeInsets {
+  return guardSafeInsets(
+    toLogicalSafeInsets(
+      readSafeInsets(),
+      window.innerWidth,
+      window.innerHeight,
+      canvas.getBoundingClientRect(),
+      logicalWidth,
+      logicalHeight,
+    ),
+  )
 }

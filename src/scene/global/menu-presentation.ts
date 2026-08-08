@@ -2,7 +2,12 @@ import Phaser from 'phaser'
 import { BALANCE } from '../../game/data/balance'
 import type { GameState } from '../../game/types'
 import { getSettings, updateSettings } from '../../store'
-import type { DeviceClass } from '../layout'
+import {
+  NO_INSETS,
+  logicalSafeInsetsForCanvas,
+  type DeviceClass,
+  type SafeInsets,
+} from '../layout'
 import { COLORS, TEXT_SIZE } from '../tokens'
 import { PixelButton } from '../ui/button'
 import { pixelText } from '../ui/pixel-text'
@@ -28,6 +33,7 @@ export class MenuPresentation extends Phaser.GameObjects.Container {
   private viewportWidth = 1280
   private viewportHeight = 720
   private deviceClass: DeviceClass = 'wide'
+  private safeInsets: SafeInsets = NO_INSETS
   private currentState: GameState | null = null
   private openFlag = false
 
@@ -128,6 +134,7 @@ export class MenuPresentation extends Phaser.GameObjects.Container {
     this.viewportWidth = width
     this.viewportHeight = height
     this.deviceClass = deviceClass
+    this.safeInsets = logicalSafeInsetsForCanvas(this.scene.game.canvas, width, height)
     if (this.openFlag) this.layout()
   }
 
@@ -137,6 +144,11 @@ export class MenuPresentation extends Phaser.GameObjects.Container {
     this.updateStatus(state)
     this.motionButton.setLabel(this.motionLabel())
     this.motionButton.setSelected(getSettings().animations)
+    this.safeInsets = logicalSafeInsetsForCanvas(
+      this.scene.game.canvas,
+      this.viewportWidth,
+      this.viewportHeight,
+    )
     this.layout()
     this.setVisible(true)
   }
@@ -169,10 +181,15 @@ export class MenuPresentation extends Phaser.GameObjects.Container {
     const width = this.viewportWidth
     const height = this.viewportHeight
     const narrow = this.deviceClass === 'narrow'
-    const panelW = narrow ? width - 24 : 430
-    const panelH = narrow ? height - 28 : height - 48
-    const panelX = narrow ? 12 : width - panelW - 24
-    const panelY = narrow ? 14 : 24
+    const safe = this.safeInsets
+    const innerX = safe.left
+    const innerY = safe.top
+    const innerW = Math.max(1, width - safe.left - safe.right)
+    const innerH = Math.max(1, height - safe.top - safe.bottom)
+    const panelW = narrow ? Math.max(1, innerW - 24) : Math.min(430, Math.max(1, innerW - 48))
+    const panelH = narrow ? Math.max(1, innerH - 28) : Math.max(1, innerH - 48)
+    const panelX = narrow ? innerX + 12 : innerX + innerW - panelW - 24
+    const panelY = narrow ? innerY + 14 : innerY + 24
     const pad = narrow ? 22 : 30
     const contentW = panelW - pad * 2
 
@@ -211,14 +228,14 @@ export class MenuPresentation extends Phaser.GameObjects.Container {
 
     const buttonW = contentW
     const bottom = panelY + panelH - 36
-    this.restartButton.setSize(buttonW, 42)
-    this.restartButton.setPosition(panelX + panelW / 2, bottom - 21)
-    this.titleButton.setSize(buttonW, 42)
-    this.titleButton.setPosition(panelX + panelW / 2, bottom - 73)
-    this.motionButton.setSize(buttonW, 40)
-    this.motionButton.setPosition(panelX + panelW / 2, bottom - 125)
+    this.restartButton.setSize(buttonW, 44)
+    this.restartButton.setPosition(panelX + panelW / 2, bottom - 22)
+    this.titleButton.setSize(buttonW, 44)
+    this.titleButton.setPosition(panelX + panelW / 2, bottom - 76)
+    this.motionButton.setSize(buttonW, 44)
+    this.motionButton.setPosition(panelX + panelW / 2, bottom - 130)
     this.closeButton.setSize(buttonW, 46)
-    this.closeButton.setPosition(panelX + panelW / 2, bottom - 181)
+    this.closeButton.setPosition(panelX + panelW / 2, bottom - 187)
 
     if (this.currentState) this.updateStatus(this.currentState)
   }

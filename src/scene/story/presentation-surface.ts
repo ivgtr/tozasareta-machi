@@ -1,5 +1,10 @@
 import Phaser from 'phaser'
-import type { DeviceClass } from '../layout'
+import {
+  NO_INSETS,
+  logicalSafeInsetsForCanvas,
+  type DeviceClass,
+  type SafeInsets,
+} from '../layout'
 import { COLORS } from '../tokens'
 
 export interface PresentationRect {
@@ -17,6 +22,7 @@ export abstract class PresentationSurface extends Phaser.GameObjects.Container {
   protected viewportWidth = 1280
   protected viewportHeight = 720
   protected panel: PresentationRect = { x: 64, y: 48, width: 1152, height: 624 }
+  protected safeInsets: SafeInsets = NO_INSETS
   private openFlag = false
   private accent: number = COLORS.cyan
 
@@ -45,14 +51,8 @@ export abstract class PresentationSurface extends Phaser.GameObjects.Container {
     this.viewportWidth = width
     this.viewportHeight = height
     this.deviceClass = deviceClass
-    const marginX = deviceClass === 'wide' ? 56 : 12
-    const marginY = deviceClass === 'wide' ? 42 : 14
-    this.panel = {
-      x: marginX,
-      y: marginY,
-      width: width - marginX * 2,
-      height: height - marginY * 2,
-    }
+    this.safeInsets = logicalSafeInsetsForCanvas(this.scene.game.canvas, width, height)
+    this.updatePanel()
     this.backdrop.setInteractive(
       new Phaser.Geom.Rectangle(0, 0, width, height),
       Phaser.Geom.Rectangle.Contains,
@@ -72,6 +72,12 @@ export abstract class PresentationSurface extends Phaser.GameObjects.Container {
   protected begin(accent: number): void {
     this.openFlag = true
     this.accent = accent
+    this.safeInsets = logicalSafeInsetsForCanvas(
+      this.scene.game.canvas,
+      this.viewportWidth,
+      this.viewportHeight,
+    )
+    this.updatePanel()
     this.content.removeAll(true)
     this.redrawSurface(accent)
     this.setVisible(true)
@@ -111,5 +117,20 @@ export abstract class PresentationSurface extends Phaser.GameObjects.Container {
     g.lineStyle(1, COLORS.frameLo)
     g.strokeRect(x + 6, y + 6, width - 12, height - 12)
     this.content.add(g)
+  }
+
+  private updatePanel(): void {
+    const marginX = this.deviceClass === 'wide' ? 56 : 12
+    const marginY = this.deviceClass === 'wide' ? 42 : 14
+    const innerX = this.safeInsets.left
+    const innerY = this.safeInsets.top
+    const innerW = Math.max(1, this.viewportWidth - this.safeInsets.left - this.safeInsets.right)
+    const innerH = Math.max(1, this.viewportHeight - this.safeInsets.top - this.safeInsets.bottom)
+    this.panel = {
+      x: innerX + marginX,
+      y: innerY + marginY,
+      width: Math.max(1, innerW - marginX * 2),
+      height: Math.max(1, innerH - marginY * 2),
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { SCREEN_EDGE_GUARD, type DeviceClass, type SafeInsets } from './layout'
+import { guardSafeInsets, type DeviceClass, type SafeInsets } from './layout'
 
 export interface Rect {
   x: number
@@ -20,20 +20,17 @@ export const CONTROLS_HEIGHT = { wide: 128, narrow: 64 } as const
 export const WIDE_CONTROLS_WIDTH = 360
 export const WIDE_COMMAND_GAP = 8
 
-function edge(value: number): number {
-  return value > 0 ? Math.max(value, SCREEN_EDGE_GUARD) : 0
-}
-
 export function computeRegions(
   deviceClass: DeviceClass,
   width: number,
   height: number,
   insets: SafeInsets,
 ): Regions {
-  const left = edge(insets.left)
-  const right = edge(insets.right)
-  const top = edge(insets.top)
-  const bottom = edge(insets.bottom)
+  const safe = guardSafeInsets(insets)
+  const left = safe.left
+  const right = safe.right
+  const top = safe.top
+  const bottom = safe.bottom
   const innerX = left
   const innerW = width - left - right
   const innerH = height - top - bottom
