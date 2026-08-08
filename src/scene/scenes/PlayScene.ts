@@ -1,11 +1,16 @@
 import Phaser from 'phaser'
-import { KEYS, SCENE_EVENTS } from '../keys'
-import { COLORS } from '../tokens'
-import { deviceClassOf, readSafeInsets, toLogicalSafeInsets } from '../layout'
-import { computeRegions, type Regions } from '../regions'
-import { PresentationDirector } from '../presentation'
+import { autoAssign } from '../../game/actions'
 import { randomSeed } from '../../store'
-import { sharedStore, type SceneStore } from '../store-bridge'
+import { CharacterDeck } from '../character/character-deck'
+import { CharacterDragGhost } from '../character/character-drag-ghost'
+import { CharacterFocus } from '../character/character-focus'
+import { MenuPresentation } from '../global/menu-presentation'
+import { transitionToScene } from '../global/scene-transition'
+import { HudBar } from '../hud'
+import { KEYS, SCENE_EVENTS } from '../keys'
+import { CONFIRM_NEW_GAME } from '../labels'
+import { deviceClassOf, readSafeInsets, toLogicalSafeInsets } from '../layout'
+import { LogDrawer } from '../log-drawer'
 import {
   buildPlan,
   emptyPlan,
@@ -15,29 +20,26 @@ import {
   withRemove,
   type PlanState,
 } from '../plan'
-import { autoAssign } from '../../game/actions'
-import { deriveFacilityView } from '../town/facility-view'
-import { FACILITIES } from '../town/facilities'
-import { TOWN_BASE, type FacilityId } from '../town/layout'
-import { TownLayer } from '../town/town-layer'
-import { CharacterDeck } from '../character/character-deck'
-import { CharacterFocus } from '../character/character-focus'
-import { CharacterDragGhost } from '../character/character-drag-ghost'
-import { FacilityFocus } from '../planning/facility-focus'
-import { PlanningControls } from '../planning/planning-controls'
-import { HudBar } from '../hud'
-import { TASK_LABEL } from '../task-presentation'
-import { LogDrawer } from '../log-drawer'
-import { ConfirmOverlay, MenuOverlay } from '../menu'
-import { StoryPresentations, isStoryPresentation } from '../story/story-presentations'
 import { deriveFlowPresentation, type FlowPresentationModel } from '../playback/flow-model'
 import { FlowPresentation, flowAccent } from '../playback/flow-presentation'
 import { PlaybackController } from '../playback/playback'
 import { TownPlaybackFx } from '../playback/town-playback-fx'
+import { CommitConfirmPresentation } from '../planning/commit-confirm-presentation'
+import { FacilityFocus } from '../planning/facility-focus'
+import { PlanningControls } from '../planning/planning-controls'
+import { PresentationDirector } from '../presentation'
+import { computeRegions, type Regions } from '../regions'
+import { sharedStore, type SceneStore } from '../store-bridge'
+import { StoryPresentations, isStoryPresentation } from '../story/story-presentations'
+import { TASK_LABEL } from '../task-presentation'
+import { COLORS } from '../tokens'
+import { deriveFacilityView } from '../town/facility-view'
+import { FACILITIES } from '../town/facilities'
+import { TOWN_BASE, type FacilityId } from '../town/layout'
+import { TownLayer } from '../town/town-layer'
 import { TurnCoordinator } from '../turn-coordinator'
-import { UnitDragController } from '../unit-drag-controller'
-import { CONFIRM_NEW_GAME } from '../labels'
 import { DRAG_THRESHOLD } from '../ui/token'
+import { UnitDragController } from '../unit-drag-controller'
 
 export class PlayScene extends Phaser.Scene {
   private store!: SceneStore
@@ -56,8 +58,8 @@ export class PlayScene extends Phaser.Scene {
   private hud!: HudBar
   private controls!: PlanningControls
   private log!: LogDrawer
-  private menu!: MenuOverlay
-  private confirm!: ConfirmOverlay
+  private menu!: MenuPresentation
+  private confirm!: CommitConfirmPresentation
   private story!: StoryPresentations
   private flow!: FlowPresentation
   private lastBeatKey: string | null = null
@@ -119,7 +121,7 @@ export class PlayScene extends Phaser.Scene {
         this.clearPlan()
       },
       onLog: () => this.log.toggle(),
-      onMenu: () => this.menu.show(),
+      onMenu: () => this.menu.show(this.view()),
     })
     this.controls = new PlanningControls(this, {
       onAuto: () => {
@@ -145,18 +147,18 @@ export class PlayScene extends Phaser.Scene {
         this.refresh()
       },
     })
-    this.menu = new MenuOverlay(this, {
+    this.menu = new MenuPresentation(this, {
       onClose: () => this.menu.hide(),
       onBackToTitle: () => {
         this.menu.hide()
-        this.scene.start(KEYS.title)
+        transitionToScene(this, KEYS.title)
       },
       onRestart: () => {
         this.menu.hide()
         if (window.confirm(CONFIRM_NEW_GAME)) this.startNewGame()
       },
     })
-    this.confirm = new ConfirmOverlay(this, {
+    this.confirm = new CommitConfirmPresentation(this, {
       onConfirm: () => {
         this.confirm.hide()
         this.commit()
@@ -167,7 +169,7 @@ export class PlayScene extends Phaser.Scene {
       onConfirmBeat: () => this.playback.confirm(),
       onChoose: (optionId) => this.resolveChoice(optionId),
       onEndingRestart: () => this.startNewGame(),
-      onEndingTitle: () => this.scene.start(KEYS.title),
+      onEndingTitle: () => transitionToScene(this, KEYS.title),
     })
     this.flow = new FlowPresentation(this, {
       onSkip: () => this.playback.skipFlow(),
@@ -363,6 +365,7 @@ export class PlayScene extends Phaser.Scene {
       regions.hud.y + regions.hud.height + 8,
       Math.min(440, regions.hud.width - 16),
     )
+    this.menu.setViewport(width, height, deviceClass)
     this.story.setViewport(width, height, deviceClass)
     this.flow.setViewport(width, height, deviceClass)
   }
