@@ -13,6 +13,7 @@ export const AUDIO_CUES = [
   'threat',
   'boon',
   'arrival',
+  'death',
   'facility',
   'warning',
 ] as const
@@ -53,6 +54,7 @@ export const AUDIO_CUE_NOTES: Record<AudioCue, readonly AudioNote[]> = {
   threat: [note(165, 140, 0.055, 0, 'sawtooth'), note(156, 180, 0.05, 110, 'sawtooth')],
   boon: [note(523, 80, 0.04), note(659, 90, 0.04, 75), note(784, 150, 0.04, 160)],
   arrival: [note(294, 90, 0.04), note(440, 110, 0.045, 82), note(587, 180, 0.04, 184)],
+  death: [note(196, 180, 0.045, 0, 'triangle'), note(147, 300, 0.038, 130, 'triangle')],
   facility: [note(220, 45, 0.035, 0, 'triangle'), note(440, 60, 0.03, 35)],
   warning: [note(220, 90, 0.055), note(220, 90, 0.055, 145)],
 }

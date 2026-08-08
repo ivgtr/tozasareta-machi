@@ -45,6 +45,8 @@ export class PlaybackPresentationCoordinator {
       } else if (beat.kind === 'arrival') {
         this.townFx.playArrival()
         this.audio.play('arrival')
+      } else if (beat.kind === 'death') {
+        this.audio.play('death')
       } else if (beat.kind === 'event') {
         const tone = findEvent(beat.id)?.tone
         this.audio.play(tone === 'threat' ? 'threat' : tone === 'boon' ? 'boon' : 'normal-result')

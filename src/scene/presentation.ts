@@ -28,7 +28,7 @@ export interface PresentationFrame {
 }
 
 export function derivePresentationMode(input: PresentationInput): PresentationMode {
-  if (input.beat?.kind === 'event') return 'event'
+  if (input.beat?.kind === 'event' || input.beat?.kind === 'death') return 'event'
   if (input.beat?.kind === 'arrival') return 'arrival'
   if (input.beat?.kind === 'flow') return 'flow'
   if (input.state.phase === 'choice') return 'choice'

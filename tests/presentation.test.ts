@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { createInitialState } from '../src/game/state'
 import type { Effect } from '../src/game/types'
 import type { Beat } from '../src/scene/playback/beats'
 import {
@@ -30,6 +31,14 @@ function beat(kind: Beat['kind']): Beat {
     return { kind, source: effect.source, actorIds: [], effects: [effect] }
   }
   if (kind === 'event') return { kind, id: 'test_event', effects: [effect] }
+  if (kind === 'death') {
+    return {
+      kind,
+      cause: 'starvation',
+      unit: createInitialState(1).units[0]!,
+      effects: [effect],
+    }
+  }
   return { kind, unitId: 'u1', effects: [effect] }
 }
 
@@ -52,10 +61,12 @@ describe('derivePresentationMode', () => {
     const flow = input({ state: { phase: 'choice' }, beat: beat('flow') })
     const event = input({ state: { phase: 'ended' }, beat: beat('event') })
     const arrival = input({ state: { phase: 'choice' }, beat: beat('arrival') })
+    const death = input({ state: { phase: 'ended' }, beat: beat('death') })
 
     expect(derivePresentationMode(flow)).toBe('flow')
     expect(derivePresentationMode(event)).toBe('event')
     expect(derivePresentationMode(arrival)).toBe('arrival')
+    expect(derivePresentationMode(death)).toBe('event')
   })
 })
 
