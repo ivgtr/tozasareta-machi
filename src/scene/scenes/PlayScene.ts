@@ -9,6 +9,7 @@ import { MenuPresentation } from '../global/menu-presentation'
 import { transitionToScene } from '../global/scene-transition'
 import { HudBar } from '../hud'
 import { KEYS, SCENE_EVENTS } from '../keys'
+import { gameShortcutOf, type GameShortcut } from '../input/keyboard'
 import { CONFIRM_NEW_GAME } from '../labels'
 import { deviceClassOf, readSafeInsets, toLogicalSafeInsets } from '../layout'
 import { LogDrawer } from '../log-drawer'
@@ -245,21 +246,7 @@ export class PlayScene extends Phaser.Scene {
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => this.drag.pointerMove(pointer))
     this.input.on('pointerdown', () => void this.audio.unlock())
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => this.drag.pointerUp(pointer))
-    this.input.keyboard?.on('keydown-ESC', () => {
-      if (this.menu.isOpen) {
-        this.menu.hide()
-        return
-      }
-      if (this.log.isOpen) {
-        this.log.hide()
-        return
-      }
-      if (this.characterFocus.isOpen || this.facilityFocus.isOpen) {
-        this.selectedUnitId = null
-        this.selectedFacility = null
-        this.refresh()
-      }
-    })
+    this.input.keyboard?.on('keydown', (event: KeyboardEvent) => this.handleKeyboard(event))
     this.unsubscribe = this.store.subscribe(() => {
       this.selectedUnitId = null
       this.selectedFacility = null
@@ -287,6 +274,7 @@ export class PlayScene extends Phaser.Scene {
     if (this.busy) return
     const unit = this.store.get().state.units.find((candidate) => candidate.id === unitId)
     if (!unit) return
+    this.deck.clearKeyboardFocus()
     this.dragGhost.setUnit(unit)
     this.drag.pointerDown(unitId, worldX, worldY)
   }
@@ -302,6 +290,7 @@ export class PlayScene extends Phaser.Scene {
 
   private onFacilityTap(id: FacilityId): void {
     if (this.busy) return
+    this.deck.clearKeyboardFocus()
     const meta = FACILITIES[id]
     if (this.selectedUnitId && meta.tasks.length > 0) {
       const next = withMove(this.store.get().state, this.plan, this.selectedUnitId, meta.tasks[0]!)
@@ -386,6 +375,149 @@ export class PlayScene extends Phaser.Scene {
     this.audio.play('confirm')
     this.turns.resolveChoice(optionId)
     this.refresh()
+  }
+
+  private handleKeyboard(event: KeyboardEvent): void {
+    const shortcut = gameShortcutOf(event)
+    if (!shortcut) return
+    event.preventDefault()
+    void this.audio.unlock()
+    if (shortcut === 'escape') {
+      this.handleEscape()
+      return
+    }
+    if (shortcut === 'menu') {
+      this.handleMenuShortcut()
+      return
+    }
+    if (shortcut === 'activate') {
+      this.handleActivateShortcut()
+      return
+    }
+    if (shortcut === 'previous' || shortcut === 'next') {
+      this.handleDirectionalShortcut(shortcut)
+      return
+    }
+    if (shortcut === 'log') {
+      const canToggleLog =
+        !this.busy &&
+        !this.menu.isOpen &&
+        !this.confirm.isOpen &&
+        this.view().phase === 'planning' &&
+        !isStoryPresentation(this.presentation.mode)
+      if (!canToggleLog || !this.hud.triggerLogFromKeyboard()) this.audio.play('invalid')
+      return
+    }
+    if (!this.planningInputAvailable()) {
+      this.audio.play('invalid')
+      return
+    }
+    const handled =
+      shortcut === 'auto-assign'
+        ? this.controls.triggerAutoFromKeyboard()
+        : shortcut === 'commit'
+          ? this.controls.triggerCommitFromKeyboard()
+          : false
+    if (!handled) this.audio.play('invalid')
+  }
+
+  private handleEscape(): void {
+    if (this.menu.isOpen) {
+      this.audio.play('cancel')
+      this.menu.hide()
+      return
+    }
+    if (this.confirm.isOpen) {
+      this.audio.play('cancel')
+      this.confirm.hide()
+      return
+    }
+    if (this.log.isOpen) {
+      this.audio.play('cancel')
+      this.log.hide()
+      return
+    }
+    if (this.characterFocus.isOpen || this.facilityFocus.isOpen) {
+      this.audio.play('cancel')
+      this.selectedUnitId = null
+      this.selectedFacility = null
+      this.refresh()
+      return
+    }
+    if (this.deck.keyboardFocus) {
+      this.audio.play('cancel')
+      this.deck.clearKeyboardFocus()
+    }
+  }
+
+  private handleMenuShortcut(): void {
+    if (this.menu.isOpen) {
+      this.audio.play('cancel')
+      this.menu.hide()
+      return
+    }
+    if (this.busy || this.confirm.isOpen || this.view().phase === 'ended') {
+      this.audio.play('invalid')
+      return
+    }
+    this.log.hide()
+    if (!this.hud.triggerMenuFromKeyboard()) this.audio.play('invalid')
+  }
+
+  private handleActivateShortcut(): void {
+    if (this.menu.isOpen) {
+      this.audio.play('invalid')
+      return
+    }
+    if (this.confirm.isOpen) {
+      this.confirm.hide()
+      this.commit()
+      return
+    }
+    if (this.presentation.mode === 'event' || this.presentation.mode === 'arrival') {
+      this.story.confirmBeat()
+      return
+    }
+    if (this.presentation.mode === 'choice') {
+      if (!this.story.confirmChoiceSelection()) this.audio.play('invalid')
+      return
+    }
+    if (!this.planningInputAvailable()) {
+      this.audio.play('invalid')
+      return
+    }
+    const unitId = this.deck.activateKeyboardFocus()
+    if (unitId) this.selectUnit(unitId)
+    else this.audio.play('invalid')
+  }
+
+  private handleDirectionalShortcut(shortcut: Extract<GameShortcut, 'previous' | 'next'>): void {
+    const delta = shortcut === 'previous' ? -1 : 1
+    if (this.presentation.mode === 'choice') {
+      const optionId = this.story.moveChoiceSelection(delta)
+      this.audio.play(optionId ? 'select' : 'invalid')
+      return
+    }
+    if (!this.planningInputAvailable()) {
+      this.audio.play('invalid')
+      return
+    }
+    this.selectedUnitId = null
+    this.selectedFacility = null
+    const unitId = this.deck.moveKeyboardFocus(delta)
+    this.audio.play(unitId ? 'select' : 'invalid')
+    this.refresh()
+  }
+
+  private planningInputAvailable(): boolean {
+    return (
+      !this.busy &&
+      !this.menu.isOpen &&
+      !this.confirm.isOpen &&
+      !this.log.isOpen &&
+      this.view().phase === 'planning' &&
+      !isStoryPresentation(this.presentation.mode)
+    )
   }
 
   private selectedUnitAssigned(): boolean {

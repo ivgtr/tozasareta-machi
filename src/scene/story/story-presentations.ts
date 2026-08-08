@@ -20,8 +20,10 @@ export class StoryPresentations {
   private readonly choice: ChoicePresentation
   private readonly arrival: ArrivalPresentation
   private readonly ending: EndingPresentation
+  private readonly callbacks: StoryPresentationCallbacks
 
   constructor(scene: Phaser.Scene, callbacks: StoryPresentationCallbacks) {
+    this.callbacks = callbacks
     this.event = new EventPresentation(scene, { onConfirm: callbacks.onConfirmBeat })
     this.choice = new ChoicePresentation(scene, { onChoose: callbacks.onChoose })
     this.arrival = new ArrivalPresentation(scene, { onConfirm: callbacks.onConfirmBeat })
@@ -60,6 +62,18 @@ export class StoryPresentations {
     this.choice.hide()
     this.arrival.hide()
     this.ending.hide()
+  }
+
+  moveChoiceSelection(delta: -1 | 1): string | null {
+    return this.choice.moveKeyboardSelection(delta)
+  }
+
+  confirmChoiceSelection(): boolean {
+    return this.choice.confirmKeyboardSelection()
+  }
+
+  confirmBeat(): void {
+    this.callbacks.onConfirmBeat()
   }
 }
 

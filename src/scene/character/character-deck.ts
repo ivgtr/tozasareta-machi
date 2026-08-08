@@ -40,6 +40,7 @@ class CharacterCard extends Phaser.GameObjects.Container {
     width: number,
     height: number,
     selected: boolean,
+    focused: boolean,
     deviceClass: DeviceClass,
     onPointerDown: CharacterDeckCallbacks['onCharacterPointerDown'],
   ) {
@@ -50,15 +51,17 @@ class CharacterCard extends Phaser.GameObjects.Container {
     const visual = unitVisualState(unit)
     const border = selected
       ? COLORS.gold
-      : unit.condition === 'injured'
-        ? COLORS.red
-        : unit.unique
-          ? COLORS.amber
-          : COLORS.frameLo
+      : focused
+        ? COLORS.cyan
+        : unit.condition === 'injured'
+          ? COLORS.red
+          : unit.unique
+            ? COLORS.amber
+            : COLORS.frameLo
     const bg = scene.add.graphics()
     bg.fillStyle(COLORS.night900, away ? 0.72 : 0.94)
     bg.fillRect(0, 0, width, height)
-    bg.lineStyle(selected ? 3 : 2, border, away ? 0.6 : 1)
+    bg.lineStyle(selected || focused ? 3 : 2, border, away ? 0.6 : 1)
     bg.strokeRect(1, 1, width - 2, height - 2)
     if (unit.unique) {
       bg.fillStyle(COLORS.amber, away ? 0.5 : 1)
@@ -161,6 +164,7 @@ export class CharacterDeck extends Phaser.GameObjects.Container {
   private page = 0
   private lastEntries: RosterEntry[] = []
   private lastSelectedUnitId: string | null = null
+  private keyboardFocusedUnitId: string | null = null
 
   constructor(scene: Phaser.Scene, callbacks: CharacterDeckCallbacks) {
     super(scene)
@@ -200,8 +204,42 @@ export class CharacterDeck extends Phaser.GameObjects.Container {
   update(state: GameState, plan: PlanState, selectedUnitId: string | null): void {
     this.lastEntries = deriveCharacterRoster(state, plan)
     this.lastSelectedUnitId = selectedUnitId
+    if (!this.lastEntries.some((entry) => entry.unit.id === this.keyboardFocusedUnitId)) {
+      this.keyboardFocusedUnitId = null
+    }
     this.clampPage()
     this.render()
+  }
+
+  moveKeyboardFocus(delta: -1 | 1): string | null {
+    const eligible = this.lastEntries.filter((entry) => entry.status.kind !== 'expedition')
+    if (eligible.length === 0) return null
+    const current = eligible.findIndex((entry) => entry.unit.id === this.keyboardFocusedUnitId)
+    const next = current < 0 ? (delta > 0 ? 0 : eligible.length - 1) : current + delta
+    const entry = eligible[Phaser.Math.Wrap(next, 0, eligible.length)]
+    if (!entry) return null
+    this.keyboardFocusedUnitId = entry.unit.id
+    const rosterIndex = this.lastEntries.findIndex(
+      (candidate) => candidate.unit.id === entry.unit.id,
+    )
+    const { capacity } = this.paging()
+    this.page = Math.floor(rosterIndex / capacity)
+    this.render()
+    return entry.unit.id
+  }
+
+  activateKeyboardFocus(): string | null {
+    return this.keyboardFocusedUnitId
+  }
+
+  clearKeyboardFocus(): void {
+    if (!this.keyboardFocusedUnitId) return
+    this.keyboardFocusedUnitId = null
+    this.render()
+  }
+
+  get keyboardFocus(): string | null {
+    return this.keyboardFocusedUnitId
   }
 
   private redraw(): void {
@@ -265,6 +303,7 @@ export class CharacterDeck extends Phaser.GameObjects.Container {
         cardW,
         cardH,
         this.lastSelectedUnitId === entry.unit.id,
+        this.keyboardFocusedUnitId === entry.unit.id,
         this.deviceClass,
         this.callbacks.onCharacterPointerDown,
       )

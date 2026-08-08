@@ -145,6 +145,14 @@ export class HudBar extends Phaser.GameObjects.Container {
     else this.renderNarrow(d, state, alerts)
   }
 
+  triggerLogFromKeyboard(): boolean {
+    return this.logButton.triggerFromKeyboard()
+  }
+
+  triggerMenuFromKeyboard(): boolean {
+    return this.menuButton.triggerFromKeyboard()
+  }
+
   private redrawFrame(): void {
     const g = this.frame
     g.clear()

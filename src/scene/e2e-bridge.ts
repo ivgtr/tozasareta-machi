@@ -25,6 +25,8 @@ interface PlaySceneInternals {
   menu?: { isOpen: boolean; show: (state: GameState) => void; hide: () => void }
   confirm?: { isOpen: boolean }
   characterFocus?: { isOpen: boolean }
+  log?: { isOpen: boolean }
+  deck?: { keyboardFocus: string | null }
   playback?: {
     current: unknown | null
     cancel: () => void
@@ -47,10 +49,13 @@ interface E2ESnapshot {
   menuOpen: boolean
   confirmOpen: boolean
   characterFocusOpen: boolean
+  logOpen: boolean
   presentationMode: PresentationMode
   busy: boolean
   soundEnabled: boolean
   selectedUnitId: string | null
+  keyboardFocusedUnitId: string | null
+  plannedAssignments: number
   deviceClass: 'wide' | 'narrow'
   gameSize: { width: number; height: number }
   canvas: {
@@ -180,10 +185,16 @@ function snapshot(game: Phaser.Game): E2ESnapshot {
     menuOpen: play.menu?.isOpen ?? false,
     confirmOpen: play.confirm?.isOpen ?? false,
     characterFocusOpen: play.characterFocus?.isOpen ?? false,
+    logOpen: play.log?.isOpen ?? false,
     presentationMode: play.presentation?.mode ?? 'planning',
     busy: play.playback?.current != null,
     soundEnabled: getSettings().sound,
     selectedUnitId: play.selectedUnitId ?? null,
+    keyboardFocusedUnitId: play.deck?.keyboardFocus ?? null,
+    plannedAssignments: Object.values(play.plan?.placements ?? {}).reduce(
+      (total, ids) => total + (ids?.length ?? 0),
+      0,
+    ),
     deviceClass: deviceClassOf(window.innerWidth),
     gameSize: {
       width: Number(game.scale.gameSize.width),

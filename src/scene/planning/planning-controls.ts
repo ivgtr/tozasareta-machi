@@ -139,6 +139,14 @@ export class PlanningControls extends Phaser.GameObjects.Container {
     text.setVisible(this.deviceClass === 'wide')
   }
 
+  triggerAutoFromKeyboard(): boolean {
+    return this.autoButton.triggerFromKeyboard()
+  }
+
+  triggerCommitFromKeyboard(): boolean {
+    return this.commitButton.triggerFromKeyboard()
+  }
+
   private layoutWide(): void {
     const w = this.rect.width
     this.rationButton.setSize(104, 34)

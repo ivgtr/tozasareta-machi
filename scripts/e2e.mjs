@@ -364,6 +364,44 @@ try {
     )
   })
 
+  await test('主要Planning操作をキーボードだけで実行できる', async () => {
+    await withGame('keyboard-planning', {}, async (page) => {
+      await textBounds(page, '孤立した町の30日間')
+      await page.keyboard.press('Enter')
+      await page.waitForFunction(
+        (name) => globalThis[name]?.snapshot().activeScenes.includes('Play'),
+        BRIDGE,
+      )
+
+      await page.keyboard.press('ArrowRight')
+      await page.waitForFunction(
+        (name) => globalThis[name]?.snapshot().keyboardFocusedUnitId !== null,
+        BRIDGE,
+      )
+      await capture(page, 'keyboard-roster-focus')
+      await page.keyboard.press('Enter')
+      await page.waitForFunction((name) => globalThis[name]?.snapshot().characterFocusOpen, BRIDGE)
+      await page.keyboard.press('Escape')
+      await page.waitForFunction((name) => !globalThis[name]?.snapshot().characterFocusOpen, BRIDGE)
+
+      await page.keyboard.press('KeyA')
+      await page.waitForFunction(
+        (name) => globalThis[name]?.snapshot().plannedAssignments > 0,
+        BRIDGE,
+      )
+      await page.keyboard.press('KeyL')
+      await page.waitForFunction((name) => globalThis[name]?.snapshot().logOpen, BRIDGE)
+      await page.keyboard.press('Escape')
+      await page.waitForFunction((name) => !globalThis[name]?.snapshot().logOpen, BRIDGE)
+      await page.keyboard.press('KeyM')
+      await page.waitForFunction((name) => globalThis[name]?.snapshot().menuOpen, BRIDGE)
+      await page.keyboard.press('KeyM')
+      await page.waitForFunction((name) => !globalThis[name]?.snapshot().menuOpen, BRIDGE)
+      await page.keyboard.press('Space')
+      await page.waitForFunction((name) => globalThis[name]?.snapshot().busy, BRIDGE)
+    })
+  })
+
   await test('計画操作と施設フォーカスがPlanning画面で機能する', async () => {
     await withGame('planning-facility', {}, async (page) => {
       await startNewGame(page)
@@ -484,6 +522,22 @@ try {
           if (fixture.name === 'choice') await assertMinimumChoiceTargets(page)
           else await assertMinimumTouchTargets(page)
           await capture(page, `story-${fixture.name}-${layout.name}`)
+          if (layout.name === 'wide' && fixture.name === 'choice') {
+            await page.keyboard.press('ArrowRight')
+            await capture(page, 'story-choice-keyboard-focus-wide')
+            await page.keyboard.press('Enter')
+            await page.waitForFunction(
+              (name) => globalThis[name]?.snapshot().phase !== 'choice',
+              BRIDGE,
+            )
+          }
+          if (layout.name === 'wide' && (fixture.name === 'event' || fixture.name === 'arrival')) {
+            await page.keyboard.press('Enter')
+            await page.waitForFunction(
+              ({ name, mode }) => globalThis[name]?.snapshot().presentationMode !== mode,
+              { name: BRIDGE, mode: fixture.name },
+            )
+          }
         })
       }
     })

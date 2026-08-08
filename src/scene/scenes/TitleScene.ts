@@ -144,6 +144,16 @@ export class TitleScene extends Phaser.Scene {
       },
     })
 
+    this.input.keyboard?.on('keydown-ENTER', (event: KeyboardEvent) => {
+      if (event.repeat) return
+      event.preventDefault()
+      void this.audio.unlock()
+      const handled = this.canResume
+        ? this.resumeButton.triggerFromKeyboard()
+        : this.newButton.triggerFromKeyboard()
+      if (!handled) this.audio.play('invalid')
+    })
+
     this.layout()
     fadeInScene(this)
     this.game.events.on(SCENE_EVENTS.deviceClass, this.layout, this)

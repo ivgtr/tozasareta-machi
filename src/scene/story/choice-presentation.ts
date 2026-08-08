@@ -14,6 +14,7 @@ export class ChoiceCard extends Phaser.GameObjects.Container {
     option: ChoiceOption,
     width: number,
     height: number,
+    focused: boolean,
     onChoose: () => void,
   ) {
     super(scene)
@@ -38,14 +39,15 @@ export class ChoiceCard extends Phaser.GameObjects.Container {
     )
 
     const redraw = (hovered: boolean): void => {
+      const active = hovered || focused
       bg.clear()
-      bg.fillStyle(hovered ? COLORS.night600 : COLORS.night800)
+      bg.fillStyle(active ? COLORS.night600 : COLORS.night800)
       bg.fillRect(0, 0, width, height)
-      bg.lineStyle(2, hovered ? COLORS.gold : COLORS.frameLo)
+      bg.lineStyle(focused ? 3 : 2, focused ? COLORS.cyan : hovered ? COLORS.gold : COLORS.frameLo)
       bg.strokeRect(1, 1, width - 2, height - 2)
-      bg.fillStyle(hovered ? COLORS.gold : COLORS.amber)
+      bg.fillStyle(active ? COLORS.gold : COLORS.amber)
       bg.fillRect(0, 0, 6, height)
-      title.setColor(colorCss(hovered ? COLORS.ink : COLORS.gold))
+      title.setColor(colorCss(active ? COLORS.ink : COLORS.gold))
     }
     redraw(false)
     this.on('pointerover', () => redraw(true))
@@ -73,6 +75,8 @@ export class ChoicePresentation extends PresentationSurface {
   private page = 0
   private eventId: string | null = null
   private currentState: GameState | null = null
+  private keyboardIndex = -1
+  private currentOptions: ChoiceOption[] = []
 
   constructor(scene: Phaser.Scene, callbacks: ChoicePresentationCallbacks) {
     super(scene)
@@ -94,11 +98,35 @@ export class ChoicePresentation extends PresentationSurface {
     if (this.eventId !== event.id) {
       this.eventId = event.id
       this.page = 0
+      this.keyboardIndex = -1
     }
     const options = choiceOptions(state, event).filter((option) =>
       pending.optionIds.includes(option.id),
     )
+    this.currentOptions = options
     this.render(state, options)
+  }
+
+  moveKeyboardSelection(delta: -1 | 1): string | null {
+    if (this.currentOptions.length === 0) return null
+    const next =
+      this.keyboardIndex < 0
+        ? delta > 0
+          ? 0
+          : this.currentOptions.length - 1
+        : this.keyboardIndex + delta
+    this.keyboardIndex = Phaser.Math.Wrap(next, 0, this.currentOptions.length)
+    const perPage = this.deviceClass === 'wide' ? 6 : 4
+    this.page = Math.floor(this.keyboardIndex / perPage)
+    if (this.currentState) this.render(this.currentState, this.currentOptions)
+    return this.currentOptions[this.keyboardIndex]?.id ?? null
+  }
+
+  confirmKeyboardSelection(): boolean {
+    const option = this.currentOptions[this.keyboardIndex]
+    if (!option) return false
+    this.callbacks.onChoose(option.id)
+    return true
   }
 
   private render(state: GameState, options: ChoiceOption[]): void {
@@ -183,8 +211,13 @@ export class ChoicePresentation extends PresentationSurface {
     options.forEach((option, index) => {
       const col = index % 2
       const row = Math.floor(index / 2)
-      const card = new ChoiceCard(this.scene, option, cardW, cardH, () =>
-        this.callbacks.onChoose(option.id),
+      const card = new ChoiceCard(
+        this.scene,
+        option,
+        cardW,
+        cardH,
+        option.id === this.keyboardOptionId(),
+        () => this.callbacks.onChoose(option.id),
       )
       card.setPosition(gridX + col * (cardW + gap), artY + row * (cardH + gap))
       this.content.add(card)
@@ -231,8 +264,13 @@ export class ChoicePresentation extends PresentationSurface {
     const cardW = p.width - pad * 2
     const cardH = 92
     options.forEach((option, index) => {
-      const card = new ChoiceCard(this.scene, option, cardW, cardH, () =>
-        this.callbacks.onChoose(option.id),
+      const card = new ChoiceCard(
+        this.scene,
+        option,
+        cardW,
+        cardH,
+        option.id === this.keyboardOptionId(),
+        () => this.callbacks.onChoose(option.id),
       )
       card.setPosition(p.x + pad, listY + index * (cardH + 10))
       this.content.add(card)
@@ -277,6 +315,10 @@ export class ChoicePresentation extends PresentationSurface {
     prev.setPosition(right - 68, bottom - 20)
     next.setPosition(right - 20, bottom - 20)
     this.content.add([prev, next])
+  }
+
+  private keyboardOptionId(): string | null {
+    return this.currentOptions[this.keyboardIndex]?.id ?? null
   }
 
   override hide(): void {
