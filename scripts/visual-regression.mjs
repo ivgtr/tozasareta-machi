@@ -19,31 +19,32 @@ const UPDATE = process.env.UPDATE_VISUAL_BASELINES === '1'
 const PIXEL_COLOR_THRESHOLD = 0.5
 const MAX_DIFF_RATIO = 0.003
 
-const fixtures = [
-  'title',
-  'planning',
-  'planning-assigned',
-  'unit-focus',
-  'facility-focus',
-  'minor-result',
-  'normal-result',
-  'major-result',
-  'event',
-  'choice',
-  'arrival',
-  'ending',
-  'menu',
+const visualTargets = [
+  { fixture: 'title' },
+  { fixture: 'planning' },
+  {
+    fixture: 'planning-assigned',
+    clips: {
+      wide: { x: 450, y: 215, width: 390, height: 260 },
+      narrow: { x: 115, y: 285, width: 270, height: 190 },
+    },
+  },
+  { fixture: 'unit-focus' },
+  { fixture: 'facility-focus' },
+  { fixture: 'minor-result' },
+  { fixture: 'normal-result' },
+  { fixture: 'major-result' },
+  { fixture: 'event' },
+  { fixture: 'choice' },
+  { fixture: 'arrival' },
+  { fixture: 'ending' },
+  { fixture: 'menu' },
 ]
 
 const layouts = [
   { name: 'wide', viewport: { width: 1280, height: 720 } },
   { name: 'narrow', viewport: { width: 480, height: 854 } },
 ]
-
-const nativeComparisonClips = {
-  'planning-assigned-wide': { x: 350, y: 190, width: 500, height: 290 },
-  'planning-assigned-narrow': { x: 45, y: 270, width: 340, height: 210 },
-}
 
 const failures = []
 let server = null
@@ -121,29 +122,13 @@ async function showFixture(page, name) {
   await settle(page)
 }
 
-function comparisonImage(name, actualBuffer) {
-  const clip = nativeComparisonClips[name]
-  if (!clip) return actualBuffer
-
-  const source = PNG.sync.read(actualBuffer)
-  const target = new PNG({ width: clip.width, height: clip.height })
-  const rowBytes = clip.width * 4
-  for (let y = 0; y < clip.height; y += 1) {
-    const sourceStart = ((clip.y + y) * source.width + clip.x) * 4
-    const targetStart = y * rowBytes
-    source.data.copy(target.data, targetStart, sourceStart, sourceStart + rowBytes)
-  }
-  return PNG.sync.write(target)
-}
-
 async function compare(name, actualBuffer) {
   const baselinePath = path.join(BASELINE_DIR, `${name}.png`)
   const actualPath = path.join(OUTPUT_DIR, `${name}-actual.png`)
   await writeFile(actualPath, actualBuffer)
-  const comparisonBuffer = comparisonImage(name, actualBuffer)
 
   if (UPDATE) {
-    await writeFile(baselinePath, comparisonBuffer)
+    await writeFile(baselinePath, actualBuffer)
     process.stdout.write(`  updated ${name}\n`)
     return
   }
@@ -158,7 +143,7 @@ async function compare(name, actualBuffer) {
   }
 
   const baseline = PNG.sync.read(baselineBuffer)
-  const actual = PNG.sync.read(comparisonBuffer)
+  const actual = PNG.sync.read(actualBuffer)
   try {
     assert.equal(actual.width, baseline.width, `${name}: screenshot width changed`)
     assert.equal(actual.height, baseline.height, `${name}: screenshot height changed`)
@@ -224,7 +209,8 @@ try {
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded' })
     await page.waitForFunction((bridge) => Boolean(globalThis[bridge]), BRIDGE)
 
-    for (const fixture of fixtures) {
+    for (const target of visualTargets) {
+      const { fixture } = target
       if (fixture !== 'title') {
         const inPlay = await page.evaluate(
           (bridge) => globalThis[bridge].snapshot().activeScenes.includes('Play'),
@@ -243,7 +229,12 @@ try {
         }
       }
       await showFixture(page, fixture)
-      await compare(`${fixture}-${layout.name}`, await page.screenshot({ animations: 'disabled' }))
+      const clip = target.clips?.[layout.name]
+      const screenshot = await page.screenshot({
+        animations: 'disabled',
+        ...(clip ? { clip } : {}),
+      })
+      await compare(`${fixture}-${layout.name}`, screenshot)
     }
     await context.close()
   }
