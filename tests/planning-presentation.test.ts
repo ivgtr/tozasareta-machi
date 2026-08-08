@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/game/state'
 import { emptyPlan, withMove } from '../src/scene/plan'
-import { derivePlanningStatus } from '../src/scene/planning/model'
+import { derivePlanningForecast, derivePlanningStatus } from '../src/scene/planning/model'
 
 describe('derivePlanningStatus', () => {
   it('待機人数と配置コストを計画表示用に集約する', () => {
@@ -23,5 +23,32 @@ describe('derivePlanningStatus', () => {
     const status = derivePlanningStatus(state, plan)
     expect(status.procureAffordable).toBe(false)
     expect(status.plannedBudget).toBe(0)
+  })
+})
+
+describe('derivePlanningForecast', () => {
+  it('配置による確定差分と進行を集約する', () => {
+    const state = createInitialState(1)
+    const powerPlan = withMove(state, emptyPlan(), 'engineer', 'repair_power')!
+    const plan = withMove(state, powerPlan, 'farmer', 'restore_road')!
+    const forecast = derivePlanningForecast(state, plan)
+
+    expect(forecast.resources.power).toBeGreaterThan(0)
+    expect(forecast.resources.food).toBeGreaterThan(0)
+    expect(forecast.budget).toBe(-20)
+    expect(forecast.progress.restore_road).toBe(forecast.resources.food)
+  })
+
+  it('実行可能な調達だけを確定差分に含める', () => {
+    const rich = createInitialState(1)
+    const affordable = derivePlanningForecast(rich, { ...emptyPlan(), procure: true })
+    expect(affordable.budget).toBe(-15)
+    expect(affordable.stockpile).toBe(12)
+
+    const poor = { ...rich, budget: 0 }
+    expect(derivePlanningForecast(poor, { ...emptyPlan(), procure: true })).toMatchObject({
+      budget: 0,
+      stockpile: 0,
+    })
   })
 })
