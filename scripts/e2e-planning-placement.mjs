@@ -140,6 +140,13 @@ try {
   const roadAfter = await facilityPoint(page, 'road')
   assert.ok(Math.abs(roadAfter.x - roadBefore.x) <= 1, 'unit selection moved town horizontally')
   assert.ok(Math.abs(roadAfter.y - roadBefore.y) <= 1, 'unit selection moved town vertically')
+  const hq = await facilityPoint(page, 'hq')
+  await page.mouse.move(hq.x, hq.y)
+  await textBounds(page, '本部')
+  await textBounds(page, '配置不可')
+  assert.equal(await bridgeCall(page, 'textBounds', '発電設備'), null)
+  await page.mouse.move(roadAfter.x, roadAfter.y)
+  await textBounds(page, '配置可能')
   await clickPoint(page, roadAfter)
   await page.waitForFunction(
     (bridge) => globalThis[bridge]?.snapshot().plannedAssignments === 1,

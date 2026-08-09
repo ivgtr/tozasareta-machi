@@ -125,7 +125,7 @@ export class PlanningInteractionController {
       return
     }
     const candidate = this.candidate(unitId, facility)
-    this.ctx.town.setPlacementDropTarget(facility, isPlaceable(candidate.kind))
+    this.ctx.town.setPlacementDropTarget(facility, candidate)
   }
 
   clearDragTarget(): void {

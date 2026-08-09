@@ -8,6 +8,7 @@ import {
   project,
 } from '../src/scene/town/layout'
 import { deriveFacilityView, facilityAssetId } from '../src/scene/town/facility-view'
+import { facilityPlacementAlpha } from '../src/scene/town/facility-feedback'
 import {
   buildPlan,
   derivePlacementCandidate,
@@ -89,6 +90,16 @@ describe('deriveFacilityView', () => {
   it('アセットIDを導出する', () => {
     expect(facilityAssetId('power', 'low')).toBe('power-low')
     expect(facilityAssetId('road', 'collapsed')).toBe('road-collapsed')
+  })
+})
+
+describe('facility placement feedback', () => {
+  it('配置不能な施設だけをdim表示する', () => {
+    expect(facilityPlacementAlpha(null)).toBe(1)
+    expect(facilityPlacementAlpha({ kind: 'available' })).toBe(1)
+    expect(facilityPlacementAlpha({ kind: 'current' })).toBe(1)
+    expect(facilityPlacementAlpha({ kind: 'passive' })).toBe(0.48)
+    expect(facilityPlacementAlpha({ kind: 'blocked' })).toBe(0.48)
   })
 })
 
