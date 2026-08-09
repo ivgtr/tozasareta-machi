@@ -85,6 +85,10 @@ function centerY(bounds) {
   return bounds.y + bounds.height / 2
 }
 
+function right(bounds) {
+  return bounds.x + bounds.width
+}
+
 function assertAlignedRow(targets, message) {
   const [first, ...rest] = targets
   assert.ok(first, `${message}: no targets`)
@@ -94,11 +98,26 @@ function assertAlignedRow(targets, message) {
   }
 }
 
+function assertEvenHorizontalGaps(targets) {
+  const gaps = targets
+    .slice(1)
+    .map((target, index) => target.hitBounds.x - right(targets[index].hitBounds))
+  const [firstGap, ...rest] = gaps
+  assert.ok(firstGap > 0, `planning controls gap must be positive: ${JSON.stringify(gaps)}`)
+  for (const gap of rest) {
+    assert.ok(
+      Math.abs(gap - firstGap) <= 1,
+      `planning controls gaps must match: ${JSON.stringify(gaps)}`,
+    )
+  }
+}
+
 async function assertPlanningControls(page) {
   const ration = await buttonTarget(page, '配給 通常')
   const procure = await buttonTarget(page, '調達 OFF')
   const context = await buttonTarget(page, '自動配置')
   const commit = await buttonTarget(page, '今日を終える ▶')
+  const targets = [ration, procure, context, commit]
   assert.ok(
     Math.abs(ration.hitBounds.width - procure.hitBounds.width) <= 0.01,
     'secondary button width mismatch',
@@ -107,7 +126,15 @@ async function assertPlanningControls(page) {
     Math.abs(ration.hitBounds.width - context.hitBounds.width) <= 0.01,
     'secondary button width mismatch',
   )
-  assertAlignedRow([ration, procure, context, commit], 'planning controls must share one row')
+  assertAlignedRow(targets, 'planning controls must share one row')
+  assertEvenHorizontalGaps(targets)
+
+  const canvas = await page.locator('canvas').first().boundingBox()
+  assert.ok(canvas, 'game canvas bounds must be available')
+  assert.ok(
+    right(commit.hitBounds) <= canvas.x + canvas.width + 1,
+    `commit button overflows canvas: ${JSON.stringify({ commit: commit.hitBounds, canvas })}`,
+  )
 
   const forecast = await textBounds(page, '本日の見込', false)
   assert.ok(
