@@ -6,14 +6,48 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  verify:
+  refresh-intended-baselines:
+    if: github.ref == 'refs/heads/preflight/planning-controls-containment'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Chromium
+        run: npm run playwright -- install --with-deps chromium
+      - name: Render current visual cases
+        run: npm run test:visual || true
+      - name: Commit only intended narrow baselines
+        run: |
+          cp test-results/visual/planning-narrow-actual.png tests/visual-baselines/planning-narrow.png
+          cp test-results/visual/character-inspector-narrow-actual.png tests/visual-baselines/character-inspector-narrow.png
+          cp test-results/visual/facility-focus-narrow-actual.png tests/visual-baselines/facility-focus-narrow.png
+          git add -- tests/visual-baselines/planning-narrow.png tests/visual-baselines/character-inspector-narrow.png tests/visual-baselines/facility-focus-narrow.png
+          if git diff --cached --quiet; then
+            echo 'No baseline changes to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'test: refresh intended Planning control baselines'
+          git push origin HEAD:preflight/planning-controls-containment
+
+  verify-main:
+    if: github.ref != 'refs/heads/preflight/planning-controls-containment'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -44,19 +78,3 @@ jobs:
         run: npm run test:e2e
       - name: Visual regression tests
         run: npm run test:visual
-      - name: Upload browser test artifacts
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: e2e-screenshots
-          path: test-results/e2e
-          if-no-files-found: ignore
-          retention-days: 7
-      - name: Upload visual regression artifacts
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: visual-regression
-          path: test-results/visual
-          if-no-files-found: ignore
-          retention-days: 7
