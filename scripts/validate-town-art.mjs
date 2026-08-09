@@ -111,58 +111,10 @@ const CONTRACT = [
     height: 112,
     background: 'transparent',
   },
-  { path: 'token/mayor.png', width: 24, height: 32, background: 'transparent' },
-  { path: 'token/medic.png', width: 24, height: 32, background: 'transparent' },
-  { path: 'token/engineer.png', width: 24, height: 32, background: 'transparent' },
-  { path: 'token/farmer.png', width: 24, height: 32, background: 'transparent' },
-  {
-    path: 'token/recruit_workwear_a.png',
-    width: 24,
-    height: 32,
-    background: 'transparent',
-  },
-  {
-    path: 'token/recruit_workwear_b.png',
-    width: 24,
-    height: 32,
-    background: 'transparent',
-  },
-  {
-    path: 'token/recruit_utility_a.png',
-    width: 24,
-    height: 32,
-    background: 'transparent',
-  },
-  {
-    path: 'token/recruit_utility_b.png',
-    width: 24,
-    height: 32,
-    background: 'transparent',
-  },
-  {
-    path: 'token/recruit_care_a.png',
-    width: 24,
-    height: 32,
-    background: 'transparent',
-  },
-  {
-    path: 'token/recruit_care_b.png',
-    width: 24,
-    height: 32,
-    background: 'transparent',
-  },
-  {
-    path: 'token/recruit_townsfolk_a.png',
-    width: 24,
-    height: 32,
-    background: 'transparent',
-  },
-  {
-    path: 'token/recruit_townsfolk_b.png',
-    width: 24,
-    height: 32,
-    background: 'transparent',
-  },
+  { path: 'token/person_male_a.png', width: 24, height: 32, background: 'transparent' },
+  { path: 'token/person_male_b.png', width: 24, height: 32, background: 'transparent' },
+  { path: 'token/person_female_a.png', width: 24, height: 32, background: 'transparent' },
+  { path: 'token/person_female_b.png', width: 24, height: 32, background: 'transparent' },
 ]
 
 function listPngs(kind) {
@@ -202,8 +154,8 @@ const expected = CONTRACT.map((asset) => asset.path).sort()
 const actual = ['town', 'facility', 'token'].flatMap(listPngs).sort()
 const errors = []
 
-if (expected.length !== 25) {
-  errors.push(`contract must define exactly 25 assets, got ${expected.length}`)
+if (expected.length !== 17) {
+  errors.push(`contract must define exactly 17 assets, got ${expected.length}`)
 }
 
 if (JSON.stringify(actual) !== JSON.stringify(expected)) {
