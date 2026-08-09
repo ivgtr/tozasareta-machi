@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --write src/scene/input/play-scene-shortcuts.ts src/scene/planning/facility-focus.ts src/scene/planning/placement.ts src/scene/scenes/PlayScene.ts && git diff -- src/scene/input/play-scene-shortcuts.ts src/scene/planning/facility-focus.ts src/scene/planning/placement.ts src/scene/scenes/PlayScene.ts",
+    "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "playwright": "./scripts/playwright.sh",
     "art:validate": "node ./scripts/validate-town-art.mjs",

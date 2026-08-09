@@ -32,10 +32,7 @@ export interface PlaySceneShortcutContext {
   story: StoryPresentations
 }
 
-export function handlePlaySceneKeyboard(
-  event: KeyboardEvent,
-  ctx: PlaySceneShortcutContext,
-): void {
+export function handlePlaySceneKeyboard(event: KeyboardEvent, ctx: PlaySceneShortcutContext): void {
   const shortcut = gameShortcutOf(event)
   if (!shortcut) return
   event.preventDefault()

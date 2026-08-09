@@ -106,8 +106,7 @@ export class PlayScene extends Phaser.Scene {
     this.townMask = new Phaser.GameObjects.Graphics(this)
     this.town = new TownLayer(this, {
       onFacilityTap: (id) => this.planningInteraction.facilityTap(id),
-      onTokenPointerDown: (unitId, x, y) =>
-        this.planningInteraction.beginUnitDrag(unitId, x, y),
+      onTokenPointerDown: (unitId, x, y) => this.planningInteraction.beginUnitDrag(unitId, x, y),
     })
     this.playbackFx = new TownPlaybackFx(this)
     const townGeometryMask = this.townMask.createGeometryMask()

@@ -138,14 +138,7 @@ export class TownAmbience extends Phaser.GameObjects.Container {
   private drawWarehouseCues(g: Phaser.GameObjects.Graphics, model: TownAmbienceModel): void {
     const plot = plotOf('warehouse')
     this.drawCrates(g, plot.x - 25, plot.y - 24, model.supplies.foodCrates, COLORS.amber, false)
-    this.drawCrates(
-      g,
-      plot.x - 4,
-      plot.y - 25,
-      model.supplies.reserveCrates,
-      COLORS.cyan,
-      true,
-    )
+    this.drawCrates(g, plot.x - 4, plot.y - 25, model.supplies.reserveCrates, COLORS.cyan, true)
   }
 
   private drawCrates(
@@ -378,11 +371,7 @@ export class TownAmbience extends Phaser.GameObjects.Container {
     }
   }
 
-  private drawRainLayer(
-    g: Phaser.GameObjects.Graphics,
-    count: number,
-    foreground: boolean,
-  ): void {
+  private drawRainLayer(g: Phaser.GameObjects.Graphics, count: number, foreground: boolean): void {
     g.clear()
     g.lineStyle(1, foreground ? COLORS.frameHi : COLORS.cyan, foreground ? 0.5 : 0.26)
 
