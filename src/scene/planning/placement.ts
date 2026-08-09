@@ -9,8 +9,13 @@ export type PlanningIntent =
   | { kind: 'inspect-facility'; facilityId: FacilityId }
   | { kind: 'choose-unit-for-facility'; facilityId: FacilityId }
 
+type WithFacility<C extends PlacementCandidate> = C extends unknown
+  ? C & { facility: FacilityId }
+  : never
+
 export type FacilityPlacementCandidate =
-  { kind: 'passive'; facility: FacilityId } | (PlacementCandidate & { facility: FacilityId })
+  | { kind: 'passive'; facility: FacilityId }
+  | WithFacility<PlacementCandidate>
 
 export type FacilityPlacementMap = Record<FacilityId, FacilityPlacementCandidate>
 
