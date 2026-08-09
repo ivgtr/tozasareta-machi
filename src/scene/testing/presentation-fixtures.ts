@@ -9,6 +9,7 @@ export const PRESENTATION_FIXTURE_NAMES = [
   'planning',
   'planning-assigned',
   'unit-focus',
+  'character-inspector',
   'facility-focus',
   'minor-result',
   'normal-result',
@@ -33,6 +34,7 @@ export interface PresentationFixture {
   plan?: PlanState
   scene: 'title' | 'play'
   menuOpen?: boolean
+  inspectedUnitId?: string
 }
 
 const SEED = 190010
@@ -88,13 +90,14 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
       },
     }
   }
-  if (name === 'unit-focus') {
+  if (name === 'unit-focus' || name === 'character-inspector') {
     return {
       name,
       state,
       scene: 'play',
       planningIntent: { kind: 'place-unit', unitId: firstUnitId },
       plan: { placements: { restore_road: [firstUnitId] }, ration: false, procure: false },
+      inspectedUnitId: name === 'character-inspector' ? firstUnitId : undefined,
     }
   }
   if (name === 'facility-focus') {
@@ -192,6 +195,7 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
 
 export function fixturePresentationMode(name: PresentationFixtureName): string {
   if (name === 'planning-assigned') return 'planning'
+  if (name === 'character-inspector') return 'unit-focus'
   if (name.endsWith('-result')) return 'flow'
   return name
 }

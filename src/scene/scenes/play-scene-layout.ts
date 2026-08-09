@@ -1,5 +1,6 @@
 import type Phaser from 'phaser'
 import type { CharacterDeck } from '../character/character-deck'
+import type { CharacterInspector } from '../character/character-inspector'
 import type { PlacementStatus } from '../planning/placement-status'
 import type { HudBar } from '../hud'
 import { deviceClassOf, readSafeInsets, toLogicalSafeInsets } from '../layout'
@@ -21,6 +22,7 @@ export interface PlaySceneLayoutContext {
   hud: HudBar
   controls: PlanningControls
   deck: CharacterDeck
+  characterInspector: CharacterInspector
   placementStatus: PlacementStatus
   facilityFocus: FacilityFocus
   log: LogDrawer
@@ -65,6 +67,7 @@ export function applyPlaySceneLayout(ctx: PlaySceneLayoutContext): Regions {
     deviceClass,
   )
   ctx.placementStatus.setBounds(regions.town, deviceClass)
+  ctx.characterInspector.setBounds(regions.town, deviceClass)
   ctx.facilityFocus.setBounds(regions.town, deviceClass)
   ctx.log.setAnchor(
     regions.hud.x + 8,

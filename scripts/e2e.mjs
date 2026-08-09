@@ -203,6 +203,11 @@ async function clickText(page, text, exact = true) {
   await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
 }
 
+async function tapText(page, text, exact = true) {
+  const bounds = await textBounds(page, text, exact)
+  await page.touchscreen.tap(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
+}
+
 async function clickFirstUnit(page) {
   const bounds = await firstUnitBounds(page)
   await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
@@ -391,24 +396,30 @@ try {
     )
   })
 
-  await test('人物フォーカスを閉じた後に再表示できる', async () => {
-    await withGame('character-focus', {}, async (page) => {
+  await test('配置選択を保ったまま人物詳細を開閉できる', async () => {
+    await withGame('character-inspector', {}, async (page) => {
       await startNewGame(page)
       await clickFirstUnit(page)
-      await page.waitForFunction((name) => globalThis[name]?.snapshot().characterFocusOpen, BRIDGE)
+      await page.waitForFunction((name) => globalThis[name]?.snapshot().placementStatusOpen, BRIDGE)
       await page.waitForFunction(
         (name) => globalThis[name]?.snapshot().presentationMode === 'unit-focus',
         BRIDGE,
       )
-      await capture(page, 'character-focus-first-open')
+      await capture(page, 'placement-status-open')
 
-      await clickText(page, '閉じる')
-      await page.waitForFunction((name) => !globalThis[name]?.snapshot().characterFocusOpen, BRIDGE)
-      await clickFirstUnit(page)
-      await page.waitForFunction((name) => globalThis[name]?.snapshot().characterFocusOpen, BRIDGE)
-      await capture(page, 'character-focus-second-open')
+      await clickText(page, '詳細')
+      await page.waitForFunction(
+        (name) => globalThis[name]?.snapshot().characterInspectorOpen,
+        BRIDGE,
+      )
+      await capture(page, 'character-inspector-open')
       await page.keyboard.press('Escape')
-      await page.waitForFunction((name) => !globalThis[name]?.snapshot().characterFocusOpen, BRIDGE)
+      await page.waitForFunction(
+        (name) => !globalThis[name]?.snapshot().characterInspectorOpen,
+        BRIDGE,
+      )
+      assert.ok(await optionalTextBounds(page, '配置先を選択'))
+      assert.ok(await page.evaluate((name) => globalThis[name]?.snapshot().selectedUnitId, BRIDGE))
     })
   })
 
@@ -537,9 +548,9 @@ try {
     }
   })
 
-  await test('タッチ操作で人物フォーカスを開ける', async () => {
+  await test('タッチ操作で配置状態と人物詳細を開ける', async () => {
     await withGame(
-      'touch-character-focus',
+      'touch-character-inspector',
       { viewport: { width: 600, height: 900 }, hasTouch: true },
       async (page) => {
         await startNewGame(page)
@@ -548,8 +559,13 @@ try {
           (name) => globalThis[name]?.snapshot().presentationMode === 'unit-focus',
           BRIDGE,
         )
+        await tapText(page, '詳細')
+        await page.waitForFunction(
+          (name) => globalThis[name]?.snapshot().characterInspectorOpen,
+          BRIDGE,
+        )
         await assertMinimumTouchTargets(page)
-        await capture(page, 'touch-character-focus')
+        await capture(page, 'touch-character-inspector')
       },
     )
   })
@@ -570,9 +586,12 @@ try {
       )
       await capture(page, 'keyboard-roster-focus')
       await page.keyboard.press('Enter')
-      await page.waitForFunction((name) => globalThis[name]?.snapshot().characterFocusOpen, BRIDGE)
+      await page.waitForFunction((name) => globalThis[name]?.snapshot().placementStatusOpen, BRIDGE)
       await page.keyboard.press('Escape')
-      await page.waitForFunction((name) => !globalThis[name]?.snapshot().characterFocusOpen, BRIDGE)
+      await page.waitForFunction(
+        (name) => !globalThis[name]?.snapshot().placementStatusOpen,
+        BRIDGE,
+      )
 
       await page.keyboard.press('KeyA')
       await page.waitForFunction(

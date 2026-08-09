@@ -28,6 +28,8 @@ interface PlaySceneInternals {
   menu?: { isOpen: boolean; show: (state: GameState) => void; hide: () => void }
   confirm?: { isOpen: boolean }
   log?: { isOpen: boolean }
+  characterInspector?: { isOpen: boolean }
+  placementStatus?: { isOpen: boolean }
   deck?: { keyboardFocus: string | null }
   playback?: {
     current: unknown | null
@@ -37,6 +39,7 @@ interface PlaySceneInternals {
   }
   presentation?: { mode: PresentationMode }
   planningIntent?: PlanningIntent
+  inspectedUnitId?: string | null
   plan?: PlanState
   startNewGame?: () => void
   refresh?: () => void
@@ -49,7 +52,8 @@ interface E2ESnapshot {
   historyLength: number
   menuOpen: boolean
   confirmOpen: boolean
-  characterFocusOpen: boolean
+  characterInspectorOpen: boolean
+  placementStatusOpen: boolean
   logOpen: boolean
   presentationMode: PresentationMode
   busy: boolean
@@ -363,7 +367,8 @@ function snapshot(game: Phaser.Game): E2ESnapshot {
     historyLength: store.history.length,
     menuOpen: play.menu?.isOpen ?? false,
     confirmOpen: play.confirm?.isOpen ?? false,
-    characterFocusOpen: play.presentation?.mode === 'unit-focus',
+    characterInspectorOpen: play.characterInspector?.isOpen ?? false,
+    placementStatusOpen: play.placementStatus?.isOpen ?? false,
     logOpen: play.log?.isOpen ?? false,
     presentationMode: play.presentation?.mode ?? 'planning',
     busy: play.playback?.current != null,
@@ -410,6 +415,7 @@ function showFixture(game: Phaser.Game, name: PresentationFixtureName): void {
   play.playback?.cancel()
   play.menu?.hide()
   play.planningIntent = fixture.planningIntent ?? { kind: 'none' }
+  play.inspectedUnitId = fixture.inspectedUnitId ?? null
   play.plan = fixture.plan ?? emptyPlan()
   if (fixture.beat && fixture.baseState) {
     play.playback?.start(fixture.baseState, fixture.beat.effects, fixture.playbackContext)

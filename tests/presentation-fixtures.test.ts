@@ -56,8 +56,12 @@ describe('presentation fixtures', () => {
 
   it('focus fixtures share a deterministic assignment', () => {
     const unit = buildPresentationFixture('unit-focus')
+    const inspector = buildPresentationFixture('character-inspector')
     const facility = buildPresentationFixture('facility-focus')
     expect(unit.plan).toEqual(facility.plan)
+    expect(inspector.plan).toEqual(unit.plan)
+    expect(inspector.inspectedUnitId).toBe(inspector.state.units[0]?.id)
+    expect(fixturePresentationMode('character-inspector')).toBe('unit-focus')
     expect(facility.plan?.placements.restore_road).toEqual([facility.state.units[0]?.id])
   })
 })

@@ -1,5 +1,6 @@
 import type { AudioDirector } from '../audio/audio-director'
 import type { CharacterDeck } from '../character/character-deck'
+import type { CharacterInspector } from '../character/character-inspector'
 import type { PlacementStatus } from '../planning/placement-status'
 import type { MenuPresentation } from '../global/menu-presentation'
 import type { HudBar } from '../hud'
@@ -16,6 +17,7 @@ export interface PlaySceneShortcutContext {
   isBusy: () => boolean
   phase: () => string
   clearPlanningIntent: () => void
+  closeCharacterInspector: () => void
   refresh: () => void
   commit: () => void
   selectUnit: (unitId: string) => void
@@ -24,6 +26,7 @@ export interface PlaySceneShortcutContext {
   confirm: CommitConfirmPresentation
   log: LogDrawer
   placementStatus: PlacementStatus
+  characterInspector: CharacterInspector
   facilityFocus: FacilityFocus
   hud: HudBar
   controls: PlanningControls
@@ -81,6 +84,12 @@ function handleEscape(ctx: PlaySceneShortcutContext): void {
   if (ctx.log.isOpen) {
     ctx.audio.play('cancel')
     ctx.log.hide()
+    return
+  }
+  if (ctx.characterInspector.isOpen) {
+    ctx.audio.play('cancel')
+    ctx.closeCharacterInspector()
+    ctx.refresh()
     return
   }
   if (ctx.placementStatus.isOpen || ctx.facilityFocus.isOpen) {
@@ -162,6 +171,7 @@ function planningInputAvailable(ctx: PlaySceneShortcutContext): boolean {
     !ctx.menu.isOpen &&
     !ctx.confirm.isOpen &&
     !ctx.log.isOpen &&
+    !ctx.characterInspector.isOpen &&
     ctx.phase() === 'planning' &&
     !isStoryPresentation(ctx.presentation.mode)
   )

@@ -4,6 +4,7 @@ import { randomSeed } from '../../store'
 import { audioDirectorFor, type AudioDirector } from '../audio/audio-director'
 import { CharacterDeck } from '../character/character-deck'
 import { CharacterDragGhost } from '../character/character-drag-ghost'
+import { CharacterInspector } from '../character/character-inspector'
 import { MenuPresentation } from '../global/menu-presentation'
 import { transitionToScene } from '../global/scene-transition'
 import { HudBar } from '../hud'
@@ -61,6 +62,7 @@ export class PlayScene extends Phaser.Scene {
   private townMask!: Phaser.GameObjects.Graphics
   private deck!: CharacterDeck
   private placementStatus!: PlacementStatus
+  private characterInspector!: CharacterInspector
   private facilityFocus!: FacilityFocus
   private hud!: HudBar
   private controls!: PlanningControls
@@ -74,6 +76,7 @@ export class PlayScene extends Phaser.Scene {
   private townViewport!: PlayTownViewportController
   private readonly playback = new PlaybackController()
   private readonly presentation = new PresentationDirector()
+  private inspectedUnitId: string | null = null
   private unsubscribe: (() => void) | null = null
 
   constructor() {
@@ -120,6 +123,20 @@ export class PlayScene extends Phaser.Scene {
       onClose: () => {
         this.audio.play('cancel')
         this.planningIntent = { kind: 'none' }
+        this.refresh()
+      },
+      onInspect: () => {
+        const unitId = placementUnitId(this.planningIntent)
+        if (!unitId) return
+        this.audio.play('select')
+        this.inspectedUnitId = unitId
+        this.refresh()
+      },
+    })
+    this.characterInspector = new CharacterInspector(this, {
+      onClose: () => {
+        this.audio.play('cancel')
+        this.inspectedUnitId = null
         this.refresh()
       },
     })
@@ -262,6 +279,7 @@ export class PlayScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => this.handleKeyboard(event))
     this.unsubscribe = this.store.subscribe(() => {
       this.planningIntent = { kind: 'none' }
+      this.inspectedUnitId = null
       this.refresh()
     })
     this.game.events.on(SCENE_EVENTS.deviceClass, this.layout, this)
@@ -318,6 +336,7 @@ export class PlayScene extends Phaser.Scene {
   private clearPlan(): void {
     this.plan = emptyPlan()
     this.planningIntent = { kind: 'none' }
+    this.inspectedUnitId = null
     this.drag.cancel()
   }
 
@@ -335,6 +354,9 @@ export class PlayScene extends Phaser.Scene {
       clearPlanningIntent: () => {
         this.planningIntent = { kind: 'none' }
       },
+      closeCharacterInspector: () => {
+        this.inspectedUnitId = null
+      },
       refresh: () => this.refresh(),
       commit: () => this.commit(),
       selectUnit: (unitId) => this.planningInteraction.selectUnit(unitId),
@@ -343,6 +365,7 @@ export class PlayScene extends Phaser.Scene {
       confirm: this.confirm,
       log: this.log,
       placementStatus: this.placementStatus,
+      characterInspector: this.characterInspector,
       facilityFocus: this.facilityFocus,
       hud: this.hud,
       controls: this.controls,
@@ -372,6 +395,7 @@ export class PlayScene extends Phaser.Scene {
       controls: this.controls,
       deck: this.deck,
       placementStatus: this.placementStatus,
+      characterInspector: this.characterInspector,
       facilityFocus: this.facilityFocus,
       log: this.log,
       menu: this.menu,
@@ -421,6 +445,11 @@ export class PlayScene extends Phaser.Scene {
     })
     this.deck.update(view, this.plan, unitId)
 
+    const inspectedUnit = this.inspectedUnitId
+      ? view.units.find((unit) => unit.id === this.inspectedUnitId)
+      : undefined
+    if (this.inspectedUnitId && !inspectedUnit) this.inspectedUnitId = null
+
     const selectedUnit =
       frame.mode === 'unit-focus' ? view.units.find((unit) => unit.id === unitId) : undefined
     if (selectedUnit) {
@@ -431,6 +460,16 @@ export class PlayScene extends Phaser.Scene {
       )
     } else {
       this.placementStatus.hide()
+    }
+
+    if (inspectedUnit && frame.mode === 'unit-focus') {
+      const assignment = assignedTask(this.plan, inspectedUnit.id) ?? '待機中'
+      this.characterInspector.show(
+        inspectedUnit,
+        assignment === '待機中' ? assignment : TASK_LABEL[assignment],
+      )
+    } else {
+      this.characterInspector.hide()
     }
 
     if (frame.mode === 'facility-focus' && facilityId) {

@@ -9,12 +9,14 @@ import { pixelText } from '../ui/pixel-text'
 
 export interface PlacementStatusCallbacks {
   onClose: () => void
+  onInspect: () => void
 }
 
 export class PlacementStatus extends Phaser.GameObjects.Container {
   private readonly frame: Phaser.GameObjects.Graphics
   private readonly content: Phaser.GameObjects.Container
   private readonly closeButton: PixelButton
+  private readonly inspectButton: PixelButton
   private panelWidth = 0
   private panelHeight = 0
   private openFlag = false
@@ -31,17 +33,26 @@ export class PlacementStatus extends Phaser.GameObjects.Container {
       fontSize: TEXT_SIZE.labelWide,
       onAction: callbacks.onClose,
     })
-    this.add([this.frame, this.content, this.closeButton])
+    this.inspectButton = new PixelButton(scene, {
+      label: '詳細',
+      width: 64,
+      height: 44,
+      variant: 'quiet',
+      fontSize: TEXT_SIZE.labelWide,
+      onAction: callbacks.onInspect,
+    })
+    this.add([this.frame, this.content, this.inspectButton, this.closeButton])
     this.setDepth(700)
     this.setVisible(false)
     scene.add.existing(this)
   }
 
   setBounds(town: Rect, deviceClass: DeviceClass): void {
-    this.panelWidth = deviceClass === 'wide' ? 320 : Math.min(300, town.width - 24)
-    this.panelHeight = deviceClass === 'wide' ? 84 : 78
+    this.panelWidth = deviceClass === 'wide' ? 390 : Math.min(360, town.width - 24)
+    this.panelHeight = deviceClass === 'wide' ? 94 : 90
     this.setPosition(town.x + town.width - this.panelWidth - 16, town.y + 16)
-    this.closeButton.setPosition(this.panelWidth - 44, this.panelHeight / 2)
+    this.inspectButton.setPosition(this.panelWidth - 112, this.panelHeight / 2)
+    this.closeButton.setPosition(this.panelWidth - 40, this.panelHeight / 2)
     this.redrawFrame()
   }
 
@@ -85,7 +96,7 @@ export class PlacementStatus extends Phaser.GameObjects.Container {
     const name = pixelText(this.scene, unit.name, {
       fontSize: TEXT_SIZE.bodyWide,
       color: COLORS.gold,
-      wordWrapWidth: this.panelWidth - 142,
+      wordWrapWidth: this.panelWidth - 202,
     })
     name.setPosition(68, 12)
     d.add(name)
@@ -93,17 +104,17 @@ export class PlacementStatus extends Phaser.GameObjects.Container {
     const status = pixelText(this.scene, `配置先を選択  /  ${assignmentLabel}`, {
       fontSize: TEXT_SIZE.labelWide,
       color: COLORS.ink,
-      wordWrapWidth: this.panelWidth - 142,
+      wordWrapWidth: this.panelWidth - 202,
     })
     status.setPosition(68, 36)
     d.add(status)
 
-    const guide = pixelText(this.scene, '緑の施設をクリック / ドラッグでも配置', {
+    const guide = pixelText(this.scene, '施設をクリック / ドラッグでも配置', {
       fontSize: TEXT_SIZE.labelNarrow,
       color: COLORS.inkDim,
-      wordWrapWidth: this.panelWidth - 142,
+      wordWrapWidth: this.panelWidth - 202,
     })
-    guide.setPosition(68, 56)
+    guide.setPosition(68, 64)
     d.add(guide)
   }
 }
