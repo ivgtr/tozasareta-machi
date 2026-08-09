@@ -3,7 +3,6 @@ import type { GameState } from '../../game/types'
 import { reducedMotion } from '../../store'
 import { COLORS } from '../tokens'
 import { deriveTownAmbience, type TownAmbienceModel, type TownCondition } from './ambience-model'
-import type { FacilityViewMap } from './facilities'
 import { FACILITY_PLOTS, TOWN_BASE, type FacilityId, type FacilityPlot } from './layout'
 
 const MAX_DARKNESS = 0.46
@@ -16,8 +15,6 @@ export class TownAmbience extends Phaser.GameObjects.Container {
   private readonly darkness: Phaser.GameObjects.Rectangle
   private readonly horizon: Phaser.GameObjects.Graphics
   private readonly facilityCues: Phaser.GameObjects.Graphics
-  private readonly activity: Phaser.GameObjects.Graphics
-  private readonly activityPulse: Phaser.GameObjects.Graphics
   private readonly smokeLayers: Phaser.GameObjects.Graphics[]
   private readonly rainFar: Phaser.GameObjects.Graphics
   private readonly rainNear: Phaser.GameObjects.Graphics
@@ -30,8 +27,6 @@ export class TownAmbience extends Phaser.GameObjects.Container {
     this.darkness.setOrigin(0)
     this.horizon = scene.add.graphics()
     this.facilityCues = scene.add.graphics()
-    this.activity = scene.add.graphics()
-    this.activityPulse = scene.add.graphics()
     this.smokeLayers = Array.from({ length: SMOKE_LAYER_COUNT }, () => scene.add.graphics())
     this.rainFar = scene.add.graphics()
     this.rainNear = scene.add.graphics()
@@ -45,8 +40,6 @@ export class TownAmbience extends Phaser.GameObjects.Container {
       this.darkness,
       this.horizon,
       this.facilityCues,
-      this.activity,
-      this.activityPulse,
       ...this.smokeLayers,
       this.rainFar,
       this.rainNear,
@@ -54,14 +47,13 @@ export class TownAmbience extends Phaser.GameObjects.Container {
     ])
   }
 
-  update(state: GameState, facilityView: FacilityViewMap): void {
-    const model = deriveTownAmbience(state, facilityView)
+  update(state: GameState): void {
+    const model = deriveTownAmbience(state)
     const reduceMotion = reducedMotion()
 
     this.stopMotion()
     this.drawGlobalTone(model)
     this.drawFacilityCues(model)
-    this.drawWorkingActivity(model, reduceMotion)
     this.drawSmoke(model, reduceMotion)
     this.updateWeather(model, reduceMotion)
   }
@@ -89,7 +81,6 @@ export class TownAmbience extends Phaser.GameObjects.Container {
     this.drawClinicCues(g, model)
     this.drawPlazaCues(g, model)
     this.drawWarehouseCues(g, model)
-    this.drawRoadCues(g, model)
   }
 
   private drawPowerCues(g: Phaser.GameObjects.Graphics, model: TownAmbienceModel): void {
@@ -161,132 +152,9 @@ export class TownAmbience extends Phaser.GameObjects.Container {
     }
   }
 
-  private drawRoadCues(g: Phaser.GameObjects.Graphics, model: TownAmbienceModel): void {
-    const plot = plotOf('road')
-    if (model.road === 'restored') {
-      g.fillStyle(COLORS.green, 0.48)
-      for (let index = 0; index < 4; index += 1) {
-        g.fillRect(plot.x - 18 + index * 10, plot.y - 4 - index * 3, 4, 1)
-      }
-      return
-    }
-
-    const color = model.road === 'working' ? COLORS.amber : COLORS.red
-    const points = [
-      [plot.x - 22, plot.y - 12],
-      [plot.x + 15, plot.y - 16],
-    ] as const
-    for (const [x, y] of points) {
-      g.fillStyle(color, model.road === 'working' ? 0.78 : 0.62)
-      g.fillRect(x, y, 2, 3)
-      g.fillStyle(color, 0.2)
-      g.fillRect(x - 1, y - 1, 4, 5)
-    }
-  }
-
-  private drawWorkingActivity(model: TownAmbienceModel, reduceMotion: boolean): void {
-    const base = this.activity
-    const pulse = this.activityPulse
-    base.clear()
-    pulse.clear()
-
-    for (const facility of model.workingFacilities) {
-      const plot = plotOf(facility)
-      switch (facility) {
-        case 'power':
-          this.drawPowerActivity(base, pulse, plot)
-          break
-        case 'road':
-          this.drawRoadActivity(base, pulse, plot)
-          break
-        case 'clinic':
-          this.drawClinicActivity(base, pulse, plot)
-          break
-        case 'plaza':
-          this.drawPlazaActivity(base, pulse, plot)
-          break
-        case 'hq':
-        case 'warehouse':
-          break
-      }
-    }
-
-    if (model.workingFacilities.length === 0) {
-      pulse.setAlpha(0)
-      return
-    }
-
-    if (reduceMotion) {
-      pulse.setAlpha(0.64)
-      return
-    }
-
-    pulse.setAlpha(0.34)
-    this.scene.tweens.add({
-      targets: pulse,
-      alpha: { from: 0.28, to: 0.86 },
-      duration: 560,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.InOut',
-    })
-  }
-
-  private drawPowerActivity(
-    base: Phaser.GameObjects.Graphics,
-    pulse: Phaser.GameObjects.Graphics,
-    plot: FacilityPlot,
-  ): void {
-    base.fillStyle(COLORS.amber, 0.56)
-    base.fillRect(plot.x + 18, plot.y - 58, 3, 2)
-    base.fillRect(plot.x + 24, plot.y - 55, 2, 2)
-    pulse.lineStyle(1, COLORS.cyan, 0.88)
-    pulse.lineBetween(plot.x + 25, plot.y - 61, plot.x + 29, plot.y - 65)
-    pulse.lineBetween(plot.x + 29, plot.y - 59, plot.x + 34, plot.y - 61)
-  }
-
-  private drawRoadActivity(
-    base: Phaser.GameObjects.Graphics,
-    pulse: Phaser.GameObjects.Graphics,
-    plot: FacilityPlot,
-  ): void {
-    base.fillStyle(COLORS.amber, 0.62)
-    base.fillRect(plot.x - 12, plot.y - 13, 3, 2)
-    base.fillRect(plot.x + 8, plot.y - 20, 2, 2)
-    pulse.fillStyle(COLORS.gold, 0.8)
-    pulse.fillRect(plot.x - 11, plot.y - 16, 1, 2)
-    pulse.fillRect(plot.x + 9, plot.y - 23, 1, 2)
-  }
-
-  private drawClinicActivity(
-    base: Phaser.GameObjects.Graphics,
-    pulse: Phaser.GameObjects.Graphics,
-    plot: FacilityPlot,
-  ): void {
-    base.fillStyle(COLORS.amber, 0.54)
-    base.fillRect(plot.x - 12, plot.y - 48, 6, 3)
-    base.fillRect(plot.x + 2, plot.y - 49, 5, 3)
-    pulse.fillStyle(COLORS.green, 0.72)
-    pulse.fillRect(plot.x + 27, plot.y - 58, 2, 4)
-  }
-
-  private drawPlazaActivity(
-    base: Phaser.GameObjects.Graphics,
-    pulse: Phaser.GameObjects.Graphics,
-    plot: FacilityPlot,
-  ): void {
-    base.fillStyle(COLORS.amber, 0.72)
-    base.fillRect(plot.x - 2, plot.y - 18, 4, 3)
-    base.fillStyle(COLORS.red, 0.46)
-    base.fillRect(plot.x, plot.y - 21, 2, 3)
-    pulse.fillStyle(COLORS.gold, 0.72)
-    pulse.fillRect(plot.x - 1, plot.y - 24, 2, 2)
-    pulse.fillRect(plot.x + 3, plot.y - 20, 1, 2)
-  }
-
   private drawSmoke(model: TownAmbienceModel, reduceMotion: boolean): void {
     const plot = plotOf('power')
-    const active = model.power.ratio > 0 || model.workingFacilities.includes('power')
+    const active = model.power.ratio > 0
 
     for (const [index, layer] of this.smokeLayers.entries()) {
       layer.clear()
@@ -402,13 +270,7 @@ export class TownAmbience extends Phaser.GameObjects.Container {
   }
 
   private stopMotion(): void {
-    const targets = [
-      this.activityPulse,
-      ...this.smokeLayers,
-      this.rainFar,
-      this.rainNear,
-      this.coldFlecks,
-    ]
+    const targets = [...this.smokeLayers, this.rainFar, this.rainNear, this.coldFlecks]
     for (const target of targets) {
       this.scene.tweens.killTweensOf(target)
       target.setPosition(0, 0)
