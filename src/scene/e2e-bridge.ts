@@ -6,6 +6,7 @@ import { KEYS } from './keys'
 import { deviceClassOf } from './layout'
 import type { PresentationMode } from './presentation'
 import { emptyPlan, type PlanState } from './plan'
+import { focusedFacilityId, placementUnitId, type PlanningIntent } from './planning/placement'
 import { sharedStore } from './store-bridge'
 import { ChoiceCard } from './story/choice-presentation'
 import {
@@ -36,8 +37,7 @@ interface PlaySceneInternals {
     start: (state: GameState, effects: Effect[], context?: PlaybackContext) => void
   }
   presentation?: { mode: PresentationMode }
-  selectedUnitId?: string | null
-  selectedFacility?: string | null
+  planningIntent?: PlanningIntent
   plan?: PlanState
   startNewGame?: () => void
   refresh?: () => void
@@ -356,6 +356,7 @@ function snapshot(game: Phaser.Game): E2ESnapshot {
   const store = sharedStore().get()
   const play = game.scene.getScene(KEYS.play) as unknown as PlaySceneInternals
   const canvas = game.canvas.getBoundingClientRect()
+  const intent = play.planningIntent ?? { kind: 'none' }
   return {
     activeScenes: game.scene.getScenes(true).map((scene) => scene.scene.key),
     day: store.state.day,
@@ -368,8 +369,8 @@ function snapshot(game: Phaser.Game): E2ESnapshot {
     presentationMode: play.presentation?.mode ?? 'planning',
     busy: play.playback?.current != null,
     soundEnabled: getSettings().sound,
-    selectedUnitId: play.selectedUnitId ?? null,
-    selectedFacility: play.selectedFacility ?? null,
+    selectedUnitId: placementUnitId(intent),
+    selectedFacility: focusedFacilityId(intent),
     keyboardFocusedUnitId: play.deck?.keyboardFocus ?? null,
     plannedAssignments: Object.values(play.plan?.placements ?? {}).reduce(
       (total, ids) => total + (ids?.length ?? 0),
@@ -409,8 +410,7 @@ function showFixture(game: Phaser.Game, name: PresentationFixtureName): void {
   const play = game.scene.getScene(KEYS.play) as unknown as PlaySceneInternals
   play.playback?.cancel()
   play.menu?.hide()
-  play.selectedUnitId = fixture.selectedUnitId ?? null
-  play.selectedFacility = fixture.selectedFacility ?? null
+  play.planningIntent = fixture.planningIntent ?? { kind: 'none' }
   play.plan = fixture.plan ?? emptyPlan()
   if (fixture.beat && fixture.baseState) {
     play.playback?.start(fixture.baseState, fixture.beat.effects, fixture.playbackContext)

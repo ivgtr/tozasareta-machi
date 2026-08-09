@@ -20,8 +20,7 @@ function input(overrides: Partial<PresentationInput> = {}): PresentationInput {
   return {
     state: { phase: 'planning' },
     beat: undefined,
-    selectedUnitId: null,
-    selectedFacility: null,
+    planningIntent: { kind: 'none' },
     ...overrides,
   }
 }
@@ -43,15 +42,27 @@ function beat(kind: Beat['kind']): Beat {
 }
 
 describe('derivePresentationMode', () => {
-  it('通常時は選択状態から focus presentation を導出する', () => {
+  it('通常時は planning intent から focus presentation を導出する', () => {
     expect(derivePresentationMode(input())).toBe('planning')
-    expect(derivePresentationMode(input({ selectedUnitId: 'u1' }))).toBe('unit-focus')
-    expect(derivePresentationMode(input({ selectedFacility: 'power' }))).toBe('facility-focus')
+    expect(
+      derivePresentationMode(input({ planningIntent: { kind: 'place-unit', unitId: 'u1' } })),
+    ).toBe('unit-focus')
+    expect(
+      derivePresentationMode(
+        input({ planningIntent: { kind: 'inspect-facility', facilityId: 'power' } }),
+      ),
+    ).toBe('facility-focus')
   })
 
   it('ゲームphaseは通常の選択状態より優先する', () => {
-    const choice = input({ state: { phase: 'choice' }, selectedUnitId: 'u1' })
-    const ending = input({ state: { phase: 'ended' }, selectedFacility: 'power' })
+    const choice = input({
+      state: { phase: 'choice' },
+      planningIntent: { kind: 'place-unit', unitId: 'u1' },
+    })
+    const ending = input({
+      state: { phase: 'ended' },
+      planningIntent: { kind: 'inspect-facility', facilityId: 'power' },
+    })
 
     expect(derivePresentationMode(choice)).toBe('choice')
     expect(derivePresentationMode(ending)).toBe('ending')
@@ -78,7 +89,9 @@ describe('PresentationDirector', () => {
       mode: 'planning',
       changed: false,
     })
-    expect(director.resolve(input({ selectedUnitId: 'u1' }))).toEqual({
+    expect(
+      director.resolve(input({ planningIntent: { kind: 'place-unit', unitId: 'u1' } })),
+    ).toEqual({
       mode: 'unit-focus',
       changed: true,
     })

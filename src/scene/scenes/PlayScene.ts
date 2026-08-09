@@ -14,11 +14,11 @@ import { CONFIRM_NEW_GAME } from '../labels'
 import { deviceClassOf, readSafeInsets, toLogicalSafeInsets } from '../layout'
 import { LogDrawer } from '../log-drawer'
 import {
+  assignedTask,
   buildPlan,
   emptyPlan,
   fromAutoAssign,
   unassignedUnits,
-  withMove,
   withRemove,
   type PlanState,
 } from '../plan'
@@ -30,6 +30,12 @@ import { TownPlaybackFx } from '../playback/town-playback-fx'
 import { CommitConfirmPresentation } from '../planning/commit-confirm-presentation'
 import { FacilityFocus } from '../planning/facility-focus'
 import { PlanningControls } from '../planning/planning-controls'
+import {
+  deriveFacilityPlacementCandidate,
+  focusedFacilityId,
+  placementUnitId,
+  type PlanningIntent,
+} from '../planning/placement'
 import { PresentationDirector } from '../presentation'
 import { computeRegions, type Regions } from '../regions'
 import { sharedStore, type SceneStore } from '../store-bridge'
@@ -38,7 +44,6 @@ import { TASK_LABEL, TASK_PRESENTATION } from '../task-presentation'
 import { COLORS } from '../tokens'
 import { deriveFacilityView } from '../town/facility-view'
 import { deriveTownAmbience } from '../town/ambience-model'
-import { FACILITIES } from '../town/facilities'
 import type { FacilityId } from '../town/layout'
 import { TownLayer } from '../town/town-layer'
 import {
@@ -56,8 +61,7 @@ export class PlayScene extends Phaser.Scene {
   private drag!: UnitDragController
   private dragGhost!: CharacterDragGhost
   private plan: PlanState = emptyPlan()
-  private selectedUnitId: string | null = null
-  private selectedFacility: FacilityId | null = null
+  private planningIntent: PlanningIntent = { kind: 'none' }
   private regions!: Regions
   private town!: TownLayer
   private playbackFx!: TownPlaybackFx
@@ -117,19 +121,18 @@ export class PlayScene extends Phaser.Scene {
     this.characterFocus = new CharacterFocus(this, {
       onClose: () => {
         this.audio.play('cancel')
-        this.selectedUnitId = null
+        this.planningIntent = { kind: 'none' }
         this.refresh()
       },
     })
     this.facilityFocus = new FacilityFocus(this, {
       onClose: () => {
         this.audio.play('cancel')
-        this.selectedFacility = null
+        this.planningIntent = { kind: 'none' }
         this.refresh()
       },
       onSelectUnit: (unitId) => {
-        this.selectedFacility = null
-        this.selectedUnitId = unitId
+        this.planningIntent = { kind: 'place-unit', unitId }
         this.refresh()
       },
       onUnassignUnit: (unitId) => {
@@ -161,13 +164,14 @@ export class PlayScene extends Phaser.Scene {
         if (this.busy) return
         this.plan = fromAutoAssign(autoAssign(this.store.get().state))
         this.audio.play('assign')
-        this.selectedUnitId = null
+        this.planningIntent = { kind: 'none' }
         this.refresh()
       },
       onCommit: () => this.tryCommit(),
       onUnassignSelected: () => {
-        if (this.busy || !this.selectedUnitId) return
-        this.plan = withRemove(this.plan, this.selectedUnitId)
+        const unitId = placementUnitId(this.planningIntent)
+        if (this.busy || !unitId) return
+        this.plan = withRemove(this.plan, unitId)
         this.audio.play('unassign')
         this.refresh()
       },
@@ -248,8 +252,7 @@ export class PlayScene extends Phaser.Scene {
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => this.drag.pointerUp(pointer))
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => this.handleKeyboard(event))
     this.unsubscribe = this.store.subscribe(() => {
-      this.selectedUnitId = null
-      this.selectedFacility = null
+      this.planningIntent = { kind: 'none' }
       this.refresh()
     })
     this.game.events.on(SCENE_EVENTS.deviceClass, this.layout, this)
@@ -281,31 +284,42 @@ export class PlayScene extends Phaser.Scene {
 
   private selectUnit(unitId: string): void {
     if (this.busy) return
-    const deselecting = this.selectedUnitId === unitId
-    this.selectedUnitId = deselecting ? null : unitId
+    const selected = placementUnitId(this.planningIntent)
+    const deselecting = selected === unitId
+    this.planningIntent = deselecting ? { kind: 'none' } : { kind: 'place-unit', unitId }
     this.audio.play(deselecting ? 'cancel' : 'select')
-    this.selectedFacility = null
     this.refresh()
   }
 
   private onFacilityTap(id: FacilityId): void {
     if (this.busy) return
     this.deck.clearKeyboardFocus()
-    const meta = FACILITIES[id]
-    if (this.selectedUnitId && meta.tasks.length > 0) {
-      const next = withMove(this.store.get().state, this.plan, this.selectedUnitId, meta.tasks[0]!)
-      if (next) {
-        this.plan = next
+    const unitId = placementUnitId(this.planningIntent)
+    if (unitId) {
+      const candidate = deriveFacilityPlacementCandidate(
+        this.store.get().state,
+        this.plan,
+        unitId,
+        id,
+      )
+      if (candidate.kind === 'available' || candidate.kind === 'current') {
+        this.plan = candidate.nextPlan
         this.audio.play('assign')
-        this.selectedUnitId = null
-        this.selectedFacility = id
+        this.planningIntent = { kind: 'inspect-facility', facilityId: id }
+      } else if (candidate.kind === 'passive') {
+        this.audio.play('facility')
+        this.planningIntent = { kind: 'inspect-facility', facilityId: id }
+      } else {
+        this.audio.play('invalid')
       }
       this.refresh()
       return
     }
-    this.selectedFacility = this.selectedFacility === id ? null : id
-    this.audio.play(this.selectedFacility ? 'facility' : 'cancel')
-    this.selectedUnitId = null
+
+    const current = focusedFacilityId(this.planningIntent)
+    const opening = current !== id
+    this.planningIntent = opening ? { kind: 'inspect-facility', facilityId: id } : { kind: 'none' }
+    this.audio.play(opening ? 'facility' : 'cancel')
     this.refresh()
   }
 
@@ -313,15 +327,19 @@ export class PlayScene extends Phaser.Scene {
     if (this.busy) return
     const facility = this.town.facilityAtWorld(worldX, worldY)
     if (facility) {
-      const meta = FACILITIES[facility]
-      if (meta.tasks.length > 0) {
-        const next = withMove(this.store.get().state, this.plan, unitId, meta.tasks[0]!)
-        if (next) {
-          this.plan = next
-          this.audio.play('assign')
-        } else {
-          this.audio.play('invalid')
-        }
+      const candidate = deriveFacilityPlacementCandidate(
+        this.store.get().state,
+        this.plan,
+        unitId,
+        facility,
+      )
+      if (candidate.kind === 'available' || candidate.kind === 'current') {
+        this.plan = candidate.nextPlan
+        this.audio.play('assign')
+        return
+      }
+      if (candidate.kind === 'blocked') {
+        this.audio.play('invalid')
         return
       }
     }
@@ -365,8 +383,7 @@ export class PlayScene extends Phaser.Scene {
 
   private clearPlan(): void {
     this.plan = emptyPlan()
-    this.selectedUnitId = null
-    this.selectedFacility = null
+    this.planningIntent = { kind: 'none' }
     this.drag.cancel()
   }
 
@@ -439,8 +456,7 @@ export class PlayScene extends Phaser.Scene {
     }
     if (this.characterFocus.isOpen || this.facilityFocus.isOpen) {
       this.audio.play('cancel')
-      this.selectedUnitId = null
-      this.selectedFacility = null
+      this.planningIntent = { kind: 'none' }
       this.refresh()
       return
     }
@@ -502,8 +518,7 @@ export class PlayScene extends Phaser.Scene {
       this.audio.play('invalid')
       return
     }
-    this.selectedUnitId = null
-    this.selectedFacility = null
+    this.planningIntent = { kind: 'none' }
     const unitId = this.deck.moveKeyboardFocus(delta)
     this.audio.play(unitId ? 'select' : 'invalid')
     this.refresh()
@@ -520,10 +535,9 @@ export class PlayScene extends Phaser.Scene {
     )
   }
 
-  private selectedUnitAssigned(): boolean {
-    const selectedUnitId = this.selectedUnitId
-    if (!selectedUnitId) return false
-    return Object.values(this.plan.placements).some((ids) => ids?.includes(selectedUnitId))
+  private placementUnitAssigned(): boolean {
+    const unitId = placementUnitId(this.planningIntent)
+    return unitId ? assignedTask(this.plan, unitId) !== null : false
   }
 
   private layout(): void {
@@ -582,16 +596,16 @@ export class PlayScene extends Phaser.Scene {
     mode: ReturnType<PresentationDirector['resolve']>['mode'],
     flowModel: FlowPresentationModel | null,
   ): TownViewportPreset {
-    if (mode === 'facility-focus' && this.selectedFacility) {
-      return { mode: 'facility-focus', facility: this.selectedFacility }
+    const facilityId = focusedFacilityId(this.planningIntent)
+    if (mode === 'facility-focus' && facilityId) {
+      return { mode: 'facility-focus', facility: facilityId }
     }
-    if (mode === 'unit-focus' && this.selectedUnitId) {
-      const task = Object.entries(this.plan.placements).find(([, ids]) =>
-        ids?.includes(this.selectedUnitId!),
-      )?.[0]
+    const unitId = placementUnitId(this.planningIntent)
+    if (mode === 'unit-focus' && unitId) {
+      const task = assignedTask(this.plan, unitId)
       return {
         mode: 'unit-focus',
-        facility: task ? TASK_PRESENTATION[task as keyof typeof TASK_PRESENTATION].facility : null,
+        facility: task ? TASK_PRESENTATION[task].facility : null,
       }
     }
     if (mode === 'flow' && flowModel?.facility) {
@@ -638,14 +652,15 @@ export class PlayScene extends Phaser.Scene {
     const frame = this.presentation.resolve({
       state,
       beat,
-      selectedUnitId: this.selectedUnitId,
-      selectedFacility: this.selectedFacility,
+      planningIntent: this.planningIntent,
     })
     const facilityView = deriveFacilityView(view, this.plan)
     const ambience = deriveTownAmbience(view, facilityView)
     this.audio.setMood(state.phase === 'ended' ? 'silent' : ambience.danger ? 'crisis' : 'planning')
     const storyMode = isStoryPresentation(frame.mode)
-    const fallbackFacility = frame.mode === 'facility-focus' ? this.selectedFacility : null
+    const facilityId = focusedFacilityId(this.planningIntent)
+    const unitId = placementUnitId(this.planningIntent)
+    const fallbackFacility = frame.mode === 'facility-focus' ? facilityId : null
     const flowModel = this.playbackPresentation.update(this.playback, view, fallbackFacility)
     const planningChrome = !storyMode && flowModel === null
 
@@ -657,35 +672,27 @@ export class PlayScene extends Phaser.Scene {
     this.deck.setVisible(planningChrome)
 
     this.hud.update(view, store.history.length > 0 && !busy)
-    this.controls.update(view, this.plan, busy, this.selectedUnitAssigned())
+    this.controls.update(view, this.plan, busy, this.placementUnitAssigned())
     this.town.update(view, this.plan, facilityView, {
-      selectedFacility: busy ? null : this.selectedFacility,
-      placeableUnitId: busy ? null : this.selectedUnitId,
+      focusedFacilityId: busy ? null : facilityId,
+      placementUnitId: busy ? null : unitId,
     })
-    this.deck.update(view, this.plan, this.selectedUnitId)
+    this.deck.update(view, this.plan, unitId)
 
     const selectedUnit =
-      frame.mode === 'unit-focus'
-        ? view.units.find((unit) => unit.id === this.selectedUnitId)
-        : undefined
+      frame.mode === 'unit-focus' ? view.units.find((unit) => unit.id === unitId) : undefined
     if (selectedUnit) {
-      const assignment =
-        Object.entries(this.plan.placements).find(([, unitIds]) =>
-          unitIds?.includes(selectedUnit.id),
-        )?.[0] ?? '待機中'
+      const assignment = assignedTask(this.plan, selectedUnit.id) ?? '待機中'
       this.characterFocus.show(
         selectedUnit,
-        assignment === '待機中' ? assignment : TASK_LABEL[assignment as keyof typeof TASK_LABEL],
+        assignment === '待機中' ? assignment : TASK_LABEL[assignment],
       )
     } else {
       this.characterFocus.hide()
     }
 
-    if (frame.mode === 'facility-focus' && this.selectedFacility) {
-      this.facilityFocus.show(
-        { state: view, plan: this.plan, view: facilityView },
-        this.selectedFacility,
-      )
+    if (frame.mode === 'facility-focus' && facilityId) {
+      this.facilityFocus.show({ state: view, plan: this.plan, view: facilityView }, facilityId)
     } else {
       this.facilityFocus.hide()
     }

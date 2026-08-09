@@ -1,6 +1,6 @@
 import type { GameState } from '../game/types'
 import type { Beat } from './playback/beats'
-import type { FacilityId } from './town/layout'
+import type { PlanningIntent } from './planning/placement'
 
 export const PRESENTATION_MODES = [
   'planning',
@@ -18,8 +18,7 @@ export type PresentationMode = (typeof PRESENTATION_MODES)[number]
 export interface PresentationInput {
   state: Pick<GameState, 'phase'>
   beat: Beat | undefined
-  selectedUnitId: string | null
-  selectedFacility: FacilityId | null
+  planningIntent: PlanningIntent
 }
 
 export interface PresentationFrame {
@@ -33,8 +32,8 @@ export function derivePresentationMode(input: PresentationInput): PresentationMo
   if (input.beat?.kind === 'flow') return 'flow'
   if (input.state.phase === 'choice') return 'choice'
   if (input.state.phase === 'ended') return 'ending'
-  if (input.selectedUnitId) return 'unit-focus'
-  if (input.selectedFacility) return 'facility-focus'
+  if (input.planningIntent.kind === 'place-unit') return 'unit-focus'
+  if (input.planningIntent.kind === 'inspect-facility') return 'facility-focus'
   return 'planning'
 }
 

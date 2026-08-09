@@ -10,10 +10,10 @@ import {
 import { deriveFacilityView, facilityAssetId } from '../src/scene/town/facility-view'
 import {
   buildPlan,
+  derivePlacementCandidate,
   emptyPlan,
   spentOf,
   unassignedUnits,
-  withMove,
   withRemove,
 } from '../src/scene/plan'
 import type { GameState } from '../src/game/types'
@@ -93,13 +93,20 @@ describe('deriveFacilityView', () => {
 })
 
 describe('plan', () => {
-  it('withMove はコストと無効任務で拒否する', () => {
+  it('derivePlacementCandidate は配置可否と理由を一意に返す', () => {
     const s = createInitialState(1)
-    const ok = withMove(s, emptyPlan(), 'mayor', 'restore_road')
-    expect(ok).not.toBeNull()
+    const ok = derivePlacementCandidate(s, emptyPlan(), 'mayor', 'restore_road')
+    expect(ok.kind).toBe('available')
+
     const broke = { ...s, budget: 0 }
-    expect(withMove(broke, emptyPlan(), 'mayor', 'repair_power')).toBeNull()
-    expect(withMove(broke, emptyPlan(), 'mayor', 'restore_road')).not.toBeNull()
+    expect(derivePlacementCandidate(broke, emptyPlan(), 'mayor', 'repair_power')).toMatchObject({
+      kind: 'blocked',
+      reason: 'budget',
+    })
+    expect(derivePlacementCandidate(broke, emptyPlan(), 'mayor', 'restore_road').kind).toBe(
+      'available',
+    )
+
     const locked: GameState = {
       ...s,
       modifiers: [
@@ -111,12 +118,18 @@ describe('plan', () => {
         },
       ],
     }
-    expect(withMove(locked, emptyPlan(), 'mayor', 'soup_kitchen')).toBeNull()
+    expect(derivePlacementCandidate(locked, emptyPlan(), 'mayor', 'soup_kitchen')).toMatchObject({
+      kind: 'blocked',
+      reason: 'task-disabled',
+    })
   })
 
-  it('withRemove / buildPlan / spentOf', () => {
+  it('配置済み判定と次Planを同じ契約から返す', () => {
     const s = createInitialState(1)
-    const placed = withMove(s, emptyPlan(), 'mayor', 'repair_power')!
+    const candidate = derivePlacementCandidate(s, emptyPlan(), 'mayor', 'repair_power')
+    if (candidate.kind === 'blocked') throw new Error('expected available placement')
+    const placed = candidate.nextPlan
+    expect(derivePlacementCandidate(s, placed, 'mayor', 'repair_power').kind).toBe('current')
     expect(spentOf(placed.placements).budget).toBe(20)
     const removed = withRemove(placed, 'mayor')
     expect(unassignedUnits(s, removed)).toHaveLength(s.units.length)

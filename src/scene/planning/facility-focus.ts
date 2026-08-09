@@ -139,12 +139,12 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
     stateBadge.setPosition(inset, inset + 28)
     d.add(stateBadge)
 
-    if (meta.tasks.length === 0) {
+    if (!meta.task) {
       this.renderPassiveFacility(d, ctx, facility, inset, wrapW)
       return
     }
 
-    const task = meta.tasks[0]!
+    const task = meta.task
     const unitIds = ctx.plan.placements[task] ?? []
     const cost = taskCost(task)
     const disabled = isTaskDisabled(ctx.state.modifiers, task)

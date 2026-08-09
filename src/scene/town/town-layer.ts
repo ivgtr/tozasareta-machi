@@ -32,8 +32,8 @@ const TOKEN_FAN: Array<{ x: number; y: number }> = [
 ]
 
 export interface TownSelection {
-  selectedFacility: FacilityId | null
-  placeableUnitId: string | null
+  focusedFacilityId: FacilityId | null
+  placementUnitId: string | null
 }
 
 export interface TownCallbacks {
@@ -121,8 +121,8 @@ export class TownLayer extends Phaser.GameObjects.Container {
 
       const diamond = pointsToGeom(footprintDiamond(plot.x, plot.y))
       const danger = stateId === 'low' || stateId === 'collapsed'
-      const selected = selection.selectedFacility === plot.id
-      const placeable = Boolean(selection.placeableUnitId && meta.tasks.length > 0)
+      const selected = selection.focusedFacilityId === plot.id
+      const placeable = Boolean(selection.placementUnitId && meta.task)
       const border = stateId === 'working' ? meta.color : danger ? COLORS.red : COLORS.frameLo
 
       highlight.lineStyle(2, border)
@@ -141,7 +141,7 @@ export class TownLayer extends Phaser.GameObjects.Container {
         this.hoveredFacility === plot.id || this.persistentLabels.has(plot.id),
       )
 
-      const unitIds = meta.tasks.flatMap((task) => plan.placements[task] ?? [])
+      const unitIds = meta.task ? (plan.placements[meta.task] ?? []) : []
       this.syncTokens(visual.tokens, state, unitIds)
       this.syncSprite(visual, plot.id, stateId)
     }

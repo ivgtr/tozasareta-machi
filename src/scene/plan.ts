@@ -10,12 +10,22 @@ export interface PlanState {
   procure: boolean
 }
 
+export type PlacementBlockReason = 'unit-unavailable' | 'task-disabled' | 'budget' | 'stockpile'
+
+export type PlacementCandidate =
+  | { kind: 'available' | 'current'; task: TaskId; nextPlan: PlanState }
+  | { kind: 'blocked'; task: TaskId; reason: PlacementBlockReason }
+
 export function emptyPlan(): PlanState {
   return { placements: {}, ration: false, procure: false }
 }
 
 export function assignedIds(plan: PlanState): Set<string> {
   return new Set(PHYSICAL_TASKS.flatMap((t) => plan.placements[t] ?? []))
+}
+
+export function assignedTask(plan: PlanState, unitId: string): TaskId | null {
+  return PHYSICAL_TASKS.find((task) => plan.placements[task]?.includes(unitId)) ?? null
 }
 
 export function unassignedUnits(state: GameState, plan: PlanState): Unit[] {
@@ -39,23 +49,36 @@ export function spentOf(placements: Placements): { budget: number; stockpile: nu
   return spent
 }
 
-function placementsAffordable(state: GameState, placements: Placements): boolean {
-  const spent = spentOf(placements)
-  return spent.budget <= state.budget && spent.stockpile <= state.stockpile
+function movedPlacements(plan: PlanState, unitId: string, task: TaskId): Placements {
+  const next: Placements = {}
+  for (const candidate of PHYSICAL_TASKS) {
+    next[candidate] = (plan.placements[candidate] ?? []).filter((id) => id !== unitId)
+  }
+  next[task] = [...(next[task] ?? []), unitId]
+  return next
 }
 
-export function withMove(
+export function derivePlacementCandidate(
   state: GameState,
   plan: PlanState,
   unitId: string,
   task: TaskId,
-): PlanState | null {
-  if (isTaskDisabled(state.modifiers, task)) return null
-  const next: Placements = {}
-  for (const t of PHYSICAL_TASKS) next[t] = (plan.placements[t] ?? []).filter((u) => u !== unitId)
-  next[task] = [...(next[task] ?? []), unitId]
-  if (!placementsAffordable(state, next)) return null
-  return { ...plan, placements: next }
+): PlacementCandidate {
+  const unit = state.units.find((candidate) => candidate.id === unitId)
+  if (!unit || isOnExpedition(unit)) return { kind: 'blocked', task, reason: 'unit-unavailable' }
+  if (isTaskDisabled(state.modifiers, task))
+    return { kind: 'blocked', task, reason: 'task-disabled' }
+
+  const placements = movedPlacements(plan, unitId, task)
+  const spent = spentOf(placements)
+  if (spent.budget > state.budget) return { kind: 'blocked', task, reason: 'budget' }
+  if (spent.stockpile > state.stockpile) return { kind: 'blocked', task, reason: 'stockpile' }
+
+  return {
+    kind: assignedTask(plan, unitId) === task ? 'current' : 'available',
+    task,
+    nextPlan: { ...plan, placements },
+  }
 }
 
 export function withRemove(plan: PlanState, unitId: string): PlanState {

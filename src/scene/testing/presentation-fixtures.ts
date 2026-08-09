@@ -3,7 +3,7 @@ import { createInitialState } from '../../game/state'
 import type { Effect, GameState } from '../../game/types'
 import type { Beat, PlaybackContext } from '../playback/beats'
 import type { PlanState } from '../plan'
-import type { FacilityId } from '../town/layout'
+import type { PlanningIntent } from '../planning/placement'
 
 export const PRESENTATION_FIXTURE_NAMES = [
   'planning',
@@ -29,8 +29,7 @@ export interface PresentationFixture {
   baseState?: GameState
   beat?: Beat
   playbackContext?: PlaybackContext
-  selectedUnitId?: string
-  selectedFacility?: FacilityId
+  planningIntent?: PlanningIntent
   plan?: PlanState
   scene: 'title' | 'play'
   menuOpen?: boolean
@@ -94,7 +93,7 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
       name,
       state,
       scene: 'play',
-      selectedUnitId: firstUnitId,
+      planningIntent: { kind: 'place-unit', unitId: firstUnitId },
       plan: { placements: { restore_road: [firstUnitId] }, ration: false, procure: false },
     }
   }
@@ -103,7 +102,7 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
       name,
       state,
       scene: 'play',
-      selectedFacility: 'road',
+      planningIntent: { kind: 'inspect-facility', facilityId: 'road' },
       plan: { placements: { restore_road: [firstUnitId] }, ration: false, procure: false },
     }
   }
