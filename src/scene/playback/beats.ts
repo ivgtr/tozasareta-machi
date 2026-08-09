@@ -1,6 +1,7 @@
 import { isTaskId } from '../../game/data/tasks'
 import { deathCauseFromSource, type DeathCause } from '../../game/death'
 import type { DayPlan, Effect, TaskId, Unit } from '../../game/types'
+import { isActStoryMilestoneId, type ActStoryMilestoneId } from '../story/milestone-model'
 
 export interface PlaybackContext {
   taskActors: Partial<Record<TaskId, readonly string[]>>
@@ -13,6 +14,12 @@ export interface FlowBeat {
   effects: Effect[]
 }
 
+export interface MilestoneBeat {
+  kind: 'milestone'
+  id: ActStoryMilestoneId
+  effects: Effect[]
+}
+
 export interface DeathBeat {
   kind: 'death'
   cause: DeathCause
@@ -22,6 +29,7 @@ export interface DeathBeat {
 
 export type Beat =
   | FlowBeat
+  | MilestoneBeat
   | { kind: 'event'; id: string; effects: Effect[] }
   | { kind: 'arrival'; unitId: string; effects: Effect[] }
   | DeathBeat
@@ -69,6 +77,11 @@ export function buildBeats(
       const unit = removedUnit(group)
       if (!unit) throw new Error(`Death beat is missing its removed unit: ${source}`)
       beats.push({ kind: 'death', cause: deathCause, unit, effects: group })
+      continue
+    }
+
+    if (isActStoryMilestoneId(source)) {
+      beats.push({ kind: 'milestone', id: source, effects: group })
       continue
     }
 

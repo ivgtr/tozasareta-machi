@@ -8,6 +8,8 @@ import { ChoicePresentation } from './choice-presentation'
 import { DeathPresentation } from './death-presentation'
 import { EndingPresentation } from './ending-presentation'
 import { EventPresentation } from './event-presentation'
+import { createStoryMilestoneSession, storyMilestoneView } from './milestone-model'
+import { MilestonePresentation } from './milestone-presentation'
 
 export interface StoryPresentationCallbacks {
   onConfirmBeat: () => void
@@ -21,6 +23,7 @@ export class StoryPresentations {
   private readonly choice: ChoicePresentation
   private readonly arrival: ArrivalPresentation
   private readonly death: DeathPresentation
+  private readonly milestone: MilestonePresentation
   private readonly ending: EndingPresentation
   private readonly callbacks: StoryPresentationCallbacks
 
@@ -30,6 +33,7 @@ export class StoryPresentations {
     this.choice = new ChoicePresentation(scene, { onChoose: callbacks.onChoose })
     this.arrival = new ArrivalPresentation(scene, { onConfirm: callbacks.onConfirmBeat })
     this.death = new DeathPresentation(scene, { onConfirm: callbacks.onConfirmBeat })
+    this.milestone = new MilestonePresentation(scene, { onConfirm: callbacks.onConfirmBeat })
     this.ending = new EndingPresentation(scene, {
       onRestart: callbacks.onEndingRestart,
       onTitle: callbacks.onEndingTitle,
@@ -41,11 +45,16 @@ export class StoryPresentations {
     this.choice.setViewport(width, height, deviceClass)
     this.arrival.setViewport(width, height, deviceClass)
     this.death.setViewport(width, height, deviceClass)
+    this.milestone.setViewport(width, height, deviceClass)
     this.ending.setViewport(width, height, deviceClass)
   }
 
   update(mode: PresentationMode, state: GameState, beat: Beat | undefined): void {
     this.hideAll()
+    if (mode === 'milestone' && beat?.kind === 'milestone') {
+      this.milestone.show(storyMilestoneView(createStoryMilestoneSession(beat.id)))
+      return
+    }
     if (mode === 'event' && beat?.kind === 'death') {
       this.death.show(beat)
       return
@@ -70,6 +79,7 @@ export class StoryPresentations {
     this.choice.hide()
     this.arrival.hide()
     this.death.hide()
+    this.milestone.hide()
     this.ending.hide()
   }
 
@@ -87,5 +97,11 @@ export class StoryPresentations {
 }
 
 export function isStoryPresentation(mode: PresentationMode): boolean {
-  return mode === 'event' || mode === 'choice' || mode === 'arrival' || mode === 'ending'
+  return (
+    mode === 'milestone' ||
+    mode === 'event' ||
+    mode === 'choice' ||
+    mode === 'arrival' ||
+    mode === 'ending'
+  )
 }

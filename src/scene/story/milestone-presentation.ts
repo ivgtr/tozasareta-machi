@@ -152,7 +152,7 @@ export class MilestonePresentation extends PresentationSurface {
     const p = this.panel
     const pad = this.deviceClass === 'wide' ? 28 : 18
     const confirm = new PixelButton(this.scene, {
-      label: view.isLast ? 'DAY 1へ ▶' : '次へ ▶',
+      label: view.isLast ? view.spec.completeLabel : '次へ ▶',
       width: this.deviceClass === 'wide' ? 176 : 150,
       height: 46,
       variant: 'primary',

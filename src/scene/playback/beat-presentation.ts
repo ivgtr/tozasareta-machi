@@ -26,9 +26,9 @@ function hasLargeChange(effects: readonly Effect[]): boolean {
 }
 
 export function deriveBeatImportance(beat: Beat): BeatImportance {
-  if (beat.kind === 'death' || beat.kind === 'arrival') return 'major'
+  if (beat.kind === 'death' || beat.kind === 'arrival' || beat.kind === 'milestone') return 'major'
   if (beat.kind === 'event') return hasLargeChange(beat.effects) ? 'major' : 'normal'
-  if (beat.source.startsWith('act_') || hasLargeChange(beat.effects)) return 'major'
+  if (hasLargeChange(beat.effects)) return 'major'
   if (beat.source === 'settlement') return 'minor'
   return 'normal'
 }
