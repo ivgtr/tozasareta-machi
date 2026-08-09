@@ -196,9 +196,7 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
     d.add(action)
 
     const forecastLabel =
-      unitIds.length === 0
-        ? '実行見込  未配置'
-        : `実行見込  ${TASK_LABEL[task]} +${progress}`
+      unitIds.length === 0 ? '実行見込  未配置' : `実行見込  ${TASK_LABEL[task]} +${progress}`
     const forecastTitle = pixelText(this.scene, forecastLabel, {
       fontSize: TEXT_SIZE.labelWide,
       color: unitIds.length > 0 ? COLORS.green : COLORS.inkDim,

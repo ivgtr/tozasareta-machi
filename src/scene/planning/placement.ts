@@ -19,8 +19,7 @@ type WithFacility<C extends PlacementCandidate> = C extends unknown
   : never
 
 export type FacilityPlacementCandidate =
-  | { kind: 'passive'; facility: FacilityId; reason?: undefined }
-  | WithFacility<PlacementCandidate>
+  { kind: 'passive'; facility: FacilityId; reason?: undefined } | WithFacility<PlacementCandidate>
 
 export type FacilityPlacementMap = Record<FacilityId, FacilityPlacementCandidate>
 
