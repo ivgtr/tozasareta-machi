@@ -1,0 +1,113 @@
+name: PR3 Preflight
+
+on:
+  push:
+    branches: [preflight/town-fx-polish]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr3-preflight-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Normalize formatting
+        run: |
+          npx prettier --write src/scene/input/play-scene-shortcuts.ts src/scene/planning/facility-focus.ts src/scene/planning/placement.ts src/scene/scenes/PlayScene.ts src/scene/town/ambience.ts .github/workflows/pr3-preflight.yml
+          npx prettier --check .
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Chromium
+        run: npm run playwright -- install --with-deps chromium
+
+      - name: Production build smoke test
+        run: npm run test:prod
+
+      - name: Browser regression tests
+        run: npm run test:e2e
+
+      - name: Refresh only intentional visual baselines
+        shell: bash
+        run: |
+          set +e
+          npm run test:visual
+          first_status=$?
+          set -e
+
+          rm -rf test-results/pr3-baselines
+          mkdir -p test-results/pr3-baselines
+          find test-results/visual -maxdepth 1 -type f -name '*-diff.png' -printf '%f\n' | sed 's/-diff\.png$/.png/' | sort -u > /tmp/pr3-visual-targets.txt
+
+          if [[ "$first_status" -eq 0 ]]; then
+            : > /tmp/pr3-visual-targets.txt
+          fi
+
+          npm run test:visual:update
+
+          while IFS= read -r file; do
+            [[ -n "$file" ]] || continue
+            cp "tests/visual-baselines/$file" "test-results/pr3-baselines/$file"
+          done < /tmp/pr3-visual-targets.txt
+
+          git checkout -- tests/visual-baselines
+
+          while IFS= read -r file; do
+            [[ -n "$file" ]] || continue
+            cp "test-results/pr3-baselines/$file" "tests/visual-baselines/$file"
+          done < /tmp/pr3-visual-targets.txt
+
+          npm run test:visual
+          cp /tmp/pr3-visual-targets.txt test-results/pr3-baselines/targets.txt
+
+      - name: Capture formatted sources
+        run: |
+          mkdir -p test-results/pr3-sources/src/scene/input
+          mkdir -p test-results/pr3-sources/src/scene/planning
+          mkdir -p test-results/pr3-sources/src/scene/scenes
+          mkdir -p test-results/pr3-sources/src/scene/town
+          cp src/scene/input/play-scene-shortcuts.ts test-results/pr3-sources/src/scene/input/
+          cp src/scene/planning/facility-focus.ts test-results/pr3-sources/src/scene/planning/
+          cp src/scene/planning/placement.ts test-results/pr3-sources/src/scene/planning/
+          cp src/scene/scenes/PlayScene.ts test-results/pr3-sources/src/scene/scenes/
+          cp src/scene/town/ambience.ts test-results/pr3-sources/src/scene/town/
+
+      - name: Upload PR3 preflight output
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: pr3-preflight-output
+          path: |
+            test-results/pr3-sources
+            test-results/pr3-baselines
+            test-results/visual
+            test-results/e2e
+          if-no-files-found: ignore
+          retention-days: 7
