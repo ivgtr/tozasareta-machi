@@ -179,23 +179,24 @@ export class PlanningControls extends Phaser.GameObjects.Container {
     const available = this.rect.width - horizontalPadding * 2 - gap * 3
     const resolvedPrimaryWidth = Math.min(primaryWidth, Math.max(104, available * 0.34))
     const secondaryWidth = Math.max(44, (available - resolvedPrimaryWidth) / 3)
-    let x = horizontalPadding + secondaryWidth / 2
+    let cursorX = horizontalPadding
 
-    const placeSecondary = (button: PixelButton) => {
-      button.setSize(secondaryWidth, BUTTON_HEIGHT)
-      button.setPosition(x, y)
-      x += secondaryWidth + gap
+    const place = (button: PixelButton, width: number) => {
+      button.setSize(width, BUTTON_HEIGHT)
+      button.setPosition(cursorX + width / 2, y)
+      cursorX += width + gap
     }
 
-    placeSecondary(this.rationButton)
-    placeSecondary(this.procureButton)
+    place(this.rationButton, secondaryWidth)
+    place(this.procureButton, secondaryWidth)
+
     this.autoButton.setSize(secondaryWidth, BUTTON_HEIGHT)
     this.removeButton.setSize(secondaryWidth, BUTTON_HEIGHT)
-    this.autoButton.setPosition(x, y)
-    this.removeButton.setPosition(x, y)
-    x += secondaryWidth + gap
-    this.commitButton.setSize(resolvedPrimaryWidth, BUTTON_HEIGHT)
-    this.commitButton.setPosition(x + resolvedPrimaryWidth / 2, y)
+    this.autoButton.setPosition(cursorX + secondaryWidth / 2, y)
+    this.removeButton.setPosition(cursorX + secondaryWidth / 2, y)
+    cursorX += secondaryWidth + gap
+
+    place(this.commitButton, resolvedPrimaryWidth)
   }
 
   private redrawFrame(): void {
