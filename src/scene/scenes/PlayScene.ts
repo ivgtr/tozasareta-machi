@@ -220,6 +220,7 @@ export class PlayScene extends Phaser.Scene {
         onBackToTitle: () => {
           this.audio.play('confirm')
           this.menu.hide()
+          this.clearPlan()
           transitionToScene(this, KEYS.title)
         },
         onRestart: () => {

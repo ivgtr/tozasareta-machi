@@ -182,6 +182,25 @@ try {
     BRIDGE,
   )
 
+  process.stdout.write('• タイトルから最初からを選ぶと未確定配置を破棄する\n')
+  await page.keyboard.press('KeyM')
+  await clickBounds(page, await textBounds(page, 'タイトルに戻る'))
+  await page.waitForFunction(
+    (bridge) => globalThis[bridge]?.snapshot().activeScenes.includes('Title'),
+    BRIDGE,
+  )
+  await clickBounds(page, await textBounds(page, '最初から'))
+  await page.waitForFunction((bridge) => {
+    const state = globalThis[bridge]?.snapshot()
+    return (
+      state?.activeScenes.includes('Play') &&
+      state.day === 1 &&
+      state.phase === 'planning' &&
+      state.historyLength === 0 &&
+      state.plannedAssignments === 0
+    )
+  }, BRIDGE)
+
   assert.deepEqual(
     pageErrors.map((error) => error.message),
     [],
