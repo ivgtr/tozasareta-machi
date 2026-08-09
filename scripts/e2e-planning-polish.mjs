@@ -99,9 +99,14 @@ function assertAlignedRow(targets, message) {
 }
 
 function assertEvenHorizontalGaps(targets) {
-  const gaps = targets.slice(1).map((target, index) => target.hitBounds.x - right(targets[index].hitBounds))
+  const gaps = targets
+    .slice(1)
+    .map((target, index) => target.hitBounds.x - right(targets[index].hitBounds))
   const [firstGap, ...rest] = gaps
-  assert.ok(firstGap > 0, `planning controls gap must be positive: ${JSON.stringify(gaps)}`)
+  assert.ok(
+    firstGap > 0,
+    `planning controls gap must be positive: ${JSON.stringify(gaps)}`,
+  )
   for (const gap of rest) {
     assert.ok(
       Math.abs(gap - firstGap) <= 1,
