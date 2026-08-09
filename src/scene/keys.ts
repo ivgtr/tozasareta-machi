@@ -1,6 +1,7 @@
 export const KEYS = {
   boot: 'Boot',
   title: 'Title',
+  story: 'Story',
   play: 'Play',
 } as const
 

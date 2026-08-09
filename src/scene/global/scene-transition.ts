@@ -8,11 +8,11 @@ export function fadeInScene(scene: Phaser.Scene): void {
   scene.cameras.main.fadeIn(FADE_MS, 10, 14, 36)
 }
 
-export function transitionToScene(scene: Phaser.Scene, key: string): void {
+export function transitionToScene(scene: Phaser.Scene, key: string, data?: object): void {
   if (!getSettings().animations) {
-    scene.scene.start(key)
+    scene.scene.start(key, data)
     return
   }
   scene.cameras.main.fadeOut(FADE_MS, 10, 14, 36)
-  scene.time.delayedCall(FADE_MS, () => scene.scene.start(key))
+  scene.time.delayedCall(FADE_MS, () => scene.scene.start(key, data))
 }

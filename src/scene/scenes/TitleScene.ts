@@ -16,6 +16,7 @@ import { sharedStore } from '../store-bridge'
 import { COLORS, TEXT_SIZE, fitSize } from '../tokens'
 import { PixelButton } from '../ui/button'
 import { pixelText } from '../ui/pixel-text'
+import type { StorySceneData } from './StoryScene'
 
 const INTRO = `昨夜の豪雨で、唯一の幹線道路が寸断された。\n電力と物資は限られている。救援到着まで ${BALANCE.days} 日。\n人員を配置し、この町を生かし続けよ。`
 
@@ -96,7 +97,7 @@ export class TitleScene extends Phaser.Scene {
       width: 220,
       height: 50,
       variant: 'primary',
-      onAction: () => this.enterPlay(),
+      onAction: () => this.enterScene(KEYS.play),
     })
     this.resumeButton.setVisible(this.canResume)
 
@@ -108,7 +109,8 @@ export class TitleScene extends Phaser.Scene {
       onAction: () => {
         if (hasProgress && !window.confirm(CONFIRM_NEW_GAME)) return
         store.dispatch({ type: 'newGame', seed: randomSeed() })
-        this.enterPlay()
+        const launch: StorySceneData = { milestone: 'prologue', nextScene: KEYS.play }
+        this.enterScene(KEYS.story, launch)
       },
     })
 
@@ -171,13 +173,13 @@ export class TitleScene extends Phaser.Scene {
     return `サウンド ${getSettings().sound ? 'ON' : 'OFF'}`
   }
 
-  private enterPlay(): void {
+  private enterScene(key: string, data?: object): void {
     if (this.transitioning) return
     this.transitioning = true
     sessionStarted = true
     void this.audio.unlock()
     this.audio.play('confirm')
-    transitionToScene(this, KEYS.play)
+    transitionToScene(this, key, data)
   }
 
   private layout(): void {
