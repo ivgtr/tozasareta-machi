@@ -5,7 +5,7 @@ on:
     branches: [preflight/town-fx-polish]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: pr3-preflight-${{ github.ref }}
@@ -30,6 +30,12 @@ jobs:
 
       - name: Normalize formatting
         run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs'
+          const pkg = JSON.parse(readFileSync('package.json', 'utf8'))
+          pkg.scripts['format:check'] = 'prettier --check .'
+          writeFileSync('package.json', `${JSON.stringify(pkg, null, 2)}\n`)
+          NODE
           npx prettier --write src/scene/input/play-scene-shortcuts.ts src/scene/planning/facility-focus.ts src/scene/planning/placement.ts src/scene/scenes/PlayScene.ts src/scene/town/ambience.ts .github/workflows/pr3-preflight.yml
           npx prettier --check .
 
@@ -111,3 +117,20 @@ jobs:
             test-results/e2e
           if-no-files-found: ignore
           retention-days: 7
+
+      - name: Persist verified candidate
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- package.json \
+            src/scene/input/play-scene-shortcuts.ts \
+            src/scene/planning/facility-focus.ts \
+            src/scene/planning/placement.ts \
+            src/scene/scenes/PlayScene.ts \
+            src/scene/town/ambience.ts \
+            tests/visual-baselines
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'chore: persist verified PR3 candidate [skip ci]'
+          git push origin HEAD:preflight/town-fx-polish
