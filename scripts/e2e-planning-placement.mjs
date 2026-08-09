@@ -190,19 +190,16 @@ try {
     BRIDGE,
   )
   await clickBounds(page, await textBounds(page, '最初から'))
-  await page.waitForFunction(
-    (bridge) => {
-      const state = globalThis[bridge]?.snapshot()
-      return (
-        state?.activeScenes.includes('Play') &&
-        state.day === 1 &&
-        state.phase === 'planning' &&
-        state.historyLength === 0 &&
-        state.plannedAssignments === 0
-      )
-    },
-    BRIDGE,
-  )
+  await page.waitForFunction((bridge) => {
+    const state = globalThis[bridge]?.snapshot()
+    return (
+      state?.activeScenes.includes('Play') &&
+      state.day === 1 &&
+      state.phase === 'planning' &&
+      state.historyLength === 0 &&
+      state.plannedAssignments === 0
+    )
+  }, BRIDGE)
 
   assert.deepEqual(
     pageErrors.map((error) => error.message),
