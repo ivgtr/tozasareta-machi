@@ -29,7 +29,6 @@ const visualTargets = [
       narrow: { x: 115, y: 285, width: 270, height: 190 },
     },
   },
-  { fixture: 'unit-focus' },
   { fixture: 'facility-focus' },
   { fixture: 'minor-result' },
   { fixture: 'normal-result' },

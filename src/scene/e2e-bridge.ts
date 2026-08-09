@@ -27,7 +27,6 @@ interface CssBounds {
 interface PlaySceneInternals {
   menu?: { isOpen: boolean; show: (state: GameState) => void; hide: () => void }
   confirm?: { isOpen: boolean }
-  characterFocus?: { isOpen: boolean }
   log?: { isOpen: boolean }
   deck?: { keyboardFocus: string | null }
   playback?: {
@@ -364,7 +363,7 @@ function snapshot(game: Phaser.Game): E2ESnapshot {
     historyLength: store.history.length,
     menuOpen: play.menu?.isOpen ?? false,
     confirmOpen: play.confirm?.isOpen ?? false,
-    characterFocusOpen: play.characterFocus?.isOpen ?? false,
+    characterFocusOpen: play.presentation?.mode === 'unit-focus',
     logOpen: play.log?.isOpen ?? false,
     presentationMode: play.presentation?.mode ?? 'planning',
     busy: play.playback?.current != null,

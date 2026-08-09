@@ -52,6 +52,11 @@ describe('derivePresentationMode', () => {
         input({ planningIntent: { kind: 'inspect-facility', facilityId: 'power' } }),
       ),
     ).toBe('facility-focus')
+    expect(
+      derivePresentationMode(
+        input({ planningIntent: { kind: 'choose-unit-for-facility', facilityId: 'power' } }),
+      ),
+    ).toBe('facility-focus')
   })
 
   it('ゲームphaseは通常の選択状態より優先する', () => {
