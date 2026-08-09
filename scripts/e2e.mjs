@@ -418,7 +418,7 @@ try {
         (name) => !globalThis[name]?.snapshot().characterInspectorOpen,
         BRIDGE,
       )
-      assert.ok(await optionalTextBounds(page, '配置先を選択'))
+      assert.ok(await optionalTextBounds(page, '配置先を選択', false))
       assert.ok(await page.evaluate((name) => globalThis[name]?.snapshot().selectedUnitId, BRIDGE))
     })
   })
@@ -626,7 +626,8 @@ try {
         (name) => globalThis[name]?.snapshot().presentationMode === 'unit-focus',
         BRIDGE,
       )
-      await clickText(page, '崩落地点')
+      const road = await facilityFootprintPoint(page, 'road')
+      await page.mouse.click(road.x, road.y)
       await page.waitForFunction(
         (name) => globalThis[name]?.snapshot().presentationMode === 'facility-focus',
         BRIDGE,
