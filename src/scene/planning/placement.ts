@@ -1,5 +1,10 @@
 import type { GameState } from '../../game/types'
-import { derivePlacementCandidate, type PlacementCandidate, type PlanState } from '../plan'
+import {
+  derivePlacementCandidate,
+  type PlacementBlockReason,
+  type PlacementCandidate,
+  type PlanState,
+} from '../plan'
 import { FACILITIES } from '../town/facilities'
 import { FACILITY_PLOTS, type FacilityId } from '../town/layout'
 
@@ -10,11 +15,11 @@ export type PlanningIntent =
   | { kind: 'choose-unit-for-facility'; facilityId: FacilityId }
 
 type WithFacility<C extends PlacementCandidate> = C extends unknown
-  ? C & { facility: FacilityId }
+  ? C & { facility: FacilityId; reason?: PlacementBlockReason }
   : never
 
 export type FacilityPlacementCandidate =
-  | { kind: 'passive'; facility: FacilityId }
+  | { kind: 'passive'; facility: FacilityId; reason?: undefined }
   | WithFacility<PlacementCandidate>
 
 export type FacilityPlacementMap = Record<FacilityId, FacilityPlacementCandidate>
