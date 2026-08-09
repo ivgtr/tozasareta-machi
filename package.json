@@ -17,10 +17,10 @@
     "playwright": "./scripts/playwright.sh",
     "art:validate": "node ./scripts/validate-town-art.mjs",
     "test": "npm run art:validate && vitest run",
-    "test:e2e": "node ./scripts/e2e.mjs && node ./scripts/e2e-planning-placement.mjs && node ./scripts/e2e-planning-polish.mjs",
+    "test:e2e": "node ./scripts/e2e.mjs && node ./scripts/e2e-planning-placement.mjs && node ./scripts/e2e-planning-polish.mjs && node ./scripts/e2e-prologue.mjs",
     "test:prod": "node ./scripts/production-smoke.mjs",
-    "test:visual": "node ./scripts/visual-regression.mjs",
-    "test:visual:update": "UPDATE_VISUAL_BASELINES=1 node ./scripts/visual-regression.mjs",
+    "test:visual": "node ./scripts/visual-regression.mjs && node ./scripts/visual-prologue.mjs",
+    "test:visual:update": "UPDATE_VISUAL_BASELINES=1 node ./scripts/visual-regression.mjs && UPDATE_VISUAL_BASELINES=1 node ./scripts/visual-prologue.mjs",
     "test:watch": "vitest",
     "sim": "vitest run --testNamePattern simulation"
   },
