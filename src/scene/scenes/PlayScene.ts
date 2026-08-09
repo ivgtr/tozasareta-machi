@@ -445,14 +445,20 @@ export class PlayScene extends Phaser.Scene {
     })
     this.deck.update(view, this.plan, unitId)
 
+    if (this.inspectedUnitId && frame.mode !== 'unit-focus') this.inspectedUnitId = null
+    if (this.inspectedUnitId && unitId && this.inspectedUnitId !== unitId) {
+      this.inspectedUnitId = unitId
+    }
+
     const inspectedUnit = this.inspectedUnitId
       ? view.units.find((unit) => unit.id === this.inspectedUnitId)
       : undefined
     if (this.inspectedUnitId && !inspectedUnit) this.inspectedUnitId = null
+    const inspectorOpen = Boolean(inspectedUnit && frame.mode === 'unit-focus')
 
     const selectedUnit =
       frame.mode === 'unit-focus' ? view.units.find((unit) => unit.id === unitId) : undefined
-    if (selectedUnit) {
+    if (selectedUnit && !inspectorOpen) {
       const assignment = assignedTask(this.plan, selectedUnit.id) ?? '待機中'
       this.placementStatus.show(
         selectedUnit,
@@ -462,7 +468,7 @@ export class PlayScene extends Phaser.Scene {
       this.placementStatus.hide()
     }
 
-    if (inspectedUnit && frame.mode === 'unit-focus') {
+    if (inspectedUnit && inspectorOpen) {
       const assignment = assignedTask(this.plan, inspectedUnit.id) ?? '待機中'
       this.characterInspector.show(
         inspectedUnit,
