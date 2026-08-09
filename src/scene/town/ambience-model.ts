@@ -2,8 +2,6 @@ import { isOnExpedition } from '../../game/actions'
 import { BALANCE } from '../../game/data/balance'
 import { actOf, type ActId } from '../../game/threat'
 import type { GameState } from '../../game/types'
-import type { FacilityViewMap } from './facilities'
-import type { FacilityId } from './layout'
 
 export type TownCondition = 'stable' | 'strained' | 'critical'
 export type TownWeather = 'clear' | 'cold' | 'typhoon'
@@ -30,17 +28,12 @@ export interface TownAmbienceModel {
     foodCrates: number
     reserveCrates: number
   }
-  road: FacilityViewMap['road']
-  workingFacilities: FacilityId[]
   danger: boolean
 }
 
 const SIGNAL_STEPS = 4
 
-export function deriveTownAmbience(
-  state: GameState,
-  facilityView: FacilityViewMap,
-): TownAmbienceModel {
+export function deriveTownAmbience(state: GameState): TownAmbienceModel {
   const powerRatio = ratio(state.resources.power, 100)
   const medicalRatio = ratio(state.resources.medical, 100)
   const moraleRatio = ratio(state.resources.morale, 100)
@@ -88,8 +81,6 @@ export function deriveTownAmbience(
       foodCrates: signalSteps(foodSecurity),
       reserveCrates: signalSteps(reserveSecurity),
     },
-    road: facilityView.road,
-    workingFacilities: workingFacilitiesOf(facilityView),
     danger:
       foodCritical ||
       powerCondition === 'critical' ||
@@ -102,15 +93,6 @@ function weatherOf(state: GameState): TownWeather {
   if (state.modifiers.some((modifier) => modifier.id === 'typhoon')) return 'typhoon'
   if (state.modifiers.some((modifier) => modifier.id === 'cold_snap')) return 'cold'
   return 'clear'
-}
-
-function workingFacilitiesOf(view: FacilityViewMap): FacilityId[] {
-  const facilities: FacilityId[] = []
-  if (view.power === 'working') facilities.push('power')
-  if (view.road === 'working') facilities.push('road')
-  if (view.clinic === 'working') facilities.push('clinic')
-  if (view.plaza === 'working') facilities.push('plaza')
-  return facilities
 }
 
 function condition(value: number, criticalBelow: number, stableAt: number): TownCondition {

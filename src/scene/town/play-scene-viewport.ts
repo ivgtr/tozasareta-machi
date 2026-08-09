@@ -2,7 +2,6 @@ import Phaser from 'phaser'
 import { reducedMotion } from '../../store'
 import { assignedTask, type PlanState } from '../plan'
 import type { FlowPresentationModel } from '../playback/flow-model'
-import type { TownPlaybackFx } from '../playback/town-playback-fx'
 import { focusedFacilityId, placementUnitId, type PlanningIntent } from '../planning/placement'
 import type { PresentationMode } from '../presentation'
 import type { Rect } from '../regions'
@@ -42,7 +41,6 @@ export class PlayTownViewportController {
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly town: TownLayer,
-    private readonly playbackFx: TownPlaybackFx,
   ) {}
 
   reset(): void {
@@ -56,13 +54,13 @@ export class PlayTownViewportController {
     const key = `${preset.mode}:${facility}:${target.x}:${target.y}:${target.scale}`
     if (key === this.key) return
     this.key = key
-    this.scene.tweens.killTweensOf([this.town, this.playbackFx])
+    this.scene.tweens.killTweensOf(this.town)
     if (reducedMotion() || this.town.scaleX === 1) {
       this.setTransform(target.x, target.y, target.scale)
       return
     }
     this.scene.tweens.add({
-      targets: [this.town, this.playbackFx],
+      targets: this.town,
       x: target.x,
       y: target.y,
       scaleX: target.scale,
@@ -75,6 +73,5 @@ export class PlayTownViewportController {
   private setTransform(x: number, y: number, scale: number): void {
     this.town.setPosition(x, y)
     this.town.setScale(scale)
-    this.playbackFx.setTownTransform(x, y, scale)
   }
 }

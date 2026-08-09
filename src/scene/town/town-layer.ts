@@ -139,7 +139,7 @@ export class TownLayer extends Phaser.GameObjects.Container {
   }
 
   update(state: GameState, plan: PlanState, view: FacilityViewMap, selection: TownSelection): void {
-    this.ambience.update(state, view)
+    this.ambience.update(state)
     this.placementCandidates = selection.placementUnitId
       ? deriveFacilityPlacementCandidates(state, plan, selection.placementUnitId)
       : null

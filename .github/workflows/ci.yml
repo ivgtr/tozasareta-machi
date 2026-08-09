@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, preflight/town-feedback-semantic-cleanup]
   pull_request:
 
 permissions:

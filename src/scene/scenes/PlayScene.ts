@@ -23,7 +23,6 @@ import {
 import { FlowPresentation } from '../playback/flow-presentation'
 import { PlaybackController } from '../playback/playback'
 import { PlaybackPresentationCoordinator } from '../playback/presentation-coordinator'
-import { TownPlaybackFx } from '../playback/town-playback-fx'
 import { CommitConfirmPresentation } from '../planning/commit-confirm-presentation'
 import { FacilityFocus } from '../planning/facility-focus'
 import { PlanningInteractionController } from '../planning/planning-interaction'
@@ -58,7 +57,6 @@ export class PlayScene extends Phaser.Scene {
   private planningInteraction!: PlanningInteractionController
   private regions!: Regions
   private town!: TownLayer
-  private playbackFx!: TownPlaybackFx
   private townMask!: Phaser.GameObjects.Graphics
   private deck!: CharacterDeck
   private placementStatus!: PlacementStatus
@@ -111,10 +109,8 @@ export class PlayScene extends Phaser.Scene {
       onFacilityTap: (id) => this.planningInteraction.facilityTap(id),
       onTokenPointerDown: (unitId, x, y) => this.planningInteraction.beginUnitDrag(unitId, x, y),
     })
-    this.playbackFx = new TownPlaybackFx(this)
     const townGeometryMask = this.townMask.createGeometryMask()
     this.town.setMask(townGeometryMask)
-    this.playbackFx.setMask(townGeometryMask)
     this.deck = new CharacterDeck(this, {
       onCharacterPointerDown: (unitId, x, y) =>
         this.planningInteraction.beginUnitDrag(unitId, x, y),
@@ -170,7 +166,7 @@ export class PlayScene extends Phaser.Scene {
       town: this.town,
       facilityFocus: this.facilityFocus,
     })
-    this.townViewport = new PlayTownViewportController(this, this.town, this.playbackFx)
+    this.townViewport = new PlayTownViewportController(this, this.town)
     this.log = new LogDrawer(this)
     this.hud = new HudBar(this, {
       onUndo: () => {
@@ -264,11 +260,7 @@ export class PlayScene extends Phaser.Scene {
     this.flow = new FlowPresentation(this, {
       onSkip: () => this.playback.skipFlow(),
     })
-    this.playbackPresentation = new PlaybackPresentationCoordinator(
-      this.flow,
-      this.playbackFx,
-      this.audio,
-    )
+    this.playbackPresentation = new PlaybackPresentationCoordinator(this.flow, this.audio)
     this.playback.onChange = () => {
       if (!this.playback.current) this.clearPlan()
       this.refresh()
@@ -417,14 +409,13 @@ export class PlayScene extends Phaser.Scene {
       planningIntent: this.planningIntent,
     })
     const facilityView = deriveFacilityView(view, this.plan)
-    const ambience = deriveTownAmbience(view, facilityView)
+    const ambience = deriveTownAmbience(view)
     this.audio.setMood(state.phase === 'ended' ? 'silent' : ambience.danger ? 'crisis' : 'planning')
     const storyMode = isStoryPresentation(frame.mode)
     const facilityId = focusedFacilityId(this.planningIntent)
     const unitId = placementUnitId(this.planningIntent)
     const placementUnit = this.planningInteraction.draggingUnitId ?? unitId
-    const fallbackFacility = frame.mode === 'facility-focus' ? facilityId : null
-    const flowModel = this.playbackPresentation.update(this.playback, view, fallbackFacility)
+    const flowModel = this.playbackPresentation.update(this.playback, view)
     const planningChrome = !storyMode && flowModel === null
 
     this.townViewport.apply(
