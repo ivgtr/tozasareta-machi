@@ -1,17 +1,17 @@
 import Phaser from 'phaser'
-import type { Aptitude, Unit } from '../../game/types'
 import { BALANCE } from '../../game/data/balance'
 import { APTITUDE_LABEL } from '../../game/data/units'
 import { TRAITS } from '../../game/traits'
+import type { Aptitude, Unit } from '../../game/types'
 import type { DeviceClass } from '../layout'
 import type { Rect } from '../regions'
 import { COLORS, TEXT_SIZE, colorCss } from '../tokens'
-import { PixelButton } from '../ui/button'
 import { drawArtSlot } from '../ui/art-slot'
+import { PixelButton } from '../ui/button'
 import { pixelText } from '../ui/pixel-text'
 
-const APTS: Aptitude[] = ['labor', 'tech', 'medical', 'charm']
-const APT_COLOR: Record<Aptitude, number> = {
+const APTITUDES: Aptitude[] = ['labor', 'tech', 'medical', 'charm']
+const APTITUDE_COLOR: Record<Aptitude, number> = {
   labor: COLORS.amber,
   tech: COLORS.cyan,
   medical: COLORS.green,
@@ -27,11 +27,12 @@ function wrapByCharacters(text: string, maxChars: number): string {
   return lines.join('\n')
 }
 
-export interface CharacterFocusCallbacks {
+export interface CharacterInspectorCallbacks {
   onClose: () => void
 }
 
-export class CharacterFocus extends Phaser.GameObjects.Container {
+export class CharacterInspector extends Phaser.GameObjects.Container {
+  private readonly blocker: Phaser.GameObjects.Rectangle
   private readonly frame: Phaser.GameObjects.Graphics
   private readonly content: Phaser.GameObjects.Container
   private readonly closeButton: PixelButton
@@ -40,19 +41,21 @@ export class CharacterFocus extends Phaser.GameObjects.Container {
   private panelHeight = 0
   private openFlag = false
 
-  constructor(scene: Phaser.Scene, callbacks: CharacterFocusCallbacks) {
+  constructor(scene: Phaser.Scene, callbacks: CharacterInspectorCallbacks) {
     super(scene)
+    this.blocker = scene.add.rectangle(0, 0, 1, 1, COLORS.night900, 0.001).setOrigin(0)
+    this.blocker.setInteractive()
     this.frame = scene.add.graphics()
     this.content = scene.add.container()
     this.closeButton = new PixelButton(scene, {
       label: '閉じる',
       width: 84,
-      height: 34,
+      height: 44,
       fontSize: TEXT_SIZE.labelWide,
       onAction: callbacks.onClose,
     })
-    this.add([this.frame, this.content, this.closeButton])
-    this.setDepth(700)
+    this.add([this.blocker, this.frame, this.content, this.closeButton])
+    this.setDepth(720)
     this.setVisible(false)
     scene.add.existing(this)
   }
@@ -68,7 +71,8 @@ export class CharacterFocus extends Phaser.GameObjects.Container {
       this.panelHeight = Math.min(390, Math.max(340, town.height * 0.6))
       this.setPosition(town.x + (town.width - this.panelWidth) / 2, town.y + 12)
     }
-    this.closeButton.setPosition(this.panelWidth - 54, 26)
+    this.blocker.setPosition(town.x - this.x, town.y - this.y).setSize(town.width, town.height)
+    this.closeButton.setPosition(this.panelWidth - 54, 30)
     this.redrawFrame()
   }
 
@@ -94,7 +98,7 @@ export class CharacterFocus extends Phaser.GameObjects.Container {
     g.clear()
     g.fillStyle(0x000000, 0.45)
     g.fillRect(6, 6, w, h)
-    g.fillStyle(COLORS.night900, 0.96)
+    g.fillStyle(COLORS.night900, 0.97)
     g.fillRect(0, 0, w, h)
     g.lineStyle(2, COLORS.frameHi)
     g.strokeRect(1, 1, w - 2, h - 2)
@@ -105,66 +109,58 @@ export class CharacterFocus extends Phaser.GameObjects.Container {
   }
 
   private render(unit: Unit, assignmentLabel: string): void {
-    const d = this.content
-    d.removeAll(true)
-    if (this.deviceClass === 'wide') this.renderWide(d, unit, assignmentLabel)
-    else this.renderNarrow(d, unit, assignmentLabel)
+    this.content.removeAll(true)
+    if (this.deviceClass === 'wide') this.renderWide(unit, assignmentLabel)
+    else this.renderNarrow(unit, assignmentLabel)
   }
 
-  private renderWide(d: Phaser.GameObjects.Container, unit: Unit, assignmentLabel: string): void {
-    const portraitW = 156
-    const portraitH = 208
-    const portraitX = 24 + portraitW / 2
-    const portraitY = 58 + portraitH / 2
-    drawArtSlot(this.scene, d, 'portrait', unit.portrait, portraitX, portraitY, {
-      width: portraitW,
-      height: portraitH,
-      glyphSize: 72,
-      fallbackGlyph: '人',
-    })
-
+  private renderWide(unit: Unit, assignmentLabel: string): void {
+    const portraitWidth = 156
+    const portraitHeight = 208
+    drawArtSlot(
+      this.scene,
+      this.content,
+      'portrait',
+      unit.portrait,
+      24 + portraitWidth / 2,
+      58 + portraitHeight / 2,
+      {
+        width: portraitWidth,
+        height: portraitHeight,
+        glyphSize: 72,
+        fallbackGlyph: '人',
+      },
+    )
     const infoX = 204
-    this.addIdentity(d, unit, assignmentLabel, infoX, 58, this.panelWidth - infoX - 18)
-    this.addAptitudes(d, unit, infoX, 154, this.panelWidth - infoX - 22, 18)
-    this.addNarrative(d, unit, 24, 284, this.panelWidth - 48, this.panelHeight - 326)
-
-    const guide = pixelText(this.scene, '町の施設を選択して配置　／　人物をドラッグして配置', {
-      fontSize: TEXT_SIZE.labelWide,
-      color: COLORS.inkDim,
-      wordWrapWidth: this.panelWidth - 48,
-    })
-    guide.setPosition(24, this.panelHeight - 34)
-    d.add(guide)
+    this.addIdentity(unit, assignmentLabel, infoX, 58, this.panelWidth - infoX - 18)
+    this.addAptitudes(unit, infoX, 154, this.panelWidth - infoX - 22, 18)
+    this.addNarrative(unit, 24, 284, this.panelWidth - 48, this.panelHeight - 306)
   }
 
-  private renderNarrow(d: Phaser.GameObjects.Container, unit: Unit, assignmentLabel: string): void {
-    const portraitW = 118
-    const portraitH = 158
-    const portraitX = 20 + portraitW / 2
-    const portraitY = 54 + portraitH / 2
-    drawArtSlot(this.scene, d, 'portrait', unit.portrait, portraitX, portraitY, {
-      width: portraitW,
-      height: portraitH,
-      glyphSize: 56,
-      fallbackGlyph: '人',
-    })
-
+  private renderNarrow(unit: Unit, assignmentLabel: string): void {
+    const portraitWidth = 118
+    const portraitHeight = 158
+    drawArtSlot(
+      this.scene,
+      this.content,
+      'portrait',
+      unit.portrait,
+      20 + portraitWidth / 2,
+      54 + portraitHeight / 2,
+      {
+        width: portraitWidth,
+        height: portraitHeight,
+        glyphSize: 56,
+        fallbackGlyph: '人',
+      },
+    )
     const infoX = 156
-    this.addIdentity(d, unit, assignmentLabel, infoX, 54, this.panelWidth - infoX - 16)
-    this.addAptitudes(d, unit, infoX, 148, this.panelWidth - infoX - 22, 15)
-    this.addNarrative(d, unit, 20, 248, this.panelWidth - 40, this.panelHeight - 292)
-
-    const guide = pixelText(this.scene, '施設を選択して配置　／　ドラッグでも配置', {
-      fontSize: TEXT_SIZE.labelNarrow,
-      color: COLORS.inkDim,
-      wordWrapWidth: this.panelWidth - 40,
-    })
-    guide.setPosition(20, this.panelHeight - 30)
-    d.add(guide)
+    this.addIdentity(unit, assignmentLabel, infoX, 54, this.panelWidth - infoX - 16)
+    this.addAptitudes(unit, infoX, 148, this.panelWidth - infoX - 22, 15)
+    this.addNarrative(unit, 20, 248, this.panelWidth - 40, this.panelHeight - 268)
   }
 
   private addIdentity(
-    host: Phaser.GameObjects.Container,
     unit: Unit,
     assignmentLabel: string,
     x: number,
@@ -175,22 +171,12 @@ export class CharacterFocus extends Phaser.GameObjects.Container {
       fontSize: this.deviceClass === 'wide' ? 24 : TEXT_SIZE.heading,
       color: COLORS.gold,
       wordWrapWidth: wrapWidth,
-    })
-    name.setPosition(x, y)
-    host.add(name)
-
-    const alias = pixelText(
-      this.scene,
-      unit.alias ? unit.alias : unit.unique ? '町の中核メンバー' : '住民',
-      {
-        fontSize: this.deviceClass === 'wide' ? TEXT_SIZE.bodyWide : TEXT_SIZE.bodyNarrow,
-        color: COLORS.inkDim,
-        wordWrapWidth: wrapWidth,
-      },
-    )
-    alias.setPosition(x, y + 32)
-    host.add(alias)
-
+    }).setPosition(x, y)
+    const alias = pixelText(this.scene, unit.alias || (unit.unique ? '町の中核メンバー' : '住民'), {
+      fontSize: this.deviceClass === 'wide' ? TEXT_SIZE.bodyWide : TEXT_SIZE.bodyNarrow,
+      color: COLORS.inkDim,
+      wordWrapWidth: wrapWidth,
+    }).setPosition(x, y + 32)
     const condition = pixelText(
       this.scene,
       unit.condition === 'injured' ? '● 負傷中・効果半減' : '● 健康',
@@ -198,60 +184,42 @@ export class CharacterFocus extends Phaser.GameObjects.Container {
         fontSize: this.deviceClass === 'wide' ? TEXT_SIZE.labelWide : TEXT_SIZE.labelNarrow,
         color: unit.condition === 'injured' ? COLORS.red : COLORS.green,
       },
-    )
-    condition.setPosition(x, y + 56)
-    host.add(condition)
-
+    ).setPosition(x, y + 56)
     const assignment = pixelText(this.scene, `配置: ${assignmentLabel}`, {
       fontSize: this.deviceClass === 'wide' ? TEXT_SIZE.labelWide : TEXT_SIZE.labelNarrow,
       color: COLORS.amber,
       wordWrapWidth: wrapWidth,
-    })
-    assignment.setPosition(x, y + 78)
-    host.add(assignment)
+    }).setPosition(x, y + 78)
+    this.content.add([name, alias, condition, assignment])
   }
 
-  private addAptitudes(
-    host: Phaser.GameObjects.Container,
-    unit: Unit,
-    x: number,
-    y: number,
-    width: number,
-    barHeight: number,
-  ): void {
-    const barW = Math.max(54, width - 48)
-    APTS.forEach((aptitude, index) => {
+  private addAptitudes(unit: Unit, x: number, y: number, width: number, barHeight: number): void {
+    const barWidth = Math.max(54, width - 48)
+    APTITUDES.forEach((aptitude, index) => {
       const rowY = y + index * (barHeight + 8)
       const label = pixelText(this.scene, APTITUDE_LABEL[aptitude].slice(0, 1), {
         fontSize: this.deviceClass === 'wide' ? TEXT_SIZE.labelWide : TEXT_SIZE.labelNarrow,
-        color: APT_COLOR[aptitude],
-      })
-      label.setPosition(x, rowY)
-      host.add(label)
-
+        color: APTITUDE_COLOR[aptitude],
+      }).setPosition(x, rowY)
       const bar = this.scene.add.graphics()
       bar.fillStyle(COLORS.night700)
-      bar.fillRect(x + 24, rowY + 2, barW, barHeight - 4)
-      bar.fillStyle(APT_COLOR[aptitude])
+      bar.fillRect(x + 24, rowY + 2, barWidth, barHeight - 4)
+      bar.fillStyle(APTITUDE_COLOR[aptitude])
       bar.fillRect(
         x + 24,
         rowY + 2,
-        (barW * Math.min(10, Math.max(0, unit.apt[aptitude]))) / 10,
+        (barWidth * Math.min(10, Math.max(0, unit.apt[aptitude]))) / 10,
         barHeight - 4,
       )
-      host.add(bar)
-
       const value = pixelText(this.scene, String(unit.apt[aptitude]), {
         fontSize: this.deviceClass === 'wide' ? TEXT_SIZE.labelWide : TEXT_SIZE.labelNarrow,
         color: COLORS.ink,
-      })
-      value.setPosition(x + 28 + barW, rowY)
-      host.add(value)
+      }).setPosition(x + 28 + barWidth, rowY)
+      this.content.add([label, bar, value])
     })
   }
 
   private addNarrative(
-    host: Phaser.GameObjects.Container,
     unit: Unit,
     x: number,
     y: number,
@@ -272,27 +240,23 @@ export class CharacterFocus extends Phaser.GameObjects.Container {
       fontSize: this.deviceClass === 'wide' ? TEXT_SIZE.labelWide : TEXT_SIZE.labelNarrow,
       color: unit.traits.some((trait) => !TRAITS[trait].positive) ? COLORS.red : COLORS.ink,
       wordWrapWidth: wrapWidth,
-    })
-    traits.setPosition(x, y)
-    host.add(traits)
+    }).setPosition(x, y)
+    this.content.add(traits)
 
     if (unit.flavor && availableHeight >= 40) {
-      const flavorText = wrapByCharacters(`「${unit.flavor}」`, maxChars)
-      const flavor = pixelText(this.scene, flavorText, {
+      const flavor = pixelText(this.scene, wrapByCharacters(`「${unit.flavor}」`, maxChars), {
         fontSize: this.deviceClass === 'wide' ? TEXT_SIZE.labelWide : TEXT_SIZE.labelNarrow,
         color: COLORS.inkDim,
         wordWrapWidth: wrapWidth,
-      })
-      flavor.setPosition(x, y + Math.min(48, traits.height + 10))
-      host.add(flavor)
+      }).setPosition(x, y + Math.min(48, traits.height + 10))
+      this.content.add(flavor)
     }
 
     const growth = pixelText(this.scene, `成長 ${unit.xp}/${BALANCE.unit.growthThreshold}`, {
       fontSize: TEXT_SIZE.labelNarrow,
       color: COLORS.inkDim,
       backgroundColor: colorCss(COLORS.night700),
-    })
-    growth.setPosition(x, Math.min(this.panelHeight - 58, y + Math.max(44, availableHeight - 20)))
-    host.add(growth)
+    }).setPosition(x, Math.min(this.panelHeight - 34, y + Math.max(44, availableHeight - 20)))
+    this.content.add(growth)
   }
 }

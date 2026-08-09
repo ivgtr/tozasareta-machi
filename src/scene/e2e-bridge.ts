@@ -6,6 +6,7 @@ import { KEYS } from './keys'
 import { deviceClassOf } from './layout'
 import type { PresentationMode } from './presentation'
 import { emptyPlan, type PlanState } from './plan'
+import { focusedFacilityId, placementUnitId, type PlanningIntent } from './planning/placement'
 import { sharedStore } from './store-bridge'
 import { ChoiceCard } from './story/choice-presentation'
 import {
@@ -26,8 +27,9 @@ interface CssBounds {
 interface PlaySceneInternals {
   menu?: { isOpen: boolean; show: (state: GameState) => void; hide: () => void }
   confirm?: { isOpen: boolean }
-  characterFocus?: { isOpen: boolean }
   log?: { isOpen: boolean }
+  characterInspector?: { isOpen: boolean }
+  placementStatus?: { isOpen: boolean }
   deck?: { keyboardFocus: string | null }
   playback?: {
     current: unknown | null
@@ -36,8 +38,8 @@ interface PlaySceneInternals {
     start: (state: GameState, effects: Effect[], context?: PlaybackContext) => void
   }
   presentation?: { mode: PresentationMode }
-  selectedUnitId?: string | null
-  selectedFacility?: string | null
+  planningIntent?: PlanningIntent
+  inspectedUnitId?: string | null
   plan?: PlanState
   startNewGame?: () => void
   refresh?: () => void
@@ -50,7 +52,8 @@ interface E2ESnapshot {
   historyLength: number
   menuOpen: boolean
   confirmOpen: boolean
-  characterFocusOpen: boolean
+  characterInspectorOpen: boolean
+  placementStatusOpen: boolean
   logOpen: boolean
   presentationMode: PresentationMode
   busy: boolean
@@ -356,6 +359,7 @@ function snapshot(game: Phaser.Game): E2ESnapshot {
   const store = sharedStore().get()
   const play = game.scene.getScene(KEYS.play) as unknown as PlaySceneInternals
   const canvas = game.canvas.getBoundingClientRect()
+  const intent = play.planningIntent ?? { kind: 'none' }
   return {
     activeScenes: game.scene.getScenes(true).map((scene) => scene.scene.key),
     day: store.state.day,
@@ -363,13 +367,14 @@ function snapshot(game: Phaser.Game): E2ESnapshot {
     historyLength: store.history.length,
     menuOpen: play.menu?.isOpen ?? false,
     confirmOpen: play.confirm?.isOpen ?? false,
-    characterFocusOpen: play.characterFocus?.isOpen ?? false,
+    characterInspectorOpen: play.characterInspector?.isOpen ?? false,
+    placementStatusOpen: play.placementStatus?.isOpen ?? false,
     logOpen: play.log?.isOpen ?? false,
     presentationMode: play.presentation?.mode ?? 'planning',
     busy: play.playback?.current != null,
     soundEnabled: getSettings().sound,
-    selectedUnitId: play.selectedUnitId ?? null,
-    selectedFacility: play.selectedFacility ?? null,
+    selectedUnitId: placementUnitId(intent),
+    selectedFacility: focusedFacilityId(intent),
     keyboardFocusedUnitId: play.deck?.keyboardFocus ?? null,
     plannedAssignments: Object.values(play.plan?.placements ?? {}).reduce(
       (total, ids) => total + (ids?.length ?? 0),
@@ -409,8 +414,8 @@ function showFixture(game: Phaser.Game, name: PresentationFixtureName): void {
   const play = game.scene.getScene(KEYS.play) as unknown as PlaySceneInternals
   play.playback?.cancel()
   play.menu?.hide()
-  play.selectedUnitId = fixture.selectedUnitId ?? null
-  play.selectedFacility = fixture.selectedFacility ?? null
+  play.planningIntent = fixture.planningIntent ?? { kind: 'none' }
+  play.inspectedUnitId = fixture.inspectedUnitId ?? null
   play.plan = fixture.plan ?? emptyPlan()
   if (fixture.beat && fixture.baseState) {
     play.playback?.start(fixture.baseState, fixture.beat.effects, fixture.playbackContext)

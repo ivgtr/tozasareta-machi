@@ -8,44 +8,44 @@ export interface FacilityMeta {
   id: FacilityId
   label: string
   color: number
-  tasks: TaskId[]
+  task: TaskId | null
 }
 
-function facilityTasks(facility: FacilityId): TaskId[] {
-  return PHYSICAL_TASKS.filter((task) => TASK_PRESENTATION[task].facility === facility)
+function facilityTask(facility: FacilityId): TaskId | null {
+  return PHYSICAL_TASKS.find((task) => TASK_PRESENTATION[task].facility === facility) ?? null
 }
 
 export const FACILITIES: Record<FacilityId, FacilityMeta> = {
-  hq: { id: 'hq', label: '本部', color: COLORS.inkDim, tasks: facilityTasks('hq') },
+  hq: { id: 'hq', label: '本部', color: COLORS.inkDim, task: facilityTask('hq') },
   power: {
     id: 'power',
     label: '発電設備',
     color: COLORS.cyan,
-    tasks: facilityTasks('power'),
+    task: facilityTask('power'),
   },
   road: {
     id: 'road',
     label: '崩落地点',
     color: COLORS.amber,
-    tasks: facilityTasks('road'),
+    task: facilityTask('road'),
   },
   clinic: {
     id: 'clinic',
     label: '診療所',
     color: COLORS.green,
-    tasks: facilityTasks('clinic'),
+    task: facilityTask('clinic'),
   },
   plaza: {
     id: 'plaza',
     label: '広場・集会所',
     color: COLORS.gold,
-    tasks: facilityTasks('plaza'),
+    task: facilityTask('plaza'),
   },
   warehouse: {
     id: 'warehouse',
     label: '倉庫・配給所',
     color: COLORS.amber,
-    tasks: facilityTasks('warehouse'),
+    task: facilityTask('warehouse'),
   },
 }
 

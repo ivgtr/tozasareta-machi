@@ -18,7 +18,7 @@ describe('task registries', () => {
   it('物理Taskの施設割当とFXが同じpresentation定義から解決される', () => {
     for (const task of PHYSICAL_TASKS) {
       const presentation = TASK_PRESENTATION[task]
-      expect(FACILITIES[presentation.facility].tasks).toContain(task)
+      expect(FACILITIES[presentation.facility].task).toBe(task)
       expect(resolveFx(`task:${task}`, 'food')).toEqual({
         facility: presentation.facility,
         kind: presentation.fxKind,

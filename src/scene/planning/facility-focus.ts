@@ -32,8 +32,19 @@ export interface FacilityFocusContext {
 
 export interface FacilityFocusCallbacks {
   onClose: () => void
-  onSelectUnit: (unitId: string) => void
+  onReassignUnit: (unitId: string) => void
+  onRequestAssignment: (facilityId: FacilityId) => void
   onUnassignUnit: (unitId: string) => void
+}
+
+interface AssignmentDropSlot {
+  facility: FacilityId
+  x: number
+  y: number
+  width: number
+  height: number
+  graphics: Phaser.GameObjects.Graphics
+  choosing: boolean
 }
 
 export class FacilityFocus extends Phaser.GameObjects.Container {
@@ -44,6 +55,7 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
   private panelWidth = 0
   private panelHeight = 0
   private openFlag = false
+  private assignmentDropSlot: AssignmentDropSlot | null = null
 
   constructor(scene: Phaser.Scene, callbacks: FacilityFocusCallbacks) {
     super(scene)
@@ -78,19 +90,39 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
     this.redrawFrame()
   }
 
-  show(ctx: FacilityFocusContext, facility: FacilityId): void {
+  show(ctx: FacilityFocusContext, facility: FacilityId, choosingUnit: boolean): void {
     this.openFlag = true
     this.setVisible(true)
-    this.render(ctx, facility)
+    this.render(ctx, facility, choosingUnit)
   }
 
   hide(): void {
     this.openFlag = false
+    this.assignmentDropSlot = null
     this.setVisible(false)
   }
 
   get isOpen(): boolean {
     return this.openFlag
+  }
+
+  assignmentFacilityAtWorld(worldX: number, worldY: number): FacilityId | null {
+    const slot = this.assignmentDropSlot
+    if (!this.openFlag || !slot) return null
+    const point = this.getLocalPoint(worldX, worldY)
+    return Phaser.Geom.Rectangle.Contains(
+      new Phaser.Geom.Rectangle(slot.x, slot.y, slot.width, slot.height),
+      point.x,
+      point.y,
+    )
+      ? slot.facility
+      : null
+  }
+
+  setAssignmentDropHover(valid: boolean | null): void {
+    const slot = this.assignmentDropSlot
+    if (!slot) return
+    drawAssignmentSlot(slot, valid)
   }
 
   private redrawFrame(): void {
@@ -106,8 +138,9 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
     g.strokeRect(5, 5, this.panelWidth - 10, this.panelHeight - 10)
   }
 
-  private render(ctx: FacilityFocusContext, facility: FacilityId): void {
+  private render(ctx: FacilityFocusContext, facility: FacilityId, choosingUnit: boolean): void {
     const d = this.dynamic
+    this.assignmentDropSlot = null
     d.removeAll(true)
     const inset = PANEL_CONTENT_INSET
     const wrapW = this.panelWidth - inset * 2
@@ -139,12 +172,12 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
     stateBadge.setPosition(inset, inset + 28)
     d.add(stateBadge)
 
-    if (meta.tasks.length === 0) {
+    if (!meta.task) {
       this.renderPassiveFacility(d, ctx, facility, inset, wrapW)
       return
     }
 
-    const task = meta.tasks[0]!
+    const task = meta.task
     const unitIds = ctx.plan.placements[task] ?? []
     const cost = taskCost(task)
     const disabled = isTaskDisabled(ctx.state.modifiers, task)
@@ -162,15 +195,13 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
     action.setPosition(inset, inset + 56)
     d.add(action)
 
-    const forecastTitle = pixelText(
-      this.scene,
-      unitIds.length === 0 ? '実行見込  未配置' : `実行見込  ${TASK_LABEL[task]} +${progress}`,
-      {
-        fontSize: TEXT_SIZE.labelWide,
-        color: unitIds.length > 0 ? COLORS.green : COLORS.inkDim,
-        wordWrapWidth: wrapW,
-      },
-    )
+    const forecastLabel =
+      unitIds.length === 0 ? '実行見込  未配置' : `実行見込  ${TASK_LABEL[task]} +${progress}`
+    const forecastTitle = pixelText(this.scene, forecastLabel, {
+      fontSize: TEXT_SIZE.labelWide,
+      color: unitIds.length > 0 ? COLORS.green : COLORS.inkDim,
+      wordWrapWidth: wrapW,
+    })
     forecastTitle.setPosition(inset, inset + 84)
     d.add(forecastTitle)
 
@@ -210,7 +241,16 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
     head.setPosition(inset, inset + 154)
     d.add(head)
 
-    this.renderAssignmentSlots(d, ctx.state, unitIds, inset, inset + 176, wrapW)
+    this.renderAssignmentSlots(
+      d,
+      ctx.state,
+      facility,
+      unitIds,
+      inset,
+      inset + 176,
+      wrapW,
+      choosingUnit,
+    )
   }
 
   private renderPassiveFacility(
@@ -236,10 +276,12 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
   private renderAssignmentSlots(
     host: Phaser.GameObjects.Container,
     state: GameState,
+    facility: FacilityId,
     unitIds: string[],
     x: number,
     y: number,
     wrapWidth: number,
+    choosingUnit: boolean,
   ): void {
     const visible = unitIds.slice(0, 4)
     const slotCount = Math.min(5, visible.length + 1)
@@ -274,6 +316,7 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
       host.add(name)
       const zone = this.scene.add.zone(slotX + slotW / 2, y + 31, slotW, 62)
       zone.setInteractive()
+      if (zone.input) zone.input.cursor = 'pointer'
       zone.on(
         'pointerdown',
         (
@@ -283,7 +326,7 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
           event: Phaser.Types.Input.EventData,
         ) => {
           event.stopPropagation()
-          this.callbacks.onSelectUnit(unitId)
+          this.callbacks.onReassignUnit(unitId)
         },
       )
       host.add(zone)
@@ -298,29 +341,56 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
       remove.setPosition(slotX + slotW / 2, y + 84)
       host.add(remove)
     })
+
     const emptyX = startX + visible.length * (slotW + gap)
     const emptySlot = this.scene.add.graphics()
-    emptySlot.fillStyle(COLORS.night800, 0.55)
-    emptySlot.fillRect(emptyX, y, slotW, 108)
-    emptySlot.lineStyle(1, COLORS.frameLo, 0.8)
-    emptySlot.strokeRect(emptyX, y, slotW, 108)
+    const dropSlot: AssignmentDropSlot = {
+      facility,
+      x: emptyX,
+      y,
+      width: slotW,
+      height: 108,
+      graphics: emptySlot,
+      choosing: choosingUnit,
+    }
+    this.assignmentDropSlot = dropSlot
+    drawAssignmentSlot(dropSlot, null)
     host.add(emptySlot)
+
     const plus = pixelText(this.scene, '＋', {
       fontSize: 24,
-      color: COLORS.inkDim,
+      color: choosingUnit ? COLORS.cyan : COLORS.inkDim,
     })
     plus.setOrigin(0.5)
     plus.setPosition(emptyX + slotW / 2, y + 32)
     host.add(plus)
-    const hint = pixelText(this.scene, 'Deckから\n配置', {
+    const hint = pixelText(this.scene, choosingUnit ? '人物を\n選択' : 'Deckから\n配置', {
       fontSize: TEXT_SIZE.labelNarrow,
-      color: COLORS.inkDim,
+      color: choosingUnit ? COLORS.cyan : COLORS.inkDim,
       align: 'center',
       wordWrapWidth: slotW - 4,
     })
     hint.setOrigin(0.5, 0)
     hint.setPosition(emptyX + slotW / 2, y + 52)
     host.add(hint)
+
+    const emptyZone = this.scene.add.zone(emptyX + slotW / 2, y + 54, slotW, 108)
+    emptyZone.setInteractive()
+    if (emptyZone.input) emptyZone.input.cursor = 'pointer'
+    emptyZone.on(
+      'pointerdown',
+      (
+        _pointer: Phaser.Input.Pointer,
+        _lx: number,
+        _ly: number,
+        event: Phaser.Types.Input.EventData,
+      ) => {
+        event.stopPropagation()
+        this.callbacks.onRequestAssignment(facility)
+      },
+    )
+    host.add(emptyZone)
+
     if (unitIds.length > visible.length) {
       const more = pixelText(this.scene, `+${unitIds.length - visible.length}`, {
         fontSize: TEXT_SIZE.labelWide,
@@ -331,4 +401,22 @@ export class FacilityFocus extends Phaser.GameObjects.Container {
       host.add(more)
     }
   }
+}
+
+function drawAssignmentSlot(slot: AssignmentDropSlot, valid: boolean | null): void {
+  const g = slot.graphics
+  g.clear()
+  g.fillStyle(COLORS.night800, 0.55)
+  g.fillRect(slot.x, slot.y, slot.width, slot.height)
+  const color =
+    valid === true
+      ? COLORS.green
+      : valid === false
+        ? COLORS.red
+        : slot.choosing
+          ? COLORS.cyan
+          : COLORS.frameLo
+  const width = valid === null && !slot.choosing ? 1 : 3
+  g.lineStyle(width, color, valid === null && !slot.choosing ? 0.8 : 1)
+  g.strokeRect(slot.x, slot.y, slot.width, slot.height)
 }

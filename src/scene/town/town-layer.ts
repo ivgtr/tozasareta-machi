@@ -1,8 +1,17 @@
 import Phaser from 'phaser'
 import type { GameState } from '../../game/types'
-import { COLORS, TEXT_SIZE } from '../tokens'
+import {
+  deriveFacilityPlacementCandidates,
+  type FacilityPlacementCandidate,
+} from '../planning/placement'
 import type { PlanState } from '../plan'
+import { COLORS, TEXT_SIZE } from '../tokens'
+import { textureKey } from '../art/assets'
+import { pixelText } from '../ui/pixel-text'
+import { reconcileTokens } from '../ui/token'
+import { TownAmbience } from './ambience'
 import { FACILITIES, type FacilityViewMap } from './facilities'
+import { facilityPlacementAlpha } from './facility-feedback'
 import { facilityAssetId } from './facility-view'
 import {
   FACILITY_PLOTS,
@@ -13,10 +22,6 @@ import {
   footprintDiamond,
   type FacilityId,
 } from './layout'
-import { textureKey } from '../art/assets'
-import { reconcileTokens } from '../ui/token'
-import { pixelText } from '../ui/pixel-text'
-import { TownAmbience } from './ambience'
 
 const TOKEN_FAN: Array<{ x: number; y: number }> = [
   { x: -20, y: 8 },
@@ -32,8 +37,8 @@ const TOKEN_FAN: Array<{ x: number; y: number }> = [
 ]
 
 export interface TownSelection {
-  selectedFacility: FacilityId | null
-  placeableUnitId: string | null
+  focusedFacilityId: FacilityId | null
+  placementUnitId: string | null
 }
 
 export interface TownCallbacks {
@@ -43,10 +48,10 @@ export interface TownCallbacks {
 
 interface FacilityVisual {
   host: Phaser.GameObjects.Container
-  highlight: Phaser.GameObjects.Graphics
   tokens: Phaser.GameObjects.Container
   sprite: Phaser.GameObjects.Image | null
   label: Phaser.GameObjects.Text
+  status: Phaser.GameObjects.Text
 }
 
 export class TownLayer extends Phaser.GameObjects.Container {
@@ -55,8 +60,11 @@ export class TownLayer extends Phaser.GameObjects.Container {
   private readonly overlay: Phaser.GameObjects.Container
   private readonly visuals = new Map<FacilityId, FacilityVisual>()
   private readonly callbacks: TownCallbacks
-  private readonly persistentLabels = new Set<FacilityId>()
+  private placementCandidates: Record<FacilityId, FacilityPlacementCandidate> | null = null
+  private focusedFacility: FacilityId | null = null
   private hoveredFacility: FacilityId | null = null
+  private dragTarget: FacilityId | null = null
+  private dragCandidate: FacilityPlacementCandidate | null = null
 
   constructor(scene: Phaser.Scene, callbacks: TownCallbacks) {
     super(scene)
@@ -78,18 +86,27 @@ export class TownLayer extends Phaser.GameObjects.Container {
       host.add(tokens)
       this.world.add(host)
 
-      const highlight = scene.add.graphics()
       const label = pixelText(scene, meta.label, {
         fontSize: TEXT_SIZE.labelWide,
         color: COLORS.ink,
         backgroundColor: '#0a0e24',
+        align: 'center',
       })
       label.setPosition(plot.x, plot.y + 18)
       label.setOrigin(0.5)
       label.setVisible(false)
+      const status = pixelText(scene, '', {
+        fontSize: TEXT_SIZE.labelNarrow,
+        color: COLORS.inkDim,
+        backgroundColor: '#0a0e24',
+        align: 'center',
+      })
+      status.setPosition(plot.x, plot.y + 36)
+      status.setOrigin(0.5)
+      status.setVisible(false)
 
-      this.overlay.add([highlight, label])
-      this.visuals.set(plot.id, { host, highlight, tokens, sprite: null, label })
+      this.overlay.add([label, status])
+      this.visuals.set(plot.id, { host, tokens, sprite: null, label, status })
     }
 
     this.world.sort('y')
@@ -106,9 +123,27 @@ export class TownLayer extends Phaser.GameObjects.Container {
     return point.x >= 0 && point.x <= TOWN_BASE.width && point.y >= 0 && point.y <= TOWN_BASE.height
   }
 
+  setPlacementDropTarget(facility: FacilityId, candidate: FacilityPlacementCandidate): void {
+    const previous = this.dragTarget
+    this.dragTarget = facility
+    this.dragCandidate = candidate
+    if (previous && previous !== facility) this.refreshFacilityFeedback(previous)
+    this.refreshFacilityFeedback(facility)
+  }
+
+  clearPlacementDropTarget(): void {
+    const previous = this.dragTarget
+    this.dragTarget = null
+    this.dragCandidate = null
+    if (previous) this.refreshFacilityFeedback(previous)
+  }
+
   update(state: GameState, plan: PlanState, view: FacilityViewMap, selection: TownSelection): void {
-    this.persistentLabels.clear()
-    this.ambience.update(state, view)
+    this.ambience.update(state)
+    this.placementCandidates = selection.placementUnitId
+      ? deriveFacilityPlacementCandidates(state, plan, selection.placementUnitId)
+      : null
+    this.focusedFacility = selection.focusedFacilityId
 
     for (const plot of FACILITY_PLOTS) {
       const meta = FACILITIES[plot.id]
@@ -116,34 +151,13 @@ export class TownLayer extends Phaser.GameObjects.Container {
       if (!visual) continue
 
       const stateId = view[plot.id]
-      const highlight = visual.highlight
-      highlight.clear()
+      visual.label.setText(meta.label)
+      visual.label.setColor('#e8ecff')
 
-      const diamond = pointsToGeom(footprintDiamond(plot.x, plot.y))
-      const danger = stateId === 'low' || stateId === 'collapsed'
-      const selected = selection.selectedFacility === plot.id
-      const placeable = Boolean(selection.placeableUnitId && meta.tasks.length > 0)
-      const border = stateId === 'working' ? meta.color : danger ? COLORS.red : COLORS.frameLo
-
-      highlight.lineStyle(2, border)
-      highlight.strokePoints(diamond, true)
-
-      if (selected) {
-        highlight.lineStyle(3, COLORS.gold)
-        highlight.strokePoints(diamond, true)
-      } else if (placeable) {
-        highlight.lineStyle(2, COLORS.green)
-        highlight.strokePoints(diamond, true)
-      }
-
-      if (danger || selected || placeable) this.persistentLabels.add(plot.id)
-      visual.label.setVisible(
-        this.hoveredFacility === plot.id || this.persistentLabels.has(plot.id),
-      )
-
-      const unitIds = meta.tasks.flatMap((task) => plan.placements[task] ?? [])
+      const unitIds = meta.task ? (plan.placements[meta.task] ?? []) : []
       this.syncTokens(visual.tokens, state, unitIds)
       this.syncSprite(visual, plot.id, stateId)
+      this.refreshFacilityFeedback(plot.id)
     }
   }
 
@@ -174,11 +188,11 @@ export class TownLayer extends Phaser.GameObjects.Container {
       sprite.on('pointerdown', () => this.callbacks.onFacilityTap(facility))
       sprite.on('pointerover', () => {
         this.hoveredFacility = facility
-        visual.label.setVisible(true)
+        this.refreshFacilityFeedback(facility)
       })
       sprite.on('pointerout', () => {
         if (this.hoveredFacility === facility) this.hoveredFacility = null
-        visual.label.setVisible(this.persistentLabels.has(facility))
+        this.refreshFacilityFeedback(facility)
       })
       visual.host.addAt(sprite, 0)
       visual.sprite = sprite
@@ -186,6 +200,20 @@ export class TownLayer extends Phaser.GameObjects.Container {
     }
 
     if (visual.sprite.texture.key !== key) visual.sprite.setTexture(key)
+  }
+
+  private refreshFacilityFeedback(facility: FacilityId): void {
+    const visual = this.visuals.get(facility)
+    if (!visual) return
+    const dragCandidate = this.dragTarget === facility ? this.dragCandidate : null
+    const candidate = dragCandidate ?? this.placementCandidates?.[facility] ?? null
+    const targeted = this.hoveredFacility === facility || this.dragTarget === facility
+    const labelVisible = targeted || this.focusedFacility === facility
+    visual.sprite?.setAlpha(facilityPlacementAlpha(candidate))
+    visual.label.setVisible(labelVisible)
+    visual.status.setText(candidate && targeted ? placementStatus(candidate) : '')
+    visual.status.setColor(candidate ? placementColorCss(candidate) : '#a8b1d9')
+    visual.status.setVisible(Boolean(candidate && targeted))
   }
 
   private syncTokens(
@@ -207,10 +235,19 @@ export class TownLayer extends Phaser.GameObjects.Container {
   }
 }
 
-function pointsToGeom(points: number[]): Phaser.Geom.Point[] {
-  const out: Phaser.Geom.Point[] = []
-  for (let index = 0; index < points.length; index += 2) {
-    out.push(new Phaser.Geom.Point(points[index] ?? 0, points[index + 1] ?? 0))
-  }
-  return out
+function placementStatus(candidate: FacilityPlacementCandidate): string {
+  if (candidate.kind === 'available') return '配置可能'
+  if (candidate.kind === 'current') return '配置済み'
+  if (candidate.kind === 'passive') return '配置不可'
+  if (candidate.reason === 'budget') return '配置不可・予算不足'
+  if (candidate.reason === 'stockpile') return '配置不可・備蓄不足'
+  if (candidate.reason === 'task-disabled') return '配置不可・行動不可'
+  return '配置不可'
+}
+
+function placementColorCss(candidate: FacilityPlacementCandidate): string {
+  if (candidate.kind === 'available' || candidate.kind === 'current') return '#5ee6a8'
+  if (candidate.kind === 'blocked' && candidate.reason === 'task-disabled') return '#ff5f66'
+  if (candidate.kind === 'blocked') return '#ffc857'
+  return '#a8b1d9'
 }

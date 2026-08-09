@@ -29,7 +29,7 @@ const visualTargets = [
       narrow: { x: 115, y: 285, width: 270, height: 190 },
     },
   },
-  { fixture: 'unit-focus' },
+  { fixture: 'character-inspector' },
   { fixture: 'facility-focus' },
   { fixture: 'minor-result' },
   { fixture: 'normal-result' },
@@ -111,9 +111,11 @@ async function showFixture(page, name) {
         const expectedMode =
           fixture === 'planning-assigned'
             ? 'planning'
-            : fixture.endsWith('-result')
-              ? 'flow'
-              : fixture
+            : fixture === 'character-inspector'
+              ? 'unit-focus'
+              : fixture.endsWith('-result')
+                ? 'flow'
+                : fixture
         return value.presentationMode === expectedMode
       },
       { bridge: BRIDGE, fixture: name },

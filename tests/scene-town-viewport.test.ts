@@ -12,7 +12,22 @@ describe('deriveTownViewport', () => {
     expect(deriveTownViewport(narrowTown, 'narrow', { mode: 'overview' }).scale).toBeGreaterThan(1)
   })
 
-  it('focus presets は対象施設へ寄り、overview より拡大する', () => {
+  it('人物配置中はoverviewを維持して配置領域を潰さない', () => {
+    const overview = deriveTownViewport(wideTown, 'wide', { mode: 'overview' })
+    const unitFocus = deriveTownViewport(wideTown, 'wide', {
+      mode: 'unit-focus',
+      facility: 'road',
+    })
+    const unassigned = deriveTownViewport(narrowTown, 'narrow', {
+      mode: 'unit-focus',
+      facility: null,
+    })
+
+    expect(unitFocus).toEqual(overview)
+    expect(unassigned).toEqual(deriveTownViewport(narrowTown, 'narrow', { mode: 'overview' }))
+  })
+
+  it('施設・再生focusは対象施設へ寄り、overview より拡大する', () => {
     const overview = deriveTownViewport(wideTown, 'wide', { mode: 'overview' })
     const facility = deriveTownViewport(wideTown, 'wide', {
       mode: 'facility-focus',
@@ -26,11 +41,5 @@ describe('deriveTownViewport', () => {
     expect(facility.scale).toBeGreaterThan(overview.scale)
     expect(facility.x).not.toBe(overview.x)
     expect(playback.x).not.toBe(facility.x)
-  })
-
-  it('未配置の unit focus は本部を対象にする', () => {
-    expect(
-      deriveTownViewport(narrowTown, 'narrow', { mode: 'unit-focus', facility: null }),
-    ).toEqual(deriveTownViewport(narrowTown, 'narrow', { mode: 'unit-focus', facility: 'hq' }))
   })
 })

@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../src/game/state'
-import { emptyPlan, withMove } from '../src/scene/plan'
+import type { GameState, TaskId } from '../src/game/types'
+import { derivePlacementCandidate, emptyPlan, type PlanState } from '../src/scene/plan'
 import { derivePlanningForecast, derivePlanningStatus } from '../src/scene/planning/model'
+
+function place(state: GameState, plan: PlanState, unitId: string, task: TaskId): PlanState {
+  const candidate = derivePlacementCandidate(state, plan, unitId, task)
+  if (candidate.kind === 'blocked') throw new Error(`placement blocked: ${candidate.reason}`)
+  return candidate.nextPlan
+}
 
 describe('derivePlanningStatus', () => {
   it('待機人数と配置コストを計画表示用に集約する', () => {
@@ -10,7 +17,7 @@ describe('derivePlanningStatus', () => {
     expect(empty.remaining).toBe(state.units.length)
     expect(empty.plannedBudget).toBe(0)
 
-    const placed = withMove(state, emptyPlan(), 'mayor', 'repair_power')!
+    const placed = place(state, emptyPlan(), 'mayor', 'repair_power')
     const status = derivePlanningStatus(state, placed)
     expect(status.remaining).toBe(state.units.length - 1)
     expect(status.placementBudget).toBe(20)
@@ -29,8 +36,8 @@ describe('derivePlanningStatus', () => {
 describe('derivePlanningForecast', () => {
   it('配置による確定差分と進行を集約する', () => {
     const state = createInitialState(1)
-    const powerPlan = withMove(state, emptyPlan(), 'engineer', 'repair_power')!
-    const plan = withMove(state, powerPlan, 'farmer', 'restore_road')!
+    const powerPlan = place(state, emptyPlan(), 'engineer', 'repair_power')
+    const plan = place(state, powerPlan, 'farmer', 'restore_road')
     const forecast = derivePlanningForecast(state, plan)
 
     expect(forecast.resources.power).toBeGreaterThan(0)

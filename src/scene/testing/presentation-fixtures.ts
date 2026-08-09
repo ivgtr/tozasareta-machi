@@ -3,12 +3,13 @@ import { createInitialState } from '../../game/state'
 import type { Effect, GameState } from '../../game/types'
 import type { Beat, PlaybackContext } from '../playback/beats'
 import type { PlanState } from '../plan'
-import type { FacilityId } from '../town/layout'
+import type { PlanningIntent } from '../planning/placement'
 
 export const PRESENTATION_FIXTURE_NAMES = [
   'planning',
   'planning-assigned',
   'unit-focus',
+  'character-inspector',
   'facility-focus',
   'minor-result',
   'normal-result',
@@ -29,11 +30,11 @@ export interface PresentationFixture {
   baseState?: GameState
   beat?: Beat
   playbackContext?: PlaybackContext
-  selectedUnitId?: string
-  selectedFacility?: FacilityId
+  planningIntent?: PlanningIntent
   plan?: PlanState
   scene: 'title' | 'play'
   menuOpen?: boolean
+  inspectedUnitId?: string
 }
 
 const SEED = 190010
@@ -89,13 +90,14 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
       },
     }
   }
-  if (name === 'unit-focus') {
+  if (name === 'unit-focus' || name === 'character-inspector') {
     return {
       name,
       state,
       scene: 'play',
-      selectedUnitId: firstUnitId,
+      planningIntent: { kind: 'place-unit', unitId: firstUnitId },
       plan: { placements: { restore_road: [firstUnitId] }, ration: false, procure: false },
+      inspectedUnitId: name === 'character-inspector' ? firstUnitId : undefined,
     }
   }
   if (name === 'facility-focus') {
@@ -103,7 +105,7 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
       name,
       state,
       scene: 'play',
-      selectedFacility: 'road',
+      planningIntent: { kind: 'inspect-facility', facilityId: 'road' },
       plan: { placements: { restore_road: [firstUnitId] }, ration: false, procure: false },
     }
   }
@@ -193,6 +195,7 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
 
 export function fixturePresentationMode(name: PresentationFixtureName): string {
   if (name === 'planning-assigned') return 'planning'
+  if (name === 'character-inspector') return 'unit-focus'
   if (name.endsWith('-result')) return 'flow'
   return name
 }
