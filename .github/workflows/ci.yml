@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, preflight/planning-controls-containment]
   pull_request:
 
 permissions:
