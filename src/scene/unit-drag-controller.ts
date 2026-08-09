@@ -13,6 +13,9 @@ export interface UnitDragOptions {
   ghost: DragGhost
   canInteract(): boolean
   onTap(unitId: string): void
+  onDragStart(unitId: string): void
+  onDragMove(unitId: string, worldX: number, worldY: number): void
+  onDragEnd(unitId: string): void
   onDrop(unitId: string, worldX: number, worldY: number): void
 }
 
@@ -41,11 +44,13 @@ export class UnitDragController {
       if (Math.hypot(dx, dy) > this.options.threshold) {
         this.draggingUnitId = this.pending.unitId
         this.pending = null
+        this.options.onDragStart(this.draggingUnitId)
         this.options.ghost.setVisible(true)
       }
     }
     if (this.draggingUnitId) {
       this.options.ghost.setPosition(pointer.worldX, pointer.worldY)
+      this.options.onDragMove(this.draggingUnitId, pointer.worldX, pointer.worldY)
     }
   }
 
@@ -55,6 +60,7 @@ export class UnitDragController {
       this.draggingUnitId = null
       this.pending = null
       this.options.ghost.setVisible(false)
+      this.options.onDragEnd(draggingUnitId)
       if (this.options.canInteract()) {
         this.options.onDrop(draggingUnitId, pointer.worldX, pointer.worldY)
       }
@@ -69,8 +75,10 @@ export class UnitDragController {
   }
 
   cancel(): void {
+    const draggingUnitId = this.draggingUnitId
     this.pending = null
     this.draggingUnitId = null
     this.options.ghost.setVisible(false)
+    if (draggingUnitId) this.options.onDragEnd(draggingUnitId)
   }
 }

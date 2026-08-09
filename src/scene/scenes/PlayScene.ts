@@ -1,17 +1,15 @@
 import Phaser from 'phaser'
 import { autoAssign } from '../../game/actions'
-import { randomSeed, reducedMotion } from '../../store'
+import { randomSeed } from '../../store'
 import { audioDirectorFor, type AudioDirector } from '../audio/audio-director'
 import { CharacterDeck } from '../character/character-deck'
 import { CharacterDragGhost } from '../character/character-drag-ghost'
-import { CharacterFocus } from '../character/character-focus'
 import { MenuPresentation } from '../global/menu-presentation'
 import { transitionToScene } from '../global/scene-transition'
 import { HudBar } from '../hud'
+import { handlePlaySceneKeyboard } from '../input/play-scene-shortcuts'
 import { KEYS, SCENE_EVENTS } from '../keys'
-import { gameShortcutOf, type GameShortcut } from '../input/keyboard'
 import { CONFIRM_NEW_GAME } from '../labels'
-import { deviceClassOf, readSafeInsets, toLogicalSafeInsets } from '../layout'
 import { LogDrawer } from '../log-drawer'
 import {
   assignedTask,
@@ -19,41 +17,35 @@ import {
   emptyPlan,
   fromAutoAssign,
   unassignedUnits,
-  withRemove,
   type PlanState,
 } from '../plan'
-import type { FlowPresentationModel } from '../playback/flow-model'
 import { FlowPresentation } from '../playback/flow-presentation'
 import { PlaybackController } from '../playback/playback'
 import { PlaybackPresentationCoordinator } from '../playback/presentation-coordinator'
 import { TownPlaybackFx } from '../playback/town-playback-fx'
 import { CommitConfirmPresentation } from '../planning/commit-confirm-presentation'
 import { FacilityFocus } from '../planning/facility-focus'
+import { PlanningInteractionController } from '../planning/planning-interaction'
+import { PlacementStatus } from '../planning/placement-status'
 import { PlanningControls } from '../planning/planning-controls'
-import {
-  deriveFacilityPlacementCandidate,
-  focusedFacilityId,
-  placementUnitId,
-  type PlanningIntent,
-} from '../planning/placement'
+import { focusedFacilityId, placementUnitId, type PlanningIntent } from '../planning/placement'
 import { PresentationDirector } from '../presentation'
-import { computeRegions, type Regions } from '../regions'
+import type { Regions } from '../regions'
 import { sharedStore, type SceneStore } from '../store-bridge'
 import { StoryPresentations, isStoryPresentation } from '../story/story-presentations'
-import { TASK_LABEL, TASK_PRESENTATION } from '../task-presentation'
+import { TASK_LABEL } from '../task-presentation'
 import { COLORS } from '../tokens'
 import { deriveFacilityView } from '../town/facility-view'
 import { deriveTownAmbience } from '../town/ambience-model'
-import type { FacilityId } from '../town/layout'
 import { TownLayer } from '../town/town-layer'
 import {
-  deriveTownViewport,
-  type TownViewportPreset,
-  type TownViewportTransform,
-} from '../town/viewport'
+  derivePlayTownViewportPreset,
+  PlayTownViewportController,
+} from '../town/play-scene-viewport'
 import { TurnCoordinator } from '../turn-coordinator'
 import { DRAG_THRESHOLD } from '../ui/token'
 import { UnitDragController } from '../unit-drag-controller'
+import { applyPlaySceneLayout } from './play-scene-layout'
 
 export class PlayScene extends Phaser.Scene {
   private store!: SceneStore
@@ -62,12 +54,13 @@ export class PlayScene extends Phaser.Scene {
   private dragGhost!: CharacterDragGhost
   private plan: PlanState = emptyPlan()
   private planningIntent: PlanningIntent = { kind: 'none' }
+  private planningInteraction!: PlanningInteractionController
   private regions!: Regions
   private town!: TownLayer
   private playbackFx!: TownPlaybackFx
   private townMask!: Phaser.GameObjects.Graphics
   private deck!: CharacterDeck
-  private characterFocus!: CharacterFocus
+  private placementStatus!: PlacementStatus
   private facilityFocus!: FacilityFocus
   private hud!: HudBar
   private controls!: PlanningControls
@@ -78,7 +71,7 @@ export class PlayScene extends Phaser.Scene {
   private flow!: FlowPresentation
   private playbackPresentation!: PlaybackPresentationCoordinator
   private audio!: AudioDirector
-  private townViewportKey: string | null = null
+  private townViewport!: PlayTownViewportController
   private readonly playback = new PlaybackController()
   private readonly presentation = new PresentationDirector()
   private unsubscribe: (() => void) | null = null
@@ -99,26 +92,32 @@ export class PlayScene extends Phaser.Scene {
       threshold: DRAG_THRESHOLD,
       ghost: this.dragGhost,
       canInteract: () => !this.busy,
-      onTap: (unitId) => this.selectUnit(unitId),
+      onTap: (unitId) => this.planningInteraction.selectUnit(unitId),
+      onDragStart: (unitId) => this.planningInteraction.dragStarted(unitId),
+      onDragMove: (unitId, worldX, worldY) =>
+        this.planningInteraction.updateDragTarget(unitId, worldX, worldY),
+      onDragEnd: () => this.planningInteraction.clearDragTarget(),
       onDrop: (unitId, worldX, worldY) => {
-        this.resolveDrop(unitId, worldX, worldY)
+        this.planningInteraction.resolveDrop(unitId, worldX, worldY)
         this.refresh()
       },
     })
 
     this.townMask = new Phaser.GameObjects.Graphics(this)
     this.town = new TownLayer(this, {
-      onFacilityTap: (id) => this.onFacilityTap(id),
-      onTokenPointerDown: (unitId, x, y) => this.beginUnitDrag(unitId, x, y),
+      onFacilityTap: (id) => this.planningInteraction.facilityTap(id),
+      onTokenPointerDown: (unitId, x, y) =>
+        this.planningInteraction.beginUnitDrag(unitId, x, y),
     })
     this.playbackFx = new TownPlaybackFx(this)
     const townGeometryMask = this.townMask.createGeometryMask()
     this.town.setMask(townGeometryMask)
     this.playbackFx.setMask(townGeometryMask)
     this.deck = new CharacterDeck(this, {
-      onCharacterPointerDown: (unitId, x, y) => this.beginUnitDrag(unitId, x, y),
+      onCharacterPointerDown: (unitId, x, y) =>
+        this.planningInteraction.beginUnitDrag(unitId, x, y),
     })
-    this.characterFocus = new CharacterFocus(this, {
+    this.placementStatus = new PlacementStatus(this, {
       onClose: () => {
         this.audio.play('cancel')
         this.planningIntent = { kind: 'none' }
@@ -131,17 +130,31 @@ export class PlayScene extends Phaser.Scene {
         this.planningIntent = { kind: 'none' }
         this.refresh()
       },
-      onSelectUnit: (unitId) => {
-        this.planningIntent = { kind: 'place-unit', unitId }
-        this.refresh()
-      },
-      onUnassignUnit: (unitId) => {
-        if (this.busy) return
-        this.plan = withRemove(this.plan, unitId)
-        this.audio.play('unassign')
-        this.refresh()
-      },
+      onReassignUnit: (unitId) => this.planningInteraction.reassignUnit(unitId),
+      onRequestAssignment: (facilityId) =>
+        this.planningInteraction.requestFacilityAssignment(facilityId),
+      onUnassignUnit: (unitId) => this.planningInteraction.unassignUnit(unitId),
     })
+    this.planningInteraction = new PlanningInteractionController({
+      isBusy: () => this.busy,
+      state: () => this.store.get().state,
+      plan: () => this.plan,
+      setPlan: (plan) => {
+        this.plan = plan
+      },
+      intent: () => this.planningIntent,
+      setIntent: (intent) => {
+        this.planningIntent = intent
+      },
+      refresh: () => this.refresh(),
+      audio: this.audio,
+      deck: this.deck,
+      drag: this.drag,
+      dragGhost: this.dragGhost,
+      town: this.town,
+      facilityFocus: this.facilityFocus,
+    })
+    this.townViewport = new PlayTownViewportController(this, this.town, this.playbackFx)
     this.log = new LogDrawer(this)
     this.hud = new HudBar(this, {
       onUndo: () => {
@@ -170,10 +183,7 @@ export class PlayScene extends Phaser.Scene {
       onCommit: () => this.tryCommit(),
       onUnassignSelected: () => {
         const unitId = placementUnitId(this.planningIntent)
-        if (this.busy || !unitId) return
-        this.plan = withRemove(this.plan, unitId)
-        this.audio.play('unassign')
-        this.refresh()
+        if (unitId) this.planningInteraction.unassignUnit(unitId)
       },
       onToggleRation: () => {
         if (this.busy) return
@@ -273,82 +283,6 @@ export class PlayScene extends Phaser.Scene {
     return this.playback.projectedState ?? this.store.get().state
   }
 
-  private beginUnitDrag(unitId: string, worldX: number, worldY: number): void {
-    if (this.busy) return
-    const unit = this.store.get().state.units.find((candidate) => candidate.id === unitId)
-    if (!unit) return
-    this.deck.clearKeyboardFocus()
-    this.dragGhost.setUnit(unit)
-    this.drag.pointerDown(unitId, worldX, worldY)
-  }
-
-  private selectUnit(unitId: string): void {
-    if (this.busy) return
-    const selected = placementUnitId(this.planningIntent)
-    const deselecting = selected === unitId
-    this.planningIntent = deselecting ? { kind: 'none' } : { kind: 'place-unit', unitId }
-    this.audio.play(deselecting ? 'cancel' : 'select')
-    this.refresh()
-  }
-
-  private onFacilityTap(id: FacilityId): void {
-    if (this.busy) return
-    this.deck.clearKeyboardFocus()
-    const unitId = placementUnitId(this.planningIntent)
-    if (unitId) {
-      const candidate = deriveFacilityPlacementCandidate(
-        this.store.get().state,
-        this.plan,
-        unitId,
-        id,
-      )
-      if (candidate.kind === 'available' || candidate.kind === 'current') {
-        this.plan = candidate.nextPlan
-        this.audio.play('assign')
-        this.planningIntent = { kind: 'inspect-facility', facilityId: id }
-      } else if (candidate.kind === 'passive') {
-        this.audio.play('facility')
-        this.planningIntent = { kind: 'inspect-facility', facilityId: id }
-      } else {
-        this.audio.play('invalid')
-      }
-      this.refresh()
-      return
-    }
-
-    const current = focusedFacilityId(this.planningIntent)
-    const opening = current !== id
-    this.planningIntent = opening ? { kind: 'inspect-facility', facilityId: id } : { kind: 'none' }
-    this.audio.play(opening ? 'facility' : 'cancel')
-    this.refresh()
-  }
-
-  private resolveDrop(unitId: string, worldX: number, worldY: number): void {
-    if (this.busy) return
-    const facility = this.town.facilityAtWorld(worldX, worldY)
-    if (facility) {
-      const candidate = deriveFacilityPlacementCandidate(
-        this.store.get().state,
-        this.plan,
-        unitId,
-        facility,
-      )
-      if (candidate.kind === 'available' || candidate.kind === 'current') {
-        this.plan = candidate.nextPlan
-        this.audio.play('assign')
-        return
-      }
-      if (candidate.kind === 'blocked') {
-        this.audio.play('invalid')
-        return
-      }
-    }
-    if (this.deck.containsWorld(worldX, worldY)) {
-      this.plan = withRemove(this.plan, unitId)
-      this.audio.play('unassign')
-    }
-  }
-
   private tryCommit(): void {
     if (this.busy) return
     const remaining = unassignedUnits(this.store.get().state, this.plan).length
@@ -361,7 +295,8 @@ export class PlayScene extends Phaser.Scene {
 
   private planSummary(): string {
     const plan = buildPlan(this.plan)
-    if (plan.placements.length === 0 && !plan.ration && !plan.procure) return '（割り当てなし）'
+    const empty = plan.placements.length === 0 && !plan.ration && !plan.procure
+    if (empty) return '（割り当てなし）'
     const parts = plan.placements.map(
       (placement) => `${TASK_LABEL[placement.task]} ×${placement.unitIds.length}`,
     )
@@ -395,144 +330,27 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private handleKeyboard(event: KeyboardEvent): void {
-    const shortcut = gameShortcutOf(event)
-    if (!shortcut) return
-    event.preventDefault()
-    void this.audio.unlock()
-    if (shortcut === 'escape') {
-      this.handleEscape()
-      return
-    }
-    if (shortcut === 'menu') {
-      this.handleMenuShortcut()
-      return
-    }
-    if (shortcut === 'activate') {
-      this.handleActivateShortcut()
-      return
-    }
-    if (shortcut === 'previous' || shortcut === 'next') {
-      this.handleDirectionalShortcut(shortcut)
-      return
-    }
-    if (shortcut === 'log') {
-      const canToggleLog =
-        !this.busy &&
-        !this.menu.isOpen &&
-        !this.confirm.isOpen &&
-        this.view().phase === 'planning' &&
-        !isStoryPresentation(this.presentation.mode)
-      if (!canToggleLog || !this.hud.triggerLogFromKeyboard()) this.audio.play('invalid')
-      return
-    }
-    if (!this.planningInputAvailable()) {
-      this.audio.play('invalid')
-      return
-    }
-    const handled =
-      shortcut === 'auto-assign'
-        ? this.controls.triggerAutoFromKeyboard()
-        : shortcut === 'commit'
-          ? this.controls.triggerCommitFromKeyboard()
-          : false
-    if (!handled) this.audio.play('invalid')
-  }
-
-  private handleEscape(): void {
-    if (this.menu.isOpen) {
-      this.audio.play('cancel')
-      this.menu.hide()
-      return
-    }
-    if (this.confirm.isOpen) {
-      this.audio.play('cancel')
-      this.confirm.hide()
-      return
-    }
-    if (this.log.isOpen) {
-      this.audio.play('cancel')
-      this.log.hide()
-      return
-    }
-    if (this.characterFocus.isOpen || this.facilityFocus.isOpen) {
-      this.audio.play('cancel')
-      this.planningIntent = { kind: 'none' }
-      this.refresh()
-      return
-    }
-    if (this.deck.keyboardFocus) {
-      this.audio.play('cancel')
-      this.deck.clearKeyboardFocus()
-    }
-  }
-
-  private handleMenuShortcut(): void {
-    if (this.menu.isOpen) {
-      this.audio.play('cancel')
-      this.menu.hide()
-      return
-    }
-    if (this.busy || this.confirm.isOpen || this.view().phase === 'ended') {
-      this.audio.play('invalid')
-      return
-    }
-    this.log.hide()
-    if (!this.hud.triggerMenuFromKeyboard()) this.audio.play('invalid')
-  }
-
-  private handleActivateShortcut(): void {
-    if (this.menu.isOpen) {
-      this.audio.play('invalid')
-      return
-    }
-    if (this.confirm.isOpen) {
-      this.confirm.hide()
-      this.commit()
-      return
-    }
-    if (this.presentation.mode === 'event' || this.presentation.mode === 'arrival') {
-      this.story.confirmBeat()
-      return
-    }
-    if (this.presentation.mode === 'choice') {
-      if (!this.story.confirmChoiceSelection()) this.audio.play('invalid')
-      return
-    }
-    if (!this.planningInputAvailable()) {
-      this.audio.play('invalid')
-      return
-    }
-    const unitId = this.deck.activateKeyboardFocus()
-    if (unitId) this.selectUnit(unitId)
-    else this.audio.play('invalid')
-  }
-
-  private handleDirectionalShortcut(shortcut: Extract<GameShortcut, 'previous' | 'next'>): void {
-    const delta = shortcut === 'previous' ? -1 : 1
-    if (this.presentation.mode === 'choice') {
-      const optionId = this.story.moveChoiceSelection(delta)
-      this.audio.play(optionId ? 'select' : 'invalid')
-      return
-    }
-    if (!this.planningInputAvailable()) {
-      this.audio.play('invalid')
-      return
-    }
-    this.planningIntent = { kind: 'none' }
-    const unitId = this.deck.moveKeyboardFocus(delta)
-    this.audio.play(unitId ? 'select' : 'invalid')
-    this.refresh()
-  }
-
-  private planningInputAvailable(): boolean {
-    return (
-      !this.busy &&
-      !this.menu.isOpen &&
-      !this.confirm.isOpen &&
-      !this.log.isOpen &&
-      this.view().phase === 'planning' &&
-      !isStoryPresentation(this.presentation.mode)
-    )
+    handlePlaySceneKeyboard(event, {
+      isBusy: () => this.busy,
+      phase: () => this.view().phase,
+      clearPlanningIntent: () => {
+        this.planningIntent = { kind: 'none' }
+      },
+      refresh: () => this.refresh(),
+      commit: () => this.commit(),
+      selectUnit: (unitId) => this.planningInteraction.selectUnit(unitId),
+      audio: this.audio,
+      menu: this.menu,
+      confirm: this.confirm,
+      log: this.log,
+      placementStatus: this.placementStatus,
+      facilityFocus: this.facilityFocus,
+      hud: this.hud,
+      controls: this.controls,
+      deck: this.deck,
+      presentation: this.presentation,
+      story: this.story,
+    })
   }
 
   private placementUnitAssigned(): boolean {
@@ -546,101 +364,22 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private applyLayout(): void {
-    const { width, height } = this.scale.gameSize
-    const deviceClass = deviceClassOf(window.innerWidth)
-    const canvas = this.game.canvas.getBoundingClientRect()
-    const insets = toLogicalSafeInsets(
-      readSafeInsets(),
-      window.innerWidth,
-      window.innerHeight,
-      {
-        left: canvas.left,
-        top: canvas.top,
-        right: canvas.right,
-        bottom: canvas.bottom,
-        width: canvas.width,
-        height: canvas.height,
-      },
-      width,
-      height,
-    )
-    this.regions = computeRegions(deviceClass, width, height, insets)
-    const regions = this.regions
-    this.townMask.clear()
-    this.townMask.fillStyle(0xffffff)
-    this.townMask.fillRect(regions.town.x, regions.town.y, regions.town.width, regions.town.height)
-    this.townViewportKey = null
-    this.hud.setBounds(regions.hud, deviceClass)
-    this.controls.setBounds(regions.controls, deviceClass)
-    this.deck.setBounds(
-      regions.deck.x,
-      regions.deck.y,
-      regions.deck.width,
-      regions.deck.height,
-      deviceClass,
-    )
-    this.characterFocus.setBounds(regions.town, deviceClass)
-    this.facilityFocus.setBounds(regions.town, deviceClass)
-    this.log.setAnchor(
-      regions.hud.x + 8,
-      regions.hud.y + regions.hud.height + 8,
-      Math.min(440, regions.hud.width - 16),
-    )
-    this.menu.setViewport(width, height, deviceClass)
-    this.confirm.setViewport(width, height)
-    this.story.setViewport(width, height, deviceClass)
-    this.flow.setViewport(width, height, deviceClass)
-  }
-
-  private viewportPreset(
-    mode: ReturnType<PresentationDirector['resolve']>['mode'],
-    flowModel: FlowPresentationModel | null,
-  ): TownViewportPreset {
-    const facilityId = focusedFacilityId(this.planningIntent)
-    if (mode === 'facility-focus' && facilityId) {
-      return { mode: 'facility-focus', facility: facilityId }
-    }
-    const unitId = placementUnitId(this.planningIntent)
-    if (mode === 'unit-focus' && unitId) {
-      const task = assignedTask(this.plan, unitId)
-      return {
-        mode: 'unit-focus',
-        facility: task ? TASK_PRESENTATION[task].facility : null,
-      }
-    }
-    if (mode === 'flow' && flowModel?.facility) {
-      return { mode: 'playback-target', facility: flowModel.facility }
-    }
-    if (mode === 'arrival') return { mode: 'playback-target', facility: 'road' }
-    return { mode: 'overview' }
-  }
-
-  private applyTownViewport(preset: TownViewportPreset): void {
-    const deviceClass = deviceClassOf(window.innerWidth)
-    const target = deriveTownViewport(this.regions.town, deviceClass, preset)
-    const key = `${preset.mode}:${'facility' in preset ? (preset.facility ?? 'hq') : ''}:${target.x}:${target.y}:${target.scale}`
-    if (key === this.townViewportKey) return
-    this.townViewportKey = key
-    this.tweens.killTweensOf([this.town, this.playbackFx])
-    if (reducedMotion() || this.town.scaleX === 1) {
-      this.setTownTransform(target)
-      return
-    }
-    this.tweens.add({
-      targets: [this.town, this.playbackFx],
-      x: target.x,
-      y: target.y,
-      scaleX: target.scale,
-      scaleY: target.scale,
-      duration: 280,
-      ease: 'Cubic.Out',
+    this.regions = applyPlaySceneLayout({
+      game: this.game,
+      gameSize: this.scale.gameSize,
+      townMask: this.townMask,
+      townViewport: this.townViewport,
+      hud: this.hud,
+      controls: this.controls,
+      deck: this.deck,
+      placementStatus: this.placementStatus,
+      facilityFocus: this.facilityFocus,
+      log: this.log,
+      menu: this.menu,
+      confirm: this.confirm,
+      story: this.story,
+      flow: this.flow,
     })
-  }
-
-  private setTownTransform(transform: TownViewportTransform): void {
-    this.town.setPosition(transform.x, transform.y)
-    this.town.setScale(transform.scale)
-    this.playbackFx.setTownTransform(transform.x, transform.y, transform.scale)
   }
 
   private refresh(): void {
@@ -660,11 +399,15 @@ export class PlayScene extends Phaser.Scene {
     const storyMode = isStoryPresentation(frame.mode)
     const facilityId = focusedFacilityId(this.planningIntent)
     const unitId = placementUnitId(this.planningIntent)
+    const placementUnit = this.planningInteraction.draggingUnitId ?? unitId
     const fallbackFacility = frame.mode === 'facility-focus' ? facilityId : null
     const flowModel = this.playbackPresentation.update(this.playback, view, fallbackFacility)
     const planningChrome = !storyMode && flowModel === null
 
-    this.applyTownViewport(this.viewportPreset(frame.mode, flowModel))
+    this.townViewport.apply(
+      this.regions.town,
+      derivePlayTownViewportPreset(frame.mode, flowModel, this.planningIntent, this.plan),
+    )
 
     if (!planningChrome && this.log.isOpen) this.log.hide()
     this.hud.setVisible(planningChrome)
@@ -675,7 +418,7 @@ export class PlayScene extends Phaser.Scene {
     this.controls.update(view, this.plan, busy, this.placementUnitAssigned())
     this.town.update(view, this.plan, facilityView, {
       focusedFacilityId: busy ? null : facilityId,
-      placementUnitId: busy ? null : unitId,
+      placementUnitId: busy ? null : placementUnit,
     })
     this.deck.update(view, this.plan, unitId)
 
@@ -683,16 +426,20 @@ export class PlayScene extends Phaser.Scene {
       frame.mode === 'unit-focus' ? view.units.find((unit) => unit.id === unitId) : undefined
     if (selectedUnit) {
       const assignment = assignedTask(this.plan, selectedUnit.id) ?? '待機中'
-      this.characterFocus.show(
+      this.placementStatus.show(
         selectedUnit,
         assignment === '待機中' ? assignment : TASK_LABEL[assignment],
       )
     } else {
-      this.characterFocus.hide()
+      this.placementStatus.hide()
     }
 
     if (frame.mode === 'facility-focus' && facilityId) {
-      this.facilityFocus.show({ state: view, plan: this.plan, view: facilityView }, facilityId)
+      this.facilityFocus.show(
+        { state: view, plan: this.plan, view: facilityView },
+        facilityId,
+        this.planningIntent.kind === 'choose-unit-for-facility',
+      )
     } else {
       this.facilityFocus.hide()
     }

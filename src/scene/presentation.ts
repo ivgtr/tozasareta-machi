@@ -33,7 +33,12 @@ export function derivePresentationMode(input: PresentationInput): PresentationMo
   if (input.state.phase === 'choice') return 'choice'
   if (input.state.phase === 'ended') return 'ending'
   if (input.planningIntent.kind === 'place-unit') return 'unit-focus'
-  if (input.planningIntent.kind === 'inspect-facility') return 'facility-focus'
+  if (
+    input.planningIntent.kind === 'inspect-facility' ||
+    input.planningIntent.kind === 'choose-unit-for-facility'
+  ) {
+    return 'facility-focus'
+  }
   return 'planning'
 }
 

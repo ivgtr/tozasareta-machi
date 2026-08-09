@@ -30,11 +30,12 @@ export function deriveTownViewport(
 ): TownViewportTransform {
   const fit = Math.min(region.width / TOWN_BASE.width, region.height / TOWN_BASE.height)
   const overviewScale = fit * (deviceClass === 'wide' ? 1.08 : 1.28)
-  const scale = preset.mode === 'overview' ? overviewScale : overviewScale * 1.18
+  const overview = preset.mode === 'overview' || preset.mode === 'unit-focus'
+  const scale = overview ? overviewScale : overviewScale * 1.18
   const contentWidth = TOWN_BASE.width * scale
   const contentHeight = TOWN_BASE.height * scale
 
-  if (preset.mode === 'overview') {
+  if (overview) {
     return {
       x: centeredOffset(region.x, region.width, contentWidth),
       y: centeredOffset(region.y, region.height, contentHeight),
@@ -42,9 +43,8 @@ export function deriveTownViewport(
     }
   }
 
-  const facility = preset.facility ?? 'hq'
-  const plot = FACILITY_PLOTS.find((candidate) => candidate.id === facility)
-  if (!plot) throw new Error(`Unknown facility: ${facility}`)
+  const plot = FACILITY_PLOTS.find((candidate) => candidate.id === preset.facility)
+  if (!plot) throw new Error(`Unknown facility: ${preset.facility}`)
   const focusX = region.x + region.width * (deviceClass === 'wide' ? 0.34 : 0.5)
   const focusY = region.y + region.height * (deviceClass === 'wide' ? 0.5 : 0.68)
   return {
