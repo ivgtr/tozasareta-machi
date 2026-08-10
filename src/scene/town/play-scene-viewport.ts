@@ -137,11 +137,7 @@ export class PlayTownViewportController {
   private commitManualTransform(target: TownViewportTransform): boolean {
     if (!this.region) return false
     const current = this.currentTransform()
-    if (
-      current.x === target.x &&
-      current.y === target.y &&
-      current.scale === target.scale
-    ) {
+    if (current.x === target.x && current.y === target.y && current.scale === target.scale) {
       return false
     }
 

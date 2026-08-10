@@ -131,11 +131,7 @@ export function townManualViewportFromTransform(
   transform: TownViewportTransform,
 ): TownManualViewportState {
   const overview = deriveTownViewport(region, deviceClass, { mode: 'overview' })
-  const zoom = clamp(
-    transform.scale / overview.scale,
-    TOWN_MANUAL_ZOOM.min,
-    TOWN_MANUAL_ZOOM.max,
-  )
+  const zoom = clamp(transform.scale / overview.scale, TOWN_MANUAL_ZOOM.min, TOWN_MANUAL_ZOOM.max)
   if (zoom === TOWN_MANUAL_ZOOM.min) return defaultTownManualViewport()
 
   return {

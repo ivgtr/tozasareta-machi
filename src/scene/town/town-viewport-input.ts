@@ -130,11 +130,7 @@ export class TownViewportInputController {
   wheel(pointer: Phaser.Input.Pointer, deltaY: number): boolean {
     if (!this.canInteract() || !this.contains(pointer.worldX, pointer.worldY)) return false
     const delta = Math.max(-WHEEL_DELTA_LIMIT, Math.min(WHEEL_DELTA_LIMIT, deltaY))
-    return this.viewport.zoomAt(
-      pointer.worldX,
-      pointer.worldY,
-      Math.exp(-delta * WHEEL_ZOOM_RATE),
-    )
+    return this.viewport.zoomAt(pointer.worldX, pointer.worldY, Math.exp(-delta * WHEEL_ZOOM_RATE))
   }
 
   cancel(): void {
