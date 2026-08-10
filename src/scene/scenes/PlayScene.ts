@@ -30,6 +30,7 @@ import { PlacementStatus } from '../planning/placement-status'
 import { PlanningControls } from '../planning/planning-controls'
 import { focusedFacilityId, placementUnitId, type PlanningIntent } from '../planning/placement'
 import { PresentationDirector } from '../presentation'
+import { setPageMode } from '../page-shell'
 import type { Regions } from '../regions'
 import { sharedStore, type SceneStore } from '../store-bridge'
 import { StoryPresentations, isStoryPresentation } from '../story/story-presentations'
@@ -85,6 +86,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   create(): void {
+    setPageMode('game')
     this.audio = audioDirectorFor(this.game)
     void this.audio.unlock()
     this.cameras.main.setBackgroundColor(COLORS.night900)

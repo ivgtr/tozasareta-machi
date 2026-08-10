@@ -30,6 +30,7 @@ export const PRESENTATION_FIXTURE_NAMES = [
   'ending-governance',
   'ending-collapse',
   'title',
+  'title-resume',
   'menu',
 ] as const
 
@@ -173,7 +174,7 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
   const firstUnitId = state.units[0]?.id
   if (!firstUnitId) throw new Error('Presentation fixture requires an initial unit')
 
-  if (name === 'title') return { name, state, scene: 'title' }
+  if (name === 'title' || name === 'title-resume') return { name, state, scene: 'title' }
   if (name === 'menu') return { name, state, scene: 'play', menuOpen: true }
   if (name === 'act-stalemate' || name === 'act-final' || name === 'rescue-near') {
     return milestoneFixture(name)
@@ -339,6 +340,7 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
 }
 
 export function fixturePresentationMode(name: PresentationFixtureName): string {
+  if (name.startsWith('title')) return 'title'
   if (name.startsWith('planning')) return 'planning'
   if (name === 'character-inspector') return 'unit-focus'
   if (name === 'act-stalemate' || name === 'act-final' || name === 'rescue-near') {

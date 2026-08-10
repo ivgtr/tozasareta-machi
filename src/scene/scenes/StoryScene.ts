@@ -11,6 +11,7 @@ import {
   type StoryMilestoneSession,
 } from '../story/milestone-model'
 import { MilestonePresentation } from '../story/milestone-presentation'
+import { setPageMode } from '../page-shell'
 import { COLORS } from '../tokens'
 
 export interface StorySceneData {
@@ -34,6 +35,7 @@ export class StoryScene extends Phaser.Scene {
   }
 
   create(): void {
+    setPageMode('game')
     this.transitioning = false
     this.session = createStoryMilestoneSession(this.launch.milestone)
     this.audio = audioDirectorFor(this.game)
