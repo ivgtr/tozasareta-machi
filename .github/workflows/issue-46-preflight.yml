@@ -29,6 +29,10 @@ jobs:
         run: npm run typecheck
       - name: Lint
         run: npm run lint
+      - name: Show required formatting
+        run: |
+          npx prettier --write tests/ending-presentation.test.ts
+          git diff -- tests/ending-presentation.test.ts
       - name: Check formatting
         run: npm run format:check
       - name: Test
