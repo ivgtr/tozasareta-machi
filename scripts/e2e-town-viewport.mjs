@@ -72,7 +72,10 @@ async function clickText(page, text) {
 
 async function facilityPoint(page, id) {
   const handle = await page.waitForFunction(
-    ({ bridge, facility }) => globalThis[bridge]?.facilityArtPoint(facility) ?? false,
+    ({ bridge, facility }) =>
+      globalThis[bridge]?.facilityArtPoint(facility) ??
+      globalThis[bridge]?.facilityFootprintPoint(facility) ??
+      false,
     { bridge: BRIDGE, facility: id },
   )
   return handle.jsonValue()
