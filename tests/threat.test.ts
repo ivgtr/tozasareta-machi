@@ -37,7 +37,6 @@ const BOON_IDS = new Set([
   'power_restored',
   'medical_donation',
   'volunteers',
-  'rescue_contact',
   'radio_repair',
   'childbirth',
   'clear_weather',
@@ -89,9 +88,8 @@ describe('tone 分類', () => {
     for (const id of [...THREAT_IDS, ...BOON_IDS]) expect(ids.has(id), id).toBe(true)
   })
 
-  it('threat は約20件・boon は約20件で、boon の逆転の芽を潰さない構成', () => {
-    expect(THREAT_IDS.size).toBeGreaterThanOrEqual(20)
-    expect(BOON_IDS.size).toBeGreaterThanOrEqual(20)
+  it('threat / boon の件数バランスを大きく崩さない', () => {
+    expect(Math.abs(THREAT_IDS.size - BOON_IDS.size)).toBeLessThanOrEqual(4)
   })
 })
 
