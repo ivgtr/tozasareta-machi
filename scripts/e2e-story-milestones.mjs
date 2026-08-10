@@ -6,8 +6,8 @@ import process from 'node:process'
 import { chromium } from 'playwright'
 
 const PROJECT_ROOT = fileURLToPath(new URL('../', import.meta.url))
-const PORT = Number(process.env.E2E_ACT_PORT ?? 4184)
-const BASE_URL = process.env.E2E_ACT_BASE_URL ?? `http://127.0.0.1:${PORT}`
+const PORT = Number(process.env.E2E_MILESTONE_PORT ?? 4184)
+const BASE_URL = process.env.E2E_MILESTONE_BASE_URL ?? `http://127.0.0.1:${PORT}`
 const APP_URL = `${BASE_URL.replace(/\/$/, '')}/?e2e=1&story=hold`
 const BRIDGE = '__TOZASARETA_MACHI_E2E__'
 let server = null
@@ -28,7 +28,7 @@ async function waitForServer() {
 }
 
 async function startServer() {
-  if (process.env.E2E_ACT_BASE_URL) return
+  if (process.env.E2E_MILESTONE_BASE_URL) return
   const vite = path.join(PROJECT_ROOT, 'node_modules/vite/bin/vite.js')
   server = spawn(
     process.execPath,
@@ -52,7 +52,7 @@ async function stopServer() {
 async function waitForBridge(page) {
   await page.waitForFunction(
     (bridge) =>
-      typeof globalThis[bridge]?.showActTransition === 'function' &&
+      typeof globalThis[bridge]?.showStoryMilestone === 'function' &&
       typeof globalThis[bridge]?.savePlanningDay === 'function',
     BRIDGE,
   )
@@ -101,8 +101,8 @@ async function assertVisibleText(page, text) {
   assert.equal(found, true, `Expected visible text: ${text}`)
 }
 
-async function showAct(page, fromDay, expectedDay) {
-  await page.evaluate(({ bridge, day }) => globalThis[bridge].showActTransition(day), {
+async function showMilestone(page, fromDay, expectedDay) {
+  await page.evaluate(({ bridge, day }) => globalThis[bridge].showStoryMilestone(day), {
     bridge: BRIDGE,
     day: fromDay,
   })
@@ -145,7 +145,7 @@ try {
   await waitForBridge(page)
   await enterPlayThroughPrologue(page)
 
-  await showAct(page, 10, 11)
+  await showMilestone(page, 10, 11)
   await assertVisibleText(page, 'ACT II / 膠着 / DAY 11')
   await assertVisibleText(page, '10 日経ちました')
   await assertVisibleText(page, 'ルール変更：電力劣化')
@@ -155,7 +155,7 @@ try {
     BRIDGE,
   )
 
-  await showAct(page, 20, 21)
+  await showMilestone(page, 20, 21)
   await assertVisibleText(page, 'ACT III / 正念場 / DAY 21')
   await assertVisibleText(page, '救援まで残り 10 日')
   await assertVisibleText(page, '医療消耗')
@@ -166,7 +166,17 @@ try {
     BRIDGE,
   )
 
-  await page.evaluate((bridge) => globalThis[bridge].savePlanningDay(15), BRIDGE)
+  await showMilestone(page, 25, 26)
+  await assertVisibleText(page, '救援隊から通信 / DAY 26')
+  await assertVisibleText(page, '救援まであと 5 日')
+  await assertVisibleText(page, '道路啓開は最終区間')
+  await page.keyboard.press('Enter')
+  await page.waitForFunction(
+    (bridge) => globalThis[bridge].snapshot().presentationMode === 'planning',
+    BRIDGE,
+  )
+
+  await page.evaluate((bridge) => globalThis[bridge].savePlanningDay(27), BRIDGE)
   await page.reload({ waitUntil: 'domcontentloaded' })
   await waitForBridge(page)
   const continueBounds = await textBounds(page, '▶ 続きから')
@@ -178,19 +188,19 @@ try {
     const value = globalThis[bridge].snapshot()
     return (
       value.activeScenes.includes('Play') &&
-      value.day === 15 &&
+      value.day === 27 &&
       value.presentationMode === 'planning'
     )
   }, BRIDGE)
-  const rewound = await page.evaluate(
-    (bridge) => globalThis[bridge].textBounds('ACT II / 膠着', false) !== null,
+  const replayed = await page.evaluate(
+    (bridge) => globalThis[bridge].textBounds('救援隊から通信', false) !== null,
     BRIDGE,
   )
-  assert.equal(rewound, false, 'Mid-Act resume must not replay a past milestone')
+  assert.equal(replayed, false, 'Mid-game resume must not replay a past rescue milestone')
   assert.deepEqual(pageErrors, [], 'browser emitted an uncaught error')
 
   await context.close()
-  process.stdout.write('Act transition E2E passed.\n')
+  process.stdout.write('Story milestone E2E passed.\n')
 } finally {
   await browser?.close()
   await stopServer()
