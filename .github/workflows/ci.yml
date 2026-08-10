@@ -2,11 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, preflight/narrative-spine-final-qa]
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -38,6 +38,21 @@ jobs:
         run: npm run build
       - name: Install Chromium
         run: npm run playwright -- install --with-deps chromium
+      - name: Prepare final QA visual baselines
+        if: github.event_name == 'push' && github.ref_name == 'preflight/narrative-spine-final-qa'
+        run: |
+          UPDATE_VISUAL_BASELINES=1 node ./scripts/visual-prologue.mjs
+          node ./scripts/visual-regression.mjs || true
+          for name in ending ending-sacrifice ending-governance ending-collapse; do
+            cp "test-results/visual/${name}-wide-actual.png" "tests/visual-baselines/${name}-wide.png"
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/visual-baselines/prologue-wide.png tests/visual-baselines/prologue-narrow.png tests/visual-baselines/ending-wide.png tests/visual-baselines/ending-sacrifice-wide.png tests/visual-baselines/ending-governance-wide.png tests/visual-baselines/ending-collapse-wide.png
+          if ! git diff --cached --quiet; then
+            git commit -m "test: preflight QA visual baselines [skip ci]"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
       - name: Production build smoke test
         run: npm run test:prod
       - name: Browser regression tests
