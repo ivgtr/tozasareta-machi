@@ -25,7 +25,6 @@ const STORY_PRESENTATION: Record<string, StoryPresentationSpec> = {
   medical_donation: { speaker: 'medic', layout: 'report', portraitSide: 'left' },
   volunteers: { speaker: 'mayor', layout: 'dialogue', portraitSide: 'left' },
   ration_protest: { speaker: 'mayor', layout: 'report', portraitSide: 'right' },
-  rescue_contact: { speaker: 'mayor', layout: 'report', portraitSide: 'left' },
   infection: { speaker: 'medic', layout: 'report', portraitSide: 'left' },
   protest: { speaker: 'mayor', layout: 'report', portraitSide: 'right' },
   water_shortage: { speaker: 'farmer', layout: 'report', portraitSide: 'left' },
