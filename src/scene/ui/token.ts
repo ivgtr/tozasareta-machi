@@ -7,6 +7,23 @@ export const TOKEN_SIZE = { width: 24, height: 32 } as const
 export const TOKEN_HIT = 44
 export const DRAG_THRESHOLD = 8
 
+const TOKEN_OUTLINE_OFFSETS = [
+  { x: -1, y: -1 },
+  { x: 0, y: -1 },
+  { x: 1, y: -1 },
+  { x: -1, y: 0 },
+  { x: 1, y: 0 },
+  { x: -1, y: 1 },
+  { x: 0, y: 1 },
+  { x: 1, y: 1 },
+] as const
+
+const TOKEN_RIM_OFFSETS = [
+  { x: -1, y: -1 },
+  { x: 0, y: -1 },
+  { x: -1, y: 0 },
+] as const
+
 export interface UnitTokenOptions {
   scale?: number
 }
@@ -27,12 +44,39 @@ export class UnitToken extends Phaser.GameObjects.Container {
     this.displayH = TOKEN_SIZE.height * scale
     this.unitId = unit.id
 
+    const groundShadow = scene.add.graphics()
+    groundShadow.fillStyle(0x000000, 0.72)
+    groundShadow.fillPoints(
+      [
+        new Phaser.Geom.Point(-this.displayW / 2, -2 * scale),
+        new Phaser.Geom.Point(0, -5 * scale),
+        new Phaser.Geom.Point(this.displayW / 2, -2 * scale),
+        new Phaser.Geom.Point(0, 2 * scale),
+      ],
+      true,
+    )
+
     this.markers = scene.add.graphics()
 
-    this.bodyView = scene.add.image(0, -this.displayH / 2, tokenTextureKey(unit.portrait))
+    const texture = tokenTextureKey(unit.portrait)
+    const outlineViews = TOKEN_OUTLINE_OFFSETS.map(({ x, y }) => {
+      const outline = scene.add.image(x * scale, -this.displayH / 2 + y * scale, texture)
+      outline.setDisplaySize(this.displayW, this.displayH)
+      outline.setTintFill(COLORS.night900)
+      return outline
+    })
+    const rimViews = TOKEN_RIM_OFFSETS.map(({ x, y }) => {
+      const rim = scene.add.image(x * scale, -this.displayH / 2 + y * scale, texture)
+      rim.setDisplaySize(this.displayW, this.displayH)
+      rim.setTintFill(COLORS.frameLo)
+      rim.setAlpha(0.8)
+      return rim
+    })
+
+    this.bodyView = scene.add.image(0, -this.displayH / 2, texture)
     this.bodyView.setDisplaySize(this.displayW, this.displayH)
 
-    this.add([this.bodyView, this.markers])
+    this.add([groundShadow, ...outlineViews, ...rimViews, this.bodyView, this.markers])
     this.setInteractive(
       new Phaser.Geom.Rectangle(
         -TOKEN_HIT / 2,
