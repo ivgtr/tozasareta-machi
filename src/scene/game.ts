@@ -35,8 +35,18 @@ export function createGame(parent: HTMLElement): Phaser.Game {
     canvas.addEventListener('contextmenu', (event) => event.preventDefault())
   })
   game.events.once(Phaser.Core.Events.DESTROY, () => destroyAudioDirector(game))
+  watchParentSize(game, parent)
   watchDeviceClass(game)
   return game
+}
+
+function watchParentSize(game: Phaser.Game, parent: HTMLElement): void {
+  const observer = new ResizeObserver(() => {
+    game.scale.getParentBounds()
+    game.scale.refresh()
+  })
+  observer.observe(parent)
+  game.events.once(Phaser.Core.Events.DESTROY, () => observer.disconnect())
 }
 
 function watchDeviceClass(game: Phaser.Game): void {

@@ -13,6 +13,7 @@ import {
   type SafeInsets,
 } from '../layout'
 import { sharedStore } from '../store-bridge'
+import { setPageMode } from '../page-shell'
 import { COLORS, TEXT_SIZE, fitSize } from '../tokens'
 import { PixelButton } from '../ui/button'
 import { pixelText } from '../ui/pixel-text'
@@ -46,6 +47,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create(): void {
+    setPageMode('title')
     this.transitioning = false
     this.audio = audioDirectorFor(this.game)
     this.audio.setMood('silent')
@@ -177,6 +179,7 @@ export class TitleScene extends Phaser.Scene {
     if (this.transitioning) return
     this.transitioning = true
     sessionStarted = true
+    setPageMode('game')
     void this.audio.unlock()
     this.audio.play('confirm')
     transitionToScene(this, key, data)

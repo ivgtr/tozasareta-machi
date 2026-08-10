@@ -10,20 +10,96 @@
       href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Press+Start+2P&display=swap"
       rel="stylesheet"
     />
-    <style>
-      html,
-      body {
-        margin: 0;
-        height: 100%;
-        background: #0a0e24;
-      }
-      #root {
-        height: 100%;
-      }
-    </style>
   </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/scene/main.ts"></script>
+  <body data-page-mode="title">
+    <main class="landing" id="landing">
+      <section class="landing__hero" aria-label="ゲームを開始する">
+        <div class="game-viewport" id="game-viewport">
+          <div id="root" aria-label="孤立した町の30日間 ゲーム画面"></div>
+        </div>
+        <p class="play-time" aria-label="想定プレイ時間 1プレイ約30分から45分">
+          <span class="play-time__label">想定プレイ時間</span>
+          <strong>1プレイ 約30〜45分</strong>
+          <span class="play-time__note">30日間の判断を、一度の物語として</span>
+        </p>
+      </section>
+
+      <section class="game-guide" aria-labelledby="game-guide-title">
+        <div class="game-guide__intro">
+          <p class="landing-kicker">HOW TO SURVIVE / ゲームの流れ</p>
+          <h2 id="game-guide-title">一日の判断を積み重ね、救援までの30日間を生き延びる。</h2>
+          <p>
+            毎朝、町の状況と残された物資を確認し、限られた人員を必要な場所へ配置します。正解は一つではありません。今日を守る判断が、明日の余裕を奪うこともあります。
+          </p>
+        </div>
+
+        <div class="guide-block" aria-labelledby="daily-loop-title">
+          <div class="guide-block__heading">
+            <span>DAILY LOOP</span>
+            <h3 id="daily-loop-title">一日のループ</h3>
+          </div>
+          <ol class="daily-loop">
+            <li>
+              <span class="daily-loop__number">01</span>
+              <div>
+                <h4>町の状況を読む</h4>
+                <p>食料・電力・医療・士気、警報と昨日までの記録を確認します。</p>
+              </div>
+            </li>
+            <li>
+              <span class="daily-loop__number">02</span>
+              <div>
+                <h4>人員を配置する</h4>
+                <p>一人ひとりの適性を見ながら、発電・道路・医療・炊き出しへ割り当てます。</p>
+              </div>
+            </li>
+            <li>
+              <span class="daily-loop__number">03</span>
+              <div>
+                <h4>今日の方針を確定する</h4>
+                <p>予算と備蓄の使い道を決め、その日に得るものと失うものを受け入れます。</p>
+              </div>
+            </li>
+            <li>
+              <span class="daily-loop__number">04</span>
+              <div>
+                <h4>結果と出来事に向き合う</h4>
+                <p>作業結果を確認し、町で起きる事件や選択を経て、次の朝を迎えます。</p>
+              </div>
+            </li>
+          </ol>
+        </div>
+
+        <div class="guide-block guide-block--campaign" aria-labelledby="campaign-title">
+          <div class="guide-block__heading">
+            <span>30 DAYS</span>
+            <h3 id="campaign-title">救援までの流れ</h3>
+          </div>
+          <ol class="campaign-flow">
+            <li>
+              <span>DAY 1–10</span>
+              <strong>孤立直後</strong>
+              <p>町の基盤を立て直し、限られた物資の使い方を定める。</p>
+            </li>
+            <li>
+              <span>DAY 11–20</span>
+              <strong>長期化</strong>
+              <p>疲労と不足が重なり、目先の安定と備えが競合し始める。</p>
+            </li>
+            <li>
+              <span>DAY 21–29</span>
+              <strong>正念場</strong>
+              <p>深刻化する脅威の中で、最後まで維持するものを選ぶ。</p>
+            </li>
+            <li>
+              <span>DAY 30</span>
+              <strong>救援到着</strong>
+              <p>積み重ねた判断から、町と人々の結末が記録される。</p>
+            </li>
+          </ol>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

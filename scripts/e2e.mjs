@@ -110,6 +110,39 @@ async function snapshot(page) {
   return page.evaluate((name) => globalThis[name].snapshot(), BRIDGE)
 }
 
+async function pageShellSnapshot(page) {
+  return page.evaluate(() => {
+    const game = document.querySelector('#game-viewport')?.getBoundingClientRect()
+    const canvas = document.querySelector('#root canvas')?.getBoundingClientRect()
+    const playTime = document.querySelector('.play-time')?.getBoundingClientRect()
+    const guide = document.querySelector('.game-guide')?.getBoundingClientRect()
+    if (!game || !canvas || !playTime || !guide) return null
+    return {
+      mode: document.body.dataset.pageMode,
+      game: { x: game.x, y: game.y, width: game.width, height: game.height },
+      canvas: { x: canvas.x, y: canvas.y, width: canvas.width, height: canvas.height },
+      playTime: {
+        x: playTime.x,
+        y: playTime.y,
+        width: playTime.width,
+        height: playTime.height,
+        display: getComputedStyle(document.querySelector('.play-time')).display,
+      },
+      guide: {
+        x: guide.x,
+        y: guide.y,
+        width: guide.width,
+        height: guide.height,
+        display: getComputedStyle(document.querySelector('.game-guide')).display,
+      },
+      bodyOverflow: getComputedStyle(document.body).overflow,
+      scrollHeight: document.scrollingElement?.scrollHeight ?? 0,
+      playTimeText: document.querySelector('.play-time')?.textContent ?? '',
+      guideText: document.querySelector('.game-guide')?.textContent ?? '',
+    }
+  })
+}
+
 async function textBounds(page, text, exact = true) {
   const handle = await page.waitForFunction(
     ({ name, label, exactMatch }) => globalThis[name]?.textBounds(label, exactMatch) ?? false,
@@ -362,6 +395,60 @@ await mkdir(OUTPUT_DIR, { recursive: true })
 try {
   await startServer()
   browser = await chromium.launch({ headless: true })
+
+  await test('タイトルLPとゲーム表示モードをwide/narrowで切り替える', async () => {
+    for (const scenario of [
+      { name: 'wide', viewport: { width: 1280, height: 720 } },
+      { name: 'narrow', viewport: { width: 480, height: 854 } },
+    ]) {
+      await withGame(
+        `title-landing-${scenario.name}`,
+        { viewport: scenario.viewport },
+        async (page) => {
+          await textBounds(page, '孤立した町の30日間')
+          await page.waitForFunction(() => document.body.dataset.pageMode === 'title')
+          const title = await pageShellSnapshot(page)
+          assert.ok(title)
+          assert.equal(title.mode, 'title')
+          assert.match(title.playTimeText, /1プレイ\s*約30〜45分/)
+          assert.match(title.guideText, /一日のループ/)
+          assert.match(title.guideText, /救援までの流れ/)
+          assert.ok(title.playTime.y >= title.game.y + title.game.height)
+          assert.ok(title.playTime.y + title.playTime.height <= scenario.viewport.height + 1)
+          assert.ok(title.guide.y >= title.playTime.y + title.playTime.height)
+          assert.ok(title.scrollHeight > scenario.viewport.height)
+
+          await startNewGame(page)
+          await page.waitForFunction(() => document.body.dataset.pageMode === 'game')
+          const game = await pageShellSnapshot(page)
+          assert.ok(game)
+          assert.equal(game.game.x, 0)
+          assert.equal(game.game.y, 0)
+          assert.equal(game.game.width, scenario.viewport.width)
+          assert.equal(game.game.height, scenario.viewport.height)
+          assert.equal(game.canvas.x, 0)
+          assert.equal(game.canvas.y, 0)
+          assert.equal(game.canvas.width, scenario.viewport.width)
+          assert.equal(game.canvas.height, scenario.viewport.height)
+          assert.equal(game.playTime.display, 'none')
+          assert.equal(game.guide.display, 'none')
+          assert.equal(game.bodyOverflow, 'hidden')
+
+          await page.evaluate((name) => globalThis[name].showFixture('title'), BRIDGE)
+          await page.waitForFunction(
+            (name) =>
+              document.body.dataset.pageMode === 'title' &&
+              globalThis[name]?.snapshot().activeScenes.includes('Title'),
+            BRIDGE,
+          )
+          const returned = await pageShellSnapshot(page)
+          assert.ok(returned)
+          assert.notEqual(returned.guide.display, 'none')
+          assert.ok(returned.scrollHeight > scenario.viewport.height)
+        },
+      )
+    }
+  })
 
   await test('タイトルと指揮所メニューをwide/narrowで維持する', async () => {
     await withGame('global-presentation-wide', {}, async (page) => {

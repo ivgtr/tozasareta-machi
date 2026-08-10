@@ -21,6 +21,7 @@ const MAX_DIFF_RATIO = 0.003
 
 const visualTargets = [
   { fixture: 'title' },
+  { fixture: 'title', suffix: 'landing', fullPage: true },
   { fixture: 'planning' },
   {
     fixture: 'planning-assigned',
@@ -254,6 +255,7 @@ try {
       const clip = target.clips?.[layout.name]
       const screenshot = await page.screenshot({
         animations: 'disabled',
+        fullPage: target.fullPage ?? false,
         ...(clip ? { clip } : {}),
       })
       await compare(`${fixture}${suffix ? `-${suffix}` : ''}-${layout.name}`, screenshot)
