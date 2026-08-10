@@ -42,8 +42,6 @@ function titleOf(beat: FlowBeat): string {
     if (task === 'procure') return '備蓄を調達'
   }
   if (beat.source === 'settlement') return '一日の清算'
-  if (beat.source === 'act_stalemate') return '膠着局面へ'
-  if (beat.source === 'act_final') return '最終局面へ'
   return beat.effects.find((effect) => effect.reason)?.reason ?? '町の変化'
 }
 
@@ -89,7 +87,6 @@ function kickerOf(beat: FlowBeat, actors: readonly Unit[]): string {
   }
   if (beat.source.startsWith('task:')) return '対策本部の指示'
   if (beat.source === 'settlement') return '日次報告'
-  if (beat.source.startsWith('act_')) return '局面転換'
   return '状況変化'
 }
 

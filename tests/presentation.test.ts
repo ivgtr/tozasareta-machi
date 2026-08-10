@@ -29,6 +29,7 @@ function beat(kind: Beat['kind']): Beat {
   if (kind === 'flow') {
     return { kind, source: effect.source, actorIds: [], effects: [effect] }
   }
+  if (kind === 'milestone') return { kind, id: 'act_stalemate', effects: [effect] }
   if (kind === 'event') return { kind, id: 'test_event', effects: [effect] }
   if (kind === 'death') {
     return {
@@ -75,11 +76,13 @@ describe('derivePresentationMode', () => {
 
   it('再生beatはphaseより優先して現在の演出を表す', () => {
     const flow = input({ state: { phase: 'choice' }, beat: beat('flow') })
+    const milestone = input({ state: { phase: 'choice' }, beat: beat('milestone') })
     const event = input({ state: { phase: 'ended' }, beat: beat('event') })
     const arrival = input({ state: { phase: 'choice' }, beat: beat('arrival') })
     const death = input({ state: { phase: 'ended' }, beat: beat('death') })
 
     expect(derivePresentationMode(flow)).toBe('flow')
+    expect(derivePresentationMode(milestone)).toBe('milestone')
     expect(derivePresentationMode(event)).toBe('event')
     expect(derivePresentationMode(arrival)).toBe('arrival')
     expect(derivePresentationMode(death)).toBe('event')

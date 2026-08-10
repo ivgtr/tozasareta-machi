@@ -112,20 +112,26 @@ describe('アクト機構', () => {
     )
   })
 
-  it('旧セーブ想定の途中再開（15日目）でも初回 finalize で補完される', () => {
+  it('境界を過ぎた途中再開では過去の膠着期を補完しない', () => {
     const r = playDay(atDay(3, 15))
     expect(r.state.day).toBe(16)
-    const mods = actMod(r.state, 'act_stalemate')
-    expect(mods).toHaveLength(1)
-    expect(mods[0]!.daysLeft).toBe(BALANCE.acts.final.start - 1 - 16)
-    expect(r.effects.some((e) => e.source === 'act_stalemate')).toBe(true)
+    expect(actMod(r.state, 'act_stalemate')).toHaveLength(0)
+    expect(r.effects.some((e) => e.source === 'act_stalemate')).toBe(false)
   })
 
-  it('20日目の途中再開は正念場のみ補完する（過ぎた膠着期は巻き戻さない）', () => {
+  it('20日目から21日目へ進むと正念場だけを開始する', () => {
     const r = playDay(atDay(3, 20))
     expect(r.state.day).toBe(21)
     expect(actMod(r.state, 'act_stalemate')).toHaveLength(0)
     expect(actMod(r.state, 'act_final')).toHaveLength(1)
+    expect(r.effects.filter((e) => e.source === 'act_final')).toHaveLength(1)
+  })
+
+  it('正念場の境界を過ぎた途中再開でも過去のアクトを補完しない', () => {
+    const r = playDay(atDay(3, 25))
+    expect(r.state.day).toBe(26)
+    expect(actMod(r.state, 'act_final')).toHaveLength(0)
+    expect(r.effects.some((e) => e.source === 'act_final')).toBe(false)
   })
 
   it('アクト内で繰り返しても冪等（重複しない）', () => {
