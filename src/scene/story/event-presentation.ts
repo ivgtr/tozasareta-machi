@@ -31,120 +31,51 @@ export class EventPresentation extends PresentationSurface {
     const accent =
       event?.tone === 'threat' ? COLORS.red : event?.tone === 'boon' ? COLORS.green : COLORS.cyan
     this.begin(accent)
-    if (model.speaker) this.renderCharacter(model, beat, accent)
-    else this.renderIncident(model, beat, accent)
+    this.renderEvent(model, beat, accent)
     this.addConfirm()
   }
 
-  private renderCharacter(
+  private renderEvent(
     model: StoryPresentationModel,
     beat: Extract<Beat, { kind: 'event' }>,
     accent: number,
   ): void {
     const p = this.panel
-    const pad = this.deviceClass === 'wide' ? 28 : 18
     const wide = this.deviceClass === 'wide'
-    const portraitW = wide ? 286 : 150
-    const portraitH = wide ? Math.min(410, p.height - 116) : 200
-    const portraitX = p.x + pad
-    const portraitY = p.y + (wide ? 62 : 70)
-    this.drawArtFrame(portraitX, portraitY, portraitW, portraitH, accent)
-    drawArtSlot(
-      this.scene,
-      this.content,
-      'portrait',
-      model.speaker!.portrait,
-      portraitX + portraitW / 2,
-      portraitY + portraitH / 2,
-      {
-        width: portraitW - 16,
-        height: portraitH - 16,
-        glyphSize: wide ? 92 : 58,
-        fallbackGlyph: '人',
-      },
-    )
-    const textX = wide ? portraitX + portraitW + 36 : portraitX + portraitW + 18
-    const textY = portraitY
-    const textW = p.x + p.width - pad - textX
-    const kicker = pixelText(this.scene, `${model.speaker!.name}からの報告`, {
+    const pad = wide ? 28 : 18
+    const contentX = p.x + pad
+    const contentW = p.width - pad * 2
+    const kicker = pixelText(this.scene, this.eventKicker(model), {
       fontSize: wide ? TEXT_SIZE.labelWide : TEXT_SIZE.labelNarrow,
       color: accent,
-      wordWrapWidth: textW,
+      wordWrapWidth: contentW,
     })
-    kicker.setPosition(textX, textY)
+    kicker.setPosition(contentX, p.y + pad)
     this.content.add(kicker)
     const title = pixelText(this.scene, model.event.name, {
       fontSize: wide ? 28 : TEXT_SIZE.heading,
       color: COLORS.gold,
-      wordWrapWidth: textW,
+      wordWrapWidth: contentW,
     })
-    title.setPosition(textX, textY + 28)
+    title.setPosition(contentX, p.y + pad + 26)
     this.content.add(title)
-    let y = textY + 74
-    if (model.event.desc) {
-      const desc = pixelText(this.scene, `「${model.event.desc}」`, {
-        fontSize: wide ? TEXT_SIZE.bodyWide : TEXT_SIZE.bodyNarrow,
-        color: COLORS.ink,
-        wordWrapWidth: textW,
-        advancedWrap: true,
-      })
-      desc.setPosition(textX, y)
-      this.content.add(desc)
-      y += desc.height + 18
-    }
-    const artW = wide ? Math.min(190, textW * 0.42) : Math.min(112, textW)
-    const artH = wide ? 112 : 78
-    this.drawArtFrame(textX, y, artW, artH, accent)
-    drawArtSlot(this.scene, this.content, 'event', beat.id, textX + artW / 2, y + artH / 2, {
-      width: artW - 12,
-      height: artH - 12,
-      glyphSize: wide ? 42 : 30,
-      fallbackGlyph: '！',
-    })
-    this.renderEffects(
-      beat,
-      textX + (wide ? artW + 18 : 0),
-      wide ? y : y + artH + 12,
-      wide ? textW - artW - 18 : textW,
-    )
-  }
 
-  private renderIncident(
-    model: StoryPresentationModel,
-    beat: Extract<Beat, { kind: 'event' }>,
-    accent: number,
-  ): void {
-    const p = this.panel
-    const pad = this.deviceClass === 'wide' ? 28 : 18
-    const wide = this.deviceClass === 'wide'
-    const artW = wide ? Math.min(520, Math.floor(p.width * 0.47)) : p.width - pad * 2
-    const artH = wide ? Math.min(340, p.height - 150) : Math.min(240, p.height * 0.32)
-    const artX = p.x + pad
-    const artY = p.y + pad + 18
+    const artX = contentX
+    const artY = p.y + (wide ? 100 : 88)
+    const artW = wide ? 656 : contentW
+    const artH = wide ? 416 : 270
     this.drawArtFrame(artX, artY, artW, artH, accent)
     drawArtSlot(this.scene, this.content, 'event', beat.id, artX + artW / 2, artY + artH / 2, {
       width: artW - 16,
       height: artH - 16,
-      glyphSize: wide ? 92 : 62,
+      glyphSize: wide ? 112 : 72,
       fallbackGlyph: '！',
     })
-    const textX = wide ? artX + artW + 32 : p.x + pad
-    const textY = wide ? artY : artY + artH + 18
-    const textW = wide ? p.x + p.width - pad - textX : p.width - pad * 2
-    const kicker = pixelText(
-      this.scene,
-      model.spec.layout === 'incident' ? '現地からの緊急報告' : '町の状況記録',
-      { fontSize: TEXT_SIZE.labelWide, color: accent },
-    )
-    kicker.setPosition(textX, textY)
-    const title = pixelText(this.scene, model.event.name, {
-      fontSize: wide ? 28 : TEXT_SIZE.heading,
-      color: COLORS.gold,
-      wordWrapWidth: textW,
-    })
-    title.setPosition(textX, textY + 28)
-    this.content.add([kicker, title])
-    let y = textY + 74
+
+    const textX = wide ? artX + artW + 28 : contentX
+    const textW = wide ? p.x + p.width - pad - textX : contentW
+    let y = wide ? artY : artY + artH + 18
+    if (model.speaker) y = this.renderReporter(model.speaker, textX, y, textW, accent)
     if (model.event.desc) {
       const desc = pixelText(this.scene, model.event.desc, {
         fontSize: wide ? TEXT_SIZE.bodyWide : TEXT_SIZE.bodyNarrow,
@@ -157,6 +88,52 @@ export class EventPresentation extends PresentationSurface {
       y += desc.height + 18
     }
     this.renderEffects(beat, textX, y, textW)
+  }
+
+  private eventKicker(model: StoryPresentationModel): string {
+    if (model.speaker) return '現地からの報告'
+    return model.event.tone === 'threat' ? '現地からの緊急報告' : '町の状況記録'
+  }
+
+  private renderReporter(
+    speaker: NonNullable<StoryPresentationModel['speaker']>,
+    x: number,
+    y: number,
+    width: number,
+    accent: number,
+  ): number {
+    const wide = this.deviceClass === 'wide'
+    const frameSize = wide ? 112 : 84
+    this.drawArtFrame(x, y, frameSize, frameSize, accent)
+    drawArtSlot(
+      this.scene,
+      this.content,
+      'portrait',
+      speaker.portrait,
+      x + frameSize / 2,
+      y + frameSize / 2,
+      {
+        width: frameSize - 16,
+        height: frameSize - 16,
+        glyphSize: wide ? 42 : 34,
+        fallbackGlyph: '人',
+      },
+    )
+    const labelX = x + frameSize + 16
+    const labelW = width - frameSize - 16
+    const label = pixelText(this.scene, '報告者', {
+      fontSize: wide ? TEXT_SIZE.labelWide : TEXT_SIZE.labelNarrow,
+      color: accent,
+    })
+    label.setPosition(labelX, y + (wide ? 18 : 10))
+    const name = pixelText(this.scene, speaker.name, {
+      fontSize: wide ? TEXT_SIZE.heading : TEXT_SIZE.bodyWide,
+      color: COLORS.ink,
+      wordWrapWidth: labelW,
+    })
+    name.setPosition(labelX, y + (wide ? 48 : 36))
+    this.content.add([label, name])
+    return y + frameSize + 20
   }
 
   private renderEffects(

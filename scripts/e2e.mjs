@@ -248,7 +248,12 @@ async function showFixture(page, fixture) {
   await page.waitForFunction(
     ({ name, value }) => {
       const state = globalThis[name]?.snapshot()
-      return state && state.presentationMode === (value.endsWith('-result') ? 'flow' : value)
+      const expected = value.endsWith('-result')
+        ? 'flow'
+        : value.startsWith('event')
+          ? 'event'
+          : value
+      return state && state.presentationMode === expected
     },
     { name: BRIDGE, value: fixture },
   )
@@ -478,6 +483,7 @@ try {
       await startNewGame(page)
       const cases = [
         { fixture: 'event', action: '続ける ▶' },
+        { fixture: 'event-incident', action: '続ける ▶' },
         { fixture: 'choice', action: '食料を買う' },
         { fixture: 'arrival', action: '迎え入れる ▶' },
         { fixture: 'ending', action: 'もう一度' },
@@ -796,7 +802,8 @@ try {
   })
 
   const storyFixtures = [
-    { name: 'event', label: '発電機の故障', action: '続ける ▶' },
+    { name: 'event', mode: 'event', label: '発電機の故障', action: '続ける ▶' },
+    { name: 'event-incident', mode: 'event', label: '道路の再崩落', action: '続ける ▶' },
     { name: 'choice', label: '交易の申し出', action: '食料を買う' },
     { name: 'arrival', label: 'シド彦', action: '迎え入れる ▶' },
     { name: 'ending', label: '完全復旧', action: 'もう一度' },
@@ -815,7 +822,7 @@ try {
           await startNewGame(page)
           await showFixture(page, fixture.name)
           const state = await snapshot(page)
-          assert.equal(state.presentationMode, fixture.name)
+          assert.equal(state.presentationMode, fixture.mode ?? fixture.name)
           assert.equal(state.deviceClass, layout.name === 'wide' ? 'wide' : 'narrow')
           assert.ok(await optionalTextBounds(page, fixture.label))
           assert.ok(await optionalTextBounds(page, fixture.action))
@@ -831,11 +838,11 @@ try {
               BRIDGE,
             )
           }
-          if (layout.name === 'wide' && (fixture.name === 'event' || fixture.name === 'arrival')) {
+          if (layout.name === 'wide' && (fixture.mode === 'event' || fixture.name === 'arrival')) {
             await page.keyboard.press('Enter')
             await page.waitForFunction(
               ({ name, mode }) => globalThis[name]?.snapshot().presentationMode !== mode,
-              { name: BRIDGE, mode: fixture.name },
+              { name: BRIDGE, mode: fixture.mode ?? fixture.name },
             )
           }
         })

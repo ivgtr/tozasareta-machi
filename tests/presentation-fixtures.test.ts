@@ -21,6 +21,11 @@ describe('presentation fixtures', () => {
     expect(fixturePresentationMode('act-stalemate')).toBe('milestone')
     expect(fixturePresentationMode('act-final')).toBe('milestone')
     expect(buildPresentationFixture('event').beat?.kind).toBe('event')
+    expect(buildPresentationFixture('event-incident').beat).toMatchObject({
+      kind: 'event',
+      id: 'road_collapse',
+    })
+    expect(fixturePresentationMode('event-incident')).toBe('event')
     expect(buildPresentationFixture('arrival').beat?.kind).toBe('arrival')
     expect(buildPresentationFixture('choice').state).toMatchObject({
       day: 8,

@@ -20,6 +20,7 @@ export const PRESENTATION_FIXTURE_NAMES = [
   'act-final',
   'rescue-near',
   'event',
+  'event-incident',
   'choice',
   'arrival',
   'ending',
@@ -263,6 +264,19 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
       scene: 'play',
     }
   }
+  if (name === 'event-incident') {
+    const effects = [
+      effect('event:road_collapse', 'food', -28, '豪雨で復旧中の道路が再び崩れた'),
+      effect('event:road_collapse', 'morale', -3, '復旧作業のやり直しに落胆が広がった'),
+    ]
+    return {
+      name,
+      state,
+      baseState: state,
+      beat: { kind: 'event', id: 'road_collapse', effects },
+      scene: 'play',
+    }
+  }
   if (name === 'choice') {
     return {
       name,
@@ -305,5 +319,6 @@ export function fixturePresentationMode(name: PresentationFixtureName): string {
   }
   if (name.startsWith('ending')) return 'ending'
   if (name.endsWith('-result')) return 'flow'
+  if (name.startsWith('event')) return 'event'
   return name
 }
