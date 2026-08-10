@@ -22,7 +22,6 @@ import {
 } from './events'
 import { checkCollapse, evaluate } from './ending'
 import { addModifier, tickModifiers } from './modifiers'
-import { actOf } from './threat'
 import { applyEffects } from './effects'
 
 export { applyEffects } from './effects'
@@ -40,14 +39,14 @@ function actTransition(
     next = addModifier(next, { id, daysLeft: Math.max(0, endDay - day), startDay: day, effects })
     fx.push({ day: fxDay, source: id, target: 'flag:act', delta: 0, reason })
   }
-  if (actOf(day) === 2)
+  if (day === A.stalemate.start)
     ensure(
       'act_stalemate',
       A.final.start - 1,
       [{ target: 'decay:power', op: 'mult', value: A.stalemate.powerDecayMult }],
       '季節が悪化し、設備の劣化が目立ち始めた（膠着期：電力の衰えが速くなる）',
     )
-  if (actOf(day) === 3)
+  if (day === A.final.start)
     ensure(
       'act_final',
       BALANCE.days,
@@ -200,7 +199,6 @@ function resolveChoiceStep(prev: GameState, optionId: string): StepResult {
 
   const event = findEvent(prev.pendingChoice.eventId)
   if (!event || event.kind !== 'choice') return recoverInvalidChoice(prev)
-
   const option = choiceOptions(prev, event).find(
     (candidate) =>
       prev.pendingChoice?.optionIds.includes(candidate.id) && candidate.id === optionId,

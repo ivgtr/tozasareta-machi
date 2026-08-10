@@ -128,7 +128,11 @@ function handleActivateShortcut(ctx: PlaySceneShortcutContext): void {
     ctx.commit()
     return
   }
-  if (ctx.presentation.mode === 'event' || ctx.presentation.mode === 'arrival') {
+  if (
+    ctx.presentation.mode === 'milestone' ||
+    ctx.presentation.mode === 'event' ||
+    ctx.presentation.mode === 'arrival'
+  ) {
     ctx.story.confirmBeat()
     return
   }

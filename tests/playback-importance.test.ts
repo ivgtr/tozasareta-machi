@@ -24,7 +24,13 @@ describe('playback importance', () => {
   })
 
   it('死亡・局面転換・大幅変化・加入をmajorとして導出する', () => {
-    expect(deriveBeatImportance(flow('act_final', [effect('morale', 0)]))).toBe('major')
+    expect(
+      deriveBeatImportance({
+        kind: 'milestone',
+        id: 'act_final',
+        effects: [effect('flag:act', 0)],
+      }),
+    ).toBe('major')
     expect(deriveBeatImportance(flow('task:restore_road', [effect('food', 28)]))).toBe('major')
     expect(deriveBeatImportance(flow('settlement', [effect('flag:casualties', 1)]))).toBe('major')
     expect(

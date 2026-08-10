@@ -1,3 +1,4 @@
+import { BALANCE } from '../../game/data/balance'
 import { UNIQUE_UNITS, cloneUnit } from '../../game/data/units'
 import { createInitialState } from '../../game/state'
 import type { Effect, GameState } from '../../game/types'
@@ -14,6 +15,8 @@ export const PRESENTATION_FIXTURE_NAMES = [
   'minor-result',
   'normal-result',
   'major-result',
+  'act-stalemate',
+  'act-final',
   'event',
   'choice',
   'arrival',
@@ -62,6 +65,29 @@ function planningState(): GameState {
   }
 }
 
+function actFixture(name: 'act-stalemate' | 'act-final'): PresentationFixture {
+  const stalemate = name === 'act-stalemate'
+  const id = stalemate ? 'act_stalemate' : 'act_final'
+  const day = stalemate ? BALANCE.acts.stalemate.start : BALANCE.acts.final.start
+  const state = { ...planningState(), day }
+  const effects: Effect[] = [
+    {
+      day: day - 1,
+      source: id,
+      target: 'flag:act',
+      delta: 0,
+      reason: stalemate ? '膠着期へ移行した' : '正念場へ移行した',
+    },
+  ]
+  return {
+    name,
+    state,
+    baseState: state,
+    beat: { kind: 'milestone', id, effects },
+    scene: 'play',
+  }
+}
+
 export function buildPresentationFixture(name: PresentationFixtureName): PresentationFixture {
   const state = planningState()
   const firstUnitId = state.units[0]?.id
@@ -69,6 +95,7 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
 
   if (name === 'title') return { name, state, scene: 'title' }
   if (name === 'menu') return { name, state, scene: 'play', menuOpen: true }
+  if (name === 'act-stalemate' || name === 'act-final') return actFixture(name)
   if (name === 'planning-assigned') {
     const assigned = state.units.slice(0, 4).map((unit) => unit.id)
     if (assigned.length !== 4) {
@@ -196,6 +223,7 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
 export function fixturePresentationMode(name: PresentationFixtureName): string {
   if (name === 'planning-assigned') return 'planning'
   if (name === 'character-inspector') return 'unit-focus'
+  if (name === 'act-stalemate' || name === 'act-final') return 'milestone'
   if (name.endsWith('-result')) return 'flow'
   return name
 }

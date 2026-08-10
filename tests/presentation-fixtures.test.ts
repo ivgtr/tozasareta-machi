@@ -15,6 +15,10 @@ describe('presentation fixtures', () => {
   })
 
   it('builds story states without progressing the simulation', () => {
+    expect(buildPresentationFixture('act-stalemate').beat?.kind).toBe('milestone')
+    expect(buildPresentationFixture('act-final').beat?.kind).toBe('milestone')
+    expect(fixturePresentationMode('act-stalemate')).toBe('milestone')
+    expect(fixturePresentationMode('act-final')).toBe('milestone')
     expect(buildPresentationFixture('event').beat?.kind).toBe('event')
     expect(buildPresentationFixture('arrival').beat?.kind).toBe('arrival')
     expect(buildPresentationFixture('choice').state).toMatchObject({

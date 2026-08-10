@@ -1,7 +1,10 @@
 import { BALANCE } from '../../game/data/balance'
 import type { ArtKind } from '../art/manifest'
 
-export type StoryMilestoneId = 'prologue' | 'act_stalemate' | 'act_final' | 'rescue_near'
+export const ACT_STORY_MILESTONE_IDS = ['act_stalemate', 'act_final'] as const
+
+export type ActStoryMilestoneId = (typeof ACT_STORY_MILESTONE_IDS)[number]
+export type StoryMilestoneId = 'prologue' | ActStoryMilestoneId | 'rescue_near'
 
 export interface StoryArtRef {
   kind: Extract<ArtKind, 'event' | 'portrait' | 'scene'>
@@ -25,6 +28,7 @@ export interface StoryPage {
 
 export interface StoryMilestoneSpec {
   id: StoryMilestoneId
+  completeLabel: string
   pages: readonly StoryPage[]
 }
 
@@ -42,9 +46,13 @@ export interface StoryMilestoneView {
   isLast: boolean
 }
 
+const stalemateElapsedDays = BALANCE.acts.stalemate.start - 1
+const finalDaysRemaining = BALANCE.days - BALANCE.acts.final.start + 1
+
 const MILESTONES: Partial<Record<StoryMilestoneId, StoryMilestoneSpec>> = {
   prologue: {
     id: 'prologue',
+    completeLabel: 'DAY 1へ ▶',
     pages: [
       {
         kicker: 'PROLOGUE / 災害発生',
@@ -68,6 +76,38 @@ const MILESTONES: Partial<Record<StoryMilestoneId, StoryMilestoneSpec>> = {
       },
     ],
   },
+  act_stalemate: {
+    id: 'act_stalemate',
+    completeLabel: '計画へ ▶',
+    pages: [
+      {
+        kicker: `ACT II / 膠着 / DAY ${BALANCE.acts.stalemate.start}`,
+        title: '応急修理の限界',
+        body: `${stalemateElapsedDays} 日経ちました。応急修理だけでは、もう設備が持ちません。`,
+        art: { kind: 'portrait', id: 'engineer', fallbackGlyph: '技' },
+        speaker: { name: '技術班', role: '設備担当' },
+        ruleNote: `ルール変更：電力劣化 ×${BALANCE.acts.stalemate.powerDecayMult.toFixed(2)}`,
+      },
+    ],
+  },
+  act_final: {
+    id: 'act_final',
+    completeLabel: '計画へ ▶',
+    pages: [
+      {
+        kicker: `ACT III / 正念場 / DAY ${BALANCE.acts.final.start}`,
+        title: `救援まで残り ${finalDaysRemaining} 日`,
+        body: `薬も設備も限界です。あと ${finalDaysRemaining} 日。ここからが一番長い ${finalDaysRemaining} 日になります。`,
+        art: { kind: 'portrait', id: 'medic', fallbackGlyph: '医' },
+        speaker: { name: '医療班', role: '診療所' },
+        ruleNote: `ルール変更：電力劣化 ×${BALANCE.acts.final.powerDecayMult.toFixed(2)} / 医療消耗 ×${BALANCE.acts.final.medicalDecayMult.toFixed(2)} / 収入 ×${BALANCE.acts.final.incomeMult.toFixed(2)}`,
+      },
+    ],
+  },
+}
+
+export function isActStoryMilestoneId(value: string): value is ActStoryMilestoneId {
+  return (ACT_STORY_MILESTONE_IDS as readonly string[]).includes(value)
 }
 
 export function storyMilestone(id: StoryMilestoneId): StoryMilestoneSpec {
