@@ -94,14 +94,23 @@ export class EndingPresentation extends PresentationSurface {
         { width: witnessW - 12, height: 134, glyphSize: 44, fallbackGlyph: '人' },
       )
     }
-    const flavor = pixelText(this.scene, model.flavor, {
+    const narrativeX = columnX + witnessW + (model.witness ? 16 : 0)
+    const narrativeW = columnW - witnessW - (model.witness ? 16 : 0)
+    const opening = pixelText(this.scene, model.narrative.opening, {
       fontSize: TEXT_SIZE.bodyWide,
       color: COLORS.ink,
-      wordWrapWidth: columnW - witnessW - (model.witness ? 16 : 0),
+      wordWrapWidth: narrativeW,
       advancedWrap: true,
     })
-    flavor.setPosition(columnX + witnessW + (model.witness ? 16 : 0), artY + 78)
-    this.content.add([dayLabel, day, flavor])
+    opening.setPosition(narrativeX, artY + 78)
+    const outcome = pixelText(this.scene, model.narrative.outcome, {
+      fontSize: TEXT_SIZE.bodyWide,
+      color: COLORS.inkDim,
+      wordWrapWidth: narrativeW,
+      advancedWrap: true,
+    })
+    outcome.setPosition(narrativeX, opening.y + opening.height + 10)
+    this.content.add([dayLabel, day, opening, outcome])
 
     const resourceY = artY + 234
     model.resources.forEach((metric, index) => {
@@ -181,16 +190,23 @@ export class EndingPresentation extends PresentationSurface {
       color: model.accent,
     })
     day.setPosition(p.x + pad, artY + artH + 18)
-    const flavor = pixelText(this.scene, model.flavor, {
+    const opening = pixelText(this.scene, model.narrative.opening, {
       fontSize: TEXT_SIZE.bodyNarrow,
       color: COLORS.ink,
       wordWrapWidth: contentW,
       advancedWrap: true,
     })
-    flavor.setPosition(p.x + pad, artY + artH + 52)
-    this.content.add([day, flavor])
+    opening.setPosition(p.x + pad, artY + artH + 52)
+    const outcome = pixelText(this.scene, model.narrative.outcome, {
+      fontSize: TEXT_SIZE.bodyNarrow,
+      color: COLORS.inkDim,
+      wordWrapWidth: contentW,
+      advancedWrap: true,
+    })
+    outcome.setPosition(p.x + pad, opening.y + opening.height + 8)
+    this.content.add([day, opening, outcome])
 
-    const resourceY = artY + artH + 118
+    const resourceY = Math.max(artY + artH + 132, outcome.y + outcome.height + 16)
     model.resources.forEach((metric, index) => {
       const gap = 8
       const cardW = (contentW - gap * 3) / 4
