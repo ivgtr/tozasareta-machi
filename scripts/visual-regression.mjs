@@ -29,13 +29,25 @@ const visualTargets = [
       narrow: { x: 115, y: 285, width: 270, height: 190 },
     },
   },
+  { fixture: 'planning-low-power' },
+  {
+    fixture: 'planning-low-power',
+    suffix: 'power-crop',
+    clips: {
+      wide: { x: 380, y: 190, width: 190, height: 180 },
+      narrow: { x: 65, y: 260, width: 155, height: 155 },
+    },
+  },
   { fixture: 'character-inspector' },
   { fixture: 'facility-focus' },
   { fixture: 'minor-result' },
   { fixture: 'normal-result' },
   { fixture: 'major-result' },
   { fixture: 'event' },
+  { fixture: 'event-incident' },
+  { fixture: 'event-phase4' },
   { fixture: 'choice' },
+  { fixture: 'choice-phase4' },
   { fixture: 'arrival' },
   { fixture: 'ending' },
   { fixture: 'ending-sacrifice' },
@@ -111,16 +123,19 @@ async function showFixture(page, name) {
       ({ bridge, fixture }) => {
         const value = globalThis[bridge].snapshot()
         if (fixture === 'menu') return value.menuOpen
-        const expectedMode =
-          fixture === 'planning-assigned'
-            ? 'planning'
-            : fixture === 'character-inspector'
-              ? 'unit-focus'
-              : fixture.startsWith('ending')
-                ? 'ending'
-                : fixture.endsWith('-result')
-                  ? 'flow'
-                  : fixture
+        const expectedMode = fixture.startsWith('planning')
+          ? 'planning'
+          : fixture === 'character-inspector'
+            ? 'unit-focus'
+            : fixture.startsWith('ending')
+              ? 'ending'
+              : fixture.endsWith('-result')
+                ? 'flow'
+                : fixture.startsWith('event')
+                  ? 'event'
+                  : fixture.startsWith('choice')
+                    ? 'choice'
+                    : fixture
         return value.presentationMode === expectedMode
       },
       { bridge: BRIDGE, fixture: name },
@@ -217,7 +232,7 @@ try {
     await page.waitForFunction((bridge) => Boolean(globalThis[bridge]), BRIDGE)
 
     for (const target of visualTargets) {
-      const { fixture } = target
+      const { fixture, suffix } = target
       if (fixture !== 'title') {
         const inPlay = await page.evaluate(
           (bridge) => globalThis[bridge].snapshot().activeScenes.includes('Play'),
@@ -241,7 +256,7 @@ try {
         animations: 'disabled',
         ...(clip ? { clip } : {}),
       })
-      await compare(`${fixture}-${layout.name}`, screenshot)
+      await compare(`${fixture}${suffix ? `-${suffix}` : ''}-${layout.name}`, screenshot)
     }
     await context.close()
   }

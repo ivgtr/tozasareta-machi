@@ -1,50 +1,32 @@
 import { findEvent } from '../../game/events'
 import type { EventDef, GameState, Unit } from '../../game/types'
 
-export type StoryLayout = 'dialogue' | 'report' | 'incident'
-export type PortraitSide = 'left' | 'right'
-
-export interface StoryPresentationSpec {
-  speaker?: string
-  layout: StoryLayout
-  portraitSide?: PortraitSide
-}
-
 export interface StoryPresentationModel {
   event: EventDef
-  spec: StoryPresentationSpec
   speaker: Unit | null
 }
 
-const STORY_PRESENTATION: Record<string, StoryPresentationSpec> = {
-  elderly_illness: { speaker: 'medic', layout: 'report', portraitSide: 'left' },
-  generator_failure: { speaker: 'engineer', layout: 'report', portraitSide: 'left' },
-  hidden_stockpile: { speaker: 'farmer', layout: 'dialogue', portraitSide: 'left' },
-  foraging: { speaker: 'farmer', layout: 'dialogue', portraitSide: 'left' },
-  power_restored: { speaker: 'engineer', layout: 'dialogue', portraitSide: 'left' },
-  medical_donation: { speaker: 'medic', layout: 'report', portraitSide: 'left' },
-  volunteers: { speaker: 'mayor', layout: 'dialogue', portraitSide: 'left' },
-  ration_protest: { speaker: 'mayor', layout: 'report', portraitSide: 'right' },
-  infection: { speaker: 'medic', layout: 'report', portraitSide: 'left' },
-  protest: { speaker: 'mayor', layout: 'report', portraitSide: 'right' },
-  water_shortage: { speaker: 'farmer', layout: 'report', portraitSide: 'left' },
-  theft: { speaker: 'mayor', layout: 'report', portraitSide: 'right' },
-  radio_repair: { speaker: 'engineer', layout: 'dialogue', portraitSide: 'left' },
-  childbirth: { speaker: 'medic', layout: 'dialogue', portraitSide: 'left' },
-  elder_death: { speaker: 'mayor', layout: 'dialogue', portraitSide: 'right' },
-  gratitude: { speaker: 'mayor', layout: 'dialogue', portraitSide: 'left' },
-  trade_offer: { speaker: 'mayor', layout: 'dialogue', portraitSide: 'left' },
-  power_crisis: { speaker: 'engineer', layout: 'report', portraitSide: 'left' },
-  stockpile_crisis: { speaker: 'farmer', layout: 'report', portraitSide: 'left' },
-  expedition: { speaker: 'mayor', layout: 'dialogue', portraitSide: 'left' },
-}
-
-function defaultSpec(event: EventDef): StoryPresentationSpec {
-  return { layout: event.tone === 'threat' ? 'incident' : 'report' }
-}
-
-export function storyPresentationSpec(event: EventDef): StoryPresentationSpec {
-  return STORY_PRESENTATION[event.id] ?? defaultSpec(event)
+const STORY_SPEAKERS: Record<string, string> = {
+  elderly_illness: 'medic',
+  generator_failure: 'engineer',
+  hidden_stockpile: 'farmer',
+  foraging: 'farmer',
+  power_restored: 'engineer',
+  medical_donation: 'medic',
+  volunteers: 'mayor',
+  ration_protest: 'mayor',
+  infection: 'medic',
+  protest: 'mayor',
+  water_shortage: 'farmer',
+  theft: 'mayor',
+  radio_repair: 'engineer',
+  childbirth: 'medic',
+  elder_death: 'mayor',
+  gratitude: 'mayor',
+  trade_offer: 'mayor',
+  power_crisis: 'engineer',
+  stockpile_crisis: 'farmer',
+  expedition: 'mayor',
 }
 
 export function deriveStoryPresentation(
@@ -53,12 +35,11 @@ export function deriveStoryPresentation(
 ): StoryPresentationModel | null {
   const event = findEvent(eventId)
   if (!event) return null
-  const spec = storyPresentationSpec(event)
+  const speakerId = STORY_SPEAKERS[event.id]
   return {
     event,
-    spec,
-    speaker: spec.speaker
-      ? (state.units.find((candidate) => candidate.id === spec.speaker) ?? null)
+    speaker: speakerId
+      ? (state.units.find((candidate) => candidate.id === speakerId) ?? null)
       : null,
   }
 }

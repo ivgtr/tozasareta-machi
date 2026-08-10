@@ -146,11 +146,11 @@ export class FlowPresentation extends Phaser.GameObjects.Container {
 
   private renderWide(model: FlowPresentationModel, panel: Phaser.Geom.Rectangle): void {
     const major = model.importance === 'major'
-    const portraitWidth = model.primaryActor ? (major ? 176 : 138) : 0
+    const portraitWidth = model.primaryActor ? (major ? 176 : 124) : 0
     const portraitX = panel.x + 18
-    const portraitY = major ? panel.y + 18 : panel.y - 46
+    const portraitY = panel.y + 18
     if (model.primaryActor) {
-      const portraitHeight = major ? 226 : 190
+      const portraitHeight = major ? 226 : 130
       this.drawPortraitFrame(
         portraitX,
         portraitY,
@@ -174,7 +174,7 @@ export class FlowPresentation extends Phaser.GameObjects.Container {
       )
     }
 
-    const textX = panel.x + (model.primaryActor ? (major ? 222 : 178) : 28)
+    const textX = panel.x + (model.primaryActor ? (major ? 222 : 160) : 28)
     const textWidth = panel.x + panel.width - 206 - textX
     if (major) this.drawImportanceLabel(textX, panel.y + 18, '重大な変化')
     this.drawHeading(model, textX, panel.y + (major ? 46 : 22), textWidth, false)

@@ -19,7 +19,6 @@ const VIEW_LABEL: Record<FacilityViewId, string> = {
   low: '出力低下',
   working: '作業中',
   collapsed: '崩落',
-  restored: '復旧済み',
 }
 
 const PROGRESS_VISUAL_TARGET = 40

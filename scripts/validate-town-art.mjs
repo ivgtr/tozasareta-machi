@@ -76,12 +76,6 @@ const CONTRACT = [
     background: 'transparent',
   },
   {
-    path: 'facility/road-restored.png',
-    width: 96,
-    height: 112,
-    background: 'transparent',
-  },
-  {
     path: 'facility/clinic-normal.png',
     width: 96,
     height: 112,
@@ -150,12 +144,24 @@ function inspectAsset(spec) {
   return { png, colors, transparentPixels, partialAlphaPixels }
 }
 
+function alphaDifference(firstPath, secondPath) {
+  const first = PNG.sync.read(readFileSync(`${ASSET_ROOT}${firstPath}`))
+  const second = PNG.sync.read(readFileSync(`${ASSET_ROOT}${secondPath}`))
+  let changed = 0
+
+  for (let index = 3; index < first.data.length; index += 4) {
+    if (first.data[index] !== second.data[index]) changed += 1
+  }
+
+  return changed
+}
+
 const expected = CONTRACT.map((asset) => asset.path).sort()
 const actual = ['town', 'facility', 'token'].flatMap(listPngs).sort()
 const errors = []
 
-if (expected.length !== 17) {
-  errors.push(`contract must define exactly 17 assets, got ${expected.length}`)
+if (expected.length !== 16) {
+  errors.push(`contract must define exactly 16 assets, got ${expected.length}`)
 }
 
 if (JSON.stringify(actual) !== JSON.stringify(expected)) {
@@ -191,6 +197,14 @@ for (const spec of CONTRACT) {
   if (colors.size > 32) {
     errors.push(`${spec.path}: uses ${colors.size} opaque colors; maximum is 32`)
   }
+}
+
+const powerStateAlphaDifference = alphaDifference(
+  'facility/power-normal.png',
+  'facility/power-low.png',
+)
+if (powerStateAlphaDifference !== 0) {
+  errors.push(`power normal/low alpha masks differ at ${powerStateAlphaDifference} pixels`)
 }
 
 if (errors.length > 0) {

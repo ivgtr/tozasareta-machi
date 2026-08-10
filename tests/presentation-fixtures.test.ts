@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { BALANCE } from '../src/game/data/balance'
 import {
   buildPresentationFixture,
   fixturePresentationMode,
@@ -20,12 +21,28 @@ describe('presentation fixtures', () => {
     expect(fixturePresentationMode('act-stalemate')).toBe('milestone')
     expect(fixturePresentationMode('act-final')).toBe('milestone')
     expect(buildPresentationFixture('event').beat?.kind).toBe('event')
+    expect(buildPresentationFixture('event-incident').beat).toMatchObject({
+      kind: 'event',
+      id: 'road_collapse',
+    })
+    expect(fixturePresentationMode('event-incident')).toBe('event')
+    expect(buildPresentationFixture('event-phase4').beat).toMatchObject({
+      kind: 'event',
+      id: 'typhoon',
+    })
+    expect(fixturePresentationMode('event-phase4')).toBe('event')
     expect(buildPresentationFixture('arrival').beat?.kind).toBe('arrival')
     expect(buildPresentationFixture('choice').state).toMatchObject({
       day: 8,
       phase: 'choice',
       pendingChoice: { eventId: 'trade_offer' },
     })
+    expect(buildPresentationFixture('choice-phase4').state).toMatchObject({
+      day: 8,
+      phase: 'choice',
+      pendingChoice: { eventId: 'stockpile_crisis' },
+    })
+    expect(fixturePresentationMode('choice-phase4')).toBe('choice')
   })
 
   it('builds representative fixtures for all four endings', () => {
@@ -65,6 +82,13 @@ describe('presentation fixtures', () => {
       procure: false,
     })
     expect(fixturePresentationMode('planning-assigned')).toBe('planning')
+  })
+
+  it('builds low-power planning below the facility threshold', () => {
+    const fixture = buildPresentationFixture('planning-low-power')
+
+    expect(fixture.state.resources.power).toBe(BALANCE.power.lowAt - 1)
+    expect(fixturePresentationMode('planning-low-power')).toBe('planning')
   })
 
   it('focus fixtures share a deterministic assignment', () => {

@@ -9,6 +9,7 @@ import type { PlanningIntent } from '../planning/placement'
 export const PRESENTATION_FIXTURE_NAMES = [
   'planning',
   'planning-assigned',
+  'planning-low-power',
   'unit-focus',
   'character-inspector',
   'facility-focus',
@@ -19,7 +20,10 @@ export const PRESENTATION_FIXTURE_NAMES = [
   'act-final',
   'rescue-near',
   'event',
+  'event-incident',
+  'event-phase4',
   'choice',
+  'choice-phase4',
   'arrival',
   'ending',
   'ending-sacrifice',
@@ -196,6 +200,16 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
       },
     }
   }
+  if (name === 'planning-low-power') {
+    return {
+      name,
+      state: {
+        ...state,
+        resources: { ...state.resources, power: BALANCE.power.lowAt - 1 },
+      },
+      scene: 'play',
+    }
+  }
   if (name === 'unit-focus' || name === 'character-inspector') {
     return {
       name,
@@ -252,6 +266,29 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
       scene: 'play',
     }
   }
+  if (name === 'event-incident') {
+    const effects = [
+      effect('event:road_collapse', 'food', -28, '豪雨で復旧中の道路が再び崩れた'),
+      effect('event:road_collapse', 'morale', -3, '復旧作業のやり直しに落胆が広がった'),
+    ]
+    return {
+      name,
+      state,
+      baseState: state,
+      beat: { kind: 'event', id: 'road_collapse', effects },
+      scene: 'play',
+    }
+  }
+  if (name === 'event-phase4') {
+    const effects = [effect('event:typhoon', 'morale', -3, '台風が接近し、屋外作業が危険になった')]
+    return {
+      name,
+      state,
+      baseState: state,
+      beat: { kind: 'event', id: 'typhoon', effects },
+      scene: 'play',
+    }
+  }
   if (name === 'choice') {
     return {
       name,
@@ -261,6 +298,21 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
         pendingChoice: {
           eventId: 'trade_offer',
           optionIds: ['buy_food', 'buy_medical', 'sell_stockpile', 'buy_stockpile', 'decline'],
+        },
+      },
+      scene: 'play',
+    }
+  }
+  if (name === 'choice-phase4') {
+    return {
+      name,
+      state: {
+        ...state,
+        units: state.units.filter((unit) => unit.id !== 'farmer'),
+        phase: 'choice',
+        pendingChoice: {
+          eventId: 'stockpile_crisis',
+          optionIds: ['distribute', 'reserve'],
         },
       },
       scene: 'play',
@@ -287,12 +339,14 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
 }
 
 export function fixturePresentationMode(name: PresentationFixtureName): string {
-  if (name === 'planning-assigned') return 'planning'
+  if (name.startsWith('planning')) return 'planning'
   if (name === 'character-inspector') return 'unit-focus'
   if (name === 'act-stalemate' || name === 'act-final' || name === 'rescue-near') {
     return 'milestone'
   }
   if (name.startsWith('ending')) return 'ending'
   if (name.endsWith('-result')) return 'flow'
+  if (name.startsWith('event')) return 'event'
+  if (name.startsWith('choice')) return 'choice'
   return name
 }
