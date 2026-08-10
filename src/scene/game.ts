@@ -18,6 +18,9 @@ export function createGame(parent: HTMLElement): Phaser.Game {
     pixelArt: true,
     roundPixels: true,
     backgroundColor: colorCss(COLORS.night900),
+    input: {
+      activePointers: 2,
+    },
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,

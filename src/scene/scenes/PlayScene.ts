@@ -40,8 +40,10 @@ import { deriveTownAmbience } from '../town/ambience-model'
 import { TownLayer } from '../town/town-layer'
 import {
   derivePlayTownViewportPreset,
+  isManualTownViewportPreset,
   PlayTownViewportController,
 } from '../town/play-scene-viewport'
+import { TownViewportInputController } from '../town/town-viewport-input'
 import { TurnCoordinator } from '../turn-coordinator'
 import { DRAG_THRESHOLD } from '../ui/token'
 import { UnitDragController } from '../unit-drag-controller'
@@ -72,6 +74,7 @@ export class PlayScene extends Phaser.Scene {
   private playbackPresentation!: PlaybackPresentationCoordinator
   private audio!: AudioDirector
   private townViewport!: PlayTownViewportController
+  private townInput!: TownViewportInputController
   private readonly playback = new PlaybackController()
   private readonly presentation = new PresentationDirector()
   private inspectedUnitId: string | null = null
@@ -106,7 +109,7 @@ export class PlayScene extends Phaser.Scene {
 
     this.townMask = new Phaser.GameObjects.Graphics(this)
     this.town = new TownLayer(this, {
-      onFacilityTap: (id) => this.planningInteraction.facilityTap(id),
+      onFacilityPointerDown: (id, pointer) => this.townInput.pointerDown(pointer, id),
       onTokenPointerDown: (unitId, x, y) => this.planningInteraction.beginUnitDrag(unitId, x, y),
     })
     const townGeometryMask = this.townMask.createGeometryMask()
@@ -167,6 +170,16 @@ export class PlayScene extends Phaser.Scene {
       facilityFocus: this.facilityFocus,
     })
     this.townViewport = new PlayTownViewportController(this, this.town)
+    this.townInput = new TownViewportInputController(this, this.townViewport, {
+      canInteract: () =>
+        !this.busy &&
+        !this.menu.isOpen &&
+        !this.confirm.isOpen &&
+        !this.characterInspector.isOpen &&
+        !this.log.isOpen,
+      onFacilityTap: (id) => this.planningInteraction.facilityTap(id),
+      onGestureStart: () => this.drag.cancel(),
+    })
     this.log = new LogDrawer(this)
     this.hud = new HudBar(this, {
       onUndo: () => {
@@ -266,9 +279,25 @@ export class PlayScene extends Phaser.Scene {
       if (!this.playback.current) this.clearPlan()
       this.refresh()
     }
-    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => this.drag.pointerMove(pointer))
-    this.input.on('pointerdown', () => void this.audio.unlock())
-    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => this.drag.pointerUp(pointer))
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (!this.townInput.pointerMove(pointer)) this.drag.pointerMove(pointer)
+    })
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      void this.audio.unlock()
+      this.townInput.pointerDown(pointer)
+    })
+    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+      if (!this.townInput.pointerUp(pointer)) this.drag.pointerUp(pointer)
+    })
+    this.input.on(
+      'wheel',
+      (
+        pointer: Phaser.Input.Pointer,
+        _over: Phaser.GameObjects.GameObject[],
+        _deltaX: number,
+        deltaY: number,
+      ) => this.townInput.wheel(pointer, deltaY),
+    )
     this.input.keyboard?.on('keydown', (event: KeyboardEvent) => this.handleKeyboard(event))
     this.unsubscribe = this.store.subscribe(() => {
       this.planningIntent = { kind: 'none' }
@@ -278,6 +307,7 @@ export class PlayScene extends Phaser.Scene {
     this.game.events.on(SCENE_EVENTS.deviceClass, this.layout, this)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.unsubscribe?.()
+      this.townInput.cancel()
       this.drag.cancel()
       this.playback.destroy()
       this.game.events.off(SCENE_EVENTS.deviceClass, this.layout, this)
@@ -396,6 +426,7 @@ export class PlayScene extends Phaser.Scene {
       story: this.story,
       flow: this.flow,
     })
+    this.townInput.setRegion(this.regions.town)
   }
 
   private refresh(): void {
@@ -418,11 +449,15 @@ export class PlayScene extends Phaser.Scene {
     const placementUnit = this.planningInteraction.draggingUnitId ?? unitId
     const flowModel = this.playbackPresentation.update(this.playback, view)
     const planningChrome = !storyMode && flowModel === null
-
-    this.townViewport.apply(
-      this.regions.town,
-      derivePlayTownViewportPreset(frame.mode, flowModel, this.planningIntent, this.plan),
+    const townPreset = derivePlayTownViewportPreset(
+      frame.mode,
+      flowModel,
+      this.planningIntent,
+      this.plan,
     )
+
+    this.townViewport.apply(this.regions.town, townPreset)
+    this.townInput.setEnabled(planningChrome && !busy && isManualTownViewportPreset(townPreset))
 
     if (!planningChrome && this.log.isOpen) this.log.hide()
     this.hud.setVisible(planningChrome)
