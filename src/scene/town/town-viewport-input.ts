@@ -97,12 +97,8 @@ export class TownViewportInputController {
 
     const dx = pointer.worldX - primary.lastX
     const dy = pointer.worldY - primary.lastY
-    if (
-      !primary.moved &&
-      Math.hypot(pointer.worldX - primary.startX, pointer.worldY - primary.startY) > PAN_THRESHOLD
-    ) {
-      primary.moved = true
-    }
+    const moved = Math.hypot(pointer.worldX - primary.startX, pointer.worldY - primary.startY)
+    if (!primary.moved && moved > PAN_THRESHOLD) primary.moved = true
     primary.lastX = pointer.worldX
     primary.lastY = pointer.worldY
     if (primary.moved) this.viewport.panBy(dx, dy)
@@ -188,13 +184,10 @@ export class TownViewportInputController {
 
   private contains(x: number, y: number): boolean {
     const region = this.region
-    return Boolean(
-      region &&
-        x >= region.x &&
-        x <= region.x + region.width &&
-        y >= region.y &&
-        y <= region.y + region.height,
-    )
+    if (!region) return false
+    const withinX = x >= region.x && x <= region.x + region.width
+    const withinY = y >= region.y && y <= region.y + region.height
+    return withinX && withinY
   }
 }
 
