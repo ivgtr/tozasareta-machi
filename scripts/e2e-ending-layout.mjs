@@ -55,10 +55,10 @@ async function textBounds(page, text) {
   return handle.jsonValue()
 }
 
-async function buttonTarget(page, label) {
+async function buttonBounds(page, label) {
   const handle = await page.waitForFunction(
     ({ bridge, text }) =>
-      globalThis[bridge]?.buttonTargets().find((target) => target.label === text) ?? false,
+      globalThis[bridge]?.buttonTargets().find((target) => target.label === text)?.hitBounds ?? false,
     { bridge: BRIDGE, text: label },
   )
   return handle.jsonValue()
@@ -125,8 +125,8 @@ try {
 
     const budgetValue = await textBounds(page, '48')
     const stockpileValue = await textBounds(page, '37')
-    const titleButton = await buttonTarget(page, 'タイトルへ')
-    const restartButton = await buttonTarget(page, 'もう一度')
+    const titleButton = await buttonBounds(page, 'タイトルへ')
+    const restartButton = await buttonBounds(page, 'もう一度')
     const recordBottom = Math.max(bottom(budgetValue), bottom(stockpileValue))
     const actionTop = Math.min(titleButton.y, restartButton.y)
 
