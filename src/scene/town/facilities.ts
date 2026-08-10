@@ -52,7 +52,7 @@ export const FACILITIES: Record<FacilityId, FacilityMeta> = {
 export interface FacilityViewMap {
   hq: 'normal'
   power: 'normal' | 'low' | 'working'
-  road: 'collapsed' | 'working' | 'restored'
+  road: 'collapsed' | 'working'
   clinic: 'normal' | 'working'
   plaza: 'normal' | 'working'
   warehouse: 'normal'

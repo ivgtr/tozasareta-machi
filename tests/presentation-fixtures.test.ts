@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { BALANCE } from '../src/game/data/balance'
 import {
   buildPresentationFixture,
   fixturePresentationMode,
@@ -65,6 +66,13 @@ describe('presentation fixtures', () => {
       procure: false,
     })
     expect(fixturePresentationMode('planning-assigned')).toBe('planning')
+  })
+
+  it('builds low-power planning below the facility threshold', () => {
+    const fixture = buildPresentationFixture('planning-low-power')
+
+    expect(fixture.state.resources.power).toBe(BALANCE.power.lowAt - 1)
+    expect(fixturePresentationMode('planning-low-power')).toBe('planning')
   })
 
   it('focus fixtures share a deterministic assignment', () => {

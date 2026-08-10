@@ -9,6 +9,7 @@ import type { PlanningIntent } from '../planning/placement'
 export const PRESENTATION_FIXTURE_NAMES = [
   'planning',
   'planning-assigned',
+  'planning-low-power',
   'unit-focus',
   'character-inspector',
   'facility-focus',
@@ -196,6 +197,16 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
       },
     }
   }
+  if (name === 'planning-low-power') {
+    return {
+      name,
+      state: {
+        ...state,
+        resources: { ...state.resources, power: BALANCE.power.lowAt - 1 },
+      },
+      scene: 'play',
+    }
+  }
   if (name === 'unit-focus' || name === 'character-inspector') {
     return {
       name,
@@ -287,7 +298,7 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
 }
 
 export function fixturePresentationMode(name: PresentationFixtureName): string {
-  if (name === 'planning-assigned') return 'planning'
+  if (name.startsWith('planning')) return 'planning'
   if (name === 'character-inspector') return 'unit-focus'
   if (name === 'act-stalemate' || name === 'act-final' || name === 'rescue-near') {
     return 'milestone'

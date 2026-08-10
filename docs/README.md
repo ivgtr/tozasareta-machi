@@ -23,7 +23,8 @@
 - **Issue #19 PR11 Planning体験の完成**: Adaptive Town Viewport、Stable Roster、2段narrow HUD、Planning Forecast、FacilityFocus編成UIを統合。
 - **Issue #19 PR12 Story / Playback体験の完成**: Story表示metadata、人物駆動Event / Choice、Arrival / Ending統一、Playback重要度と可変テンポを統合。
 - **Issue #19 PR13 Sound / Input / Game Feel完成**: 意味カテゴリ駆動Audio、Planning/危機ambience、Sound設定、主要keyboard navigation、pointer/touch/keyboard feedbackを統合。
-- **Issue #27 Phase 0 ワールドアート契約**（docs/23）: UI色とワールド色を分離し、2:1投影・寸法・接地・30色パレット・制作手順を現行契約として固定。25アセットの機械ゲートをCIへ統合。
+- **Issue #27 Phase 0 ワールドアート契約**（docs/23）: UI色とワールド色を分離し、2:1投影・寸法・接地・30色パレット・制作手順を現行契約として固定。16アセットの機械ゲートをCIへ統合。
+- **Issue #27 Phase 2 低電力状態と施設契約整理**: `power-low` をPhase 1品質へ更新し、normal/lowの同一シルエットを機械検証。到達不能な `road-restored` をPresentation契約から撤去。
 - 正典: ゲームコアは [12-ユニット設計](./12-ユニット設計.md) を正とし、06/09 の作業員・人員記述は旧モデル。
 
 ## ドキュメント構成
