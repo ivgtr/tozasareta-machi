@@ -26,11 +26,20 @@ describe('presentation fixtures', () => {
       phase: 'choice',
       pendingChoice: { eventId: 'trade_offer' },
     })
-    expect(buildPresentationFixture('ending').state).toMatchObject({
-      day: 31,
-      phase: 'ended',
-      ending: 'full_recovery',
-    })
+  })
+
+  it('builds representative fixtures for all four endings', () => {
+    const cases = [
+      ['ending', 'full_recovery'],
+      ['ending-sacrifice', 'managed_sacrifice'],
+      ['ending-governance', 'self_governance'],
+      ['ending-collapse', 'collapse'],
+    ] as const
+
+    for (const [name, ending] of cases) {
+      expect(buildPresentationFixture(name).state).toMatchObject({ phase: 'ended', ending })
+      expect(fixturePresentationMode(name)).toBe('ending')
+    }
   })
 
   it('builds minor, normal, and major playback results independently', () => {

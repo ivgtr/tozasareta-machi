@@ -22,6 +22,9 @@ export const PRESENTATION_FIXTURE_NAMES = [
   'choice',
   'arrival',
   'ending',
+  'ending-sacrifice',
+  'ending-governance',
+  'ending-collapse',
   'title',
   'menu',
 ] as const
@@ -42,6 +45,8 @@ export interface PresentationFixture {
 }
 
 const SEED = 190010
+
+type EndingFixtureName = Extract<PresentationFixtureName, `ending${string}`>
 
 function effect(source: string, target: Effect['target'], delta: number, reason: string): Effect {
   return { day: 8, source, target, delta, reason }
@@ -101,6 +106,64 @@ function milestoneFixture(
   }
 }
 
+function endingFixture(name: EndingFixtureName, state: GameState): PresentationFixture {
+  if (name === 'ending') {
+    return {
+      name,
+      state: {
+        ...state,
+        day: 31,
+        phase: 'ended',
+        ending: 'full_recovery',
+        resources: { ...state.resources, power: 84, medical: 78 },
+        flags: { ...state.flags, casualties: 0, cooperation: 22, refugeesAccepted: 3 },
+      },
+      scene: 'play',
+    }
+  }
+  if (name === 'ending-sacrifice') {
+    return {
+      name,
+      state: {
+        ...state,
+        day: 31,
+        phase: 'ended',
+        ending: 'managed_sacrifice',
+        resources: { ...state.resources, power: 52, medical: 46 },
+        flags: { ...state.flags, casualties: 5, cooperation: 9, refugeesAccepted: 1 },
+      },
+      scene: 'play',
+    }
+  }
+  if (name === 'ending-governance') {
+    return {
+      name,
+      state: {
+        ...state,
+        day: 31,
+        phase: 'ended',
+        ending: 'self_governance',
+        resources: { ...state.resources, power: 46, medical: 58 },
+        flags: { ...state.flags, casualties: 1, cooperation: 24, refugeesAccepted: 2 },
+      },
+      scene: 'play',
+    }
+  }
+  return {
+    name,
+    state: {
+      ...state,
+      day: 19,
+      phase: 'ended',
+      ending: 'collapse',
+      resources: { ...state.resources, morale: 0, power: 24, medical: 19 },
+      units: state.units.slice(0, 2),
+      flags: { ...state.flags, casualties: 2, cooperation: 3 },
+    },
+    scene: 'play',
+  }
+}
+
 export function buildPresentationFixture(name: PresentationFixtureName): PresentationFixture {
   const state = planningState()
   const firstUnitId = state.units[0]?.id
@@ -111,6 +174,7 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
   if (name === 'act-stalemate' || name === 'act-final' || name === 'rescue-near') {
     return milestoneFixture(name)
   }
+  if (name.startsWith('ending')) return endingFixture(name as EndingFixtureName, state)
   if (name === 'planning-assigned') {
     const assigned = state.units.slice(0, 4).map((unit) => unit.id)
     if (assigned.length !== 4) {
@@ -219,19 +283,6 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
       scene: 'play',
     }
   }
-  if (name === 'ending') {
-    return {
-      name,
-      state: {
-        ...state,
-        day: 31,
-        phase: 'ended',
-        ending: 'full_recovery',
-        flags: { ...state.flags, cooperation: 8, refugeesAccepted: 3 },
-      },
-      scene: 'play',
-    }
-  }
   return { name, state, scene: 'play' }
 }
 
@@ -241,6 +292,7 @@ export function fixturePresentationMode(name: PresentationFixtureName): string {
   if (name === 'act-stalemate' || name === 'act-final' || name === 'rescue-near') {
     return 'milestone'
   }
+  if (name.startsWith('ending')) return 'ending'
   if (name.endsWith('-result')) return 'flow'
   return name
 }
