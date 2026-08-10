@@ -270,12 +270,14 @@ export class TitleScene extends Phaser.Scene {
     this.mayorLabel.setPosition(portraitX, portraitBottom + 12)
     this.mayorLabel.setFontSize(TEXT_SIZE.labelWide)
 
-    const portraitFrameX = portraitX - portraitW / 2 - 18
-    const portraitFrameY = portraitBottom - portraitH - 18
+    const portraitFrameX = portraitX - fit.width / 2 - 14
+    const portraitFrameY = portraitBottom - fit.height - 14
+    const portraitFrameW = fit.width + 28
+    const portraitFrameH = fit.height + 56
     this.frame.lineStyle(2, COLORS.gold, 0.75)
-    this.frame.strokeRect(portraitFrameX, portraitFrameY, portraitW + 36, portraitH + 58)
+    this.frame.strokeRect(portraitFrameX, portraitFrameY, portraitFrameW, portraitFrameH)
     this.frame.fillStyle(COLORS.night900, 0.62)
-    this.frame.fillRect(portraitFrameX, portraitBottom + 4, portraitW + 36, 38)
+    this.frame.fillRect(portraitFrameX, portraitBottom + 4, portraitFrameW, 38)
 
     const actionsY = height - safeInsets.bottom - 150
     if (this.canResume) {
@@ -311,10 +313,10 @@ export class TitleScene extends Phaser.Scene {
     this.mayorLabel.setPosition(portraitX, portraitBottom + 8)
     this.mayorLabel.setFontSize(TEXT_SIZE.labelNarrow)
 
-    const cardX = safeInsets.left + 18
+    const cardX = safeInsets.left + 24
     const cardY = 386 + topShift
-    const cardW = width - safeInsets.left - safeInsets.right - 36
-    const cardH = 194
+    const cardW = width - safeInsets.left - safeInsets.right - 48
+    const cardH = 174
     this.frame.fillStyle(COLORS.night900, 0.88)
     this.frame.fillRect(cardX, cardY, cardW, cardH)
     this.frame.lineStyle(2, COLORS.amber, 0.9)

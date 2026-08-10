@@ -55,6 +55,7 @@ const visualTargets = [
   { fixture: 'ending-governance' },
   { fixture: 'ending-collapse' },
   { fixture: 'menu' },
+  { fixture: 'title-resume' },
 ]
 
 const layouts = [
@@ -110,9 +111,17 @@ async function settle(page) {
 }
 
 async function showFixture(page, name) {
-  if (name === 'title') {
+  if (name.startsWith('title')) {
+    if (name === 'title-resume') {
+      await page.evaluate(({ bridge, fixture }) => globalThis[bridge].showFixture(fixture), {
+        bridge: BRIDGE,
+        fixture: name,
+      })
+    }
     await page.waitForFunction(
-      (bridge) => globalThis[bridge].textBounds('孤立した町の30日間') !== null,
+      (bridge) =>
+        globalThis[bridge].snapshot().activeScenes.includes('Title') &&
+        globalThis[bridge].textBounds('孤立した町の30日間') !== null,
       BRIDGE,
     )
   } else {
