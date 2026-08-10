@@ -9,8 +9,8 @@ if (parent) {
   if (e2eEnabled) {
     void import('./e2e-bridge').then(async ({ installE2EBridge }) => {
       installE2EBridge(game)
-      const { installActTransitionE2E } = await import('./testing/e2e-act-transition')
-      installActTransitionE2E(game)
+      const milestoneE2E = await import('./testing/e2e-story-milestone')
+      milestoneE2E.installStoryMilestoneE2E(game)
     })
   }
   if (import.meta.hot) {

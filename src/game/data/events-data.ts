@@ -176,17 +176,6 @@ export const EVENTS: EventDef[] = [
     ],
   },
   {
-    id: 'rescue_contact',
-    name: '救援隊からの連絡',
-    tone: 'boon',
-    once: true,
-    when: (c) => c.day >= 18 && c.day <= 26,
-    weight: () => 1,
-    apply: (c) => [
-      baseFx(c.state, 'rescue_contact', 'morale', 15, '救援隊から「あと5日で到着」と連絡が来た'),
-    ],
-  },
-  {
     id: 'infection',
     name: '感染症の発生',
     tone: 'threat',

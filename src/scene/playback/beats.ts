@@ -1,7 +1,7 @@
 import { isTaskId } from '../../game/data/tasks'
 import { deathCauseFromSource, type DeathCause } from '../../game/death'
 import type { DayPlan, Effect, TaskId, Unit } from '../../game/types'
-import { isActStoryMilestoneId, type ActStoryMilestoneId } from '../story/milestone-model'
+import { isPlayStoryMilestoneId, type PlayStoryMilestoneId } from '../story/milestone-model'
 
 export interface PlaybackContext {
   taskActors: Partial<Record<TaskId, readonly string[]>>
@@ -16,7 +16,7 @@ export interface FlowBeat {
 
 export interface MilestoneBeat {
   kind: 'milestone'
-  id: ActStoryMilestoneId
+  id: PlayStoryMilestoneId
   effects: Effect[]
 }
 
@@ -80,7 +80,7 @@ export function buildBeats(
       continue
     }
 
-    if (isActStoryMilestoneId(source)) {
+    if (isPlayStoryMilestoneId(source)) {
       beats.push({ kind: 'milestone', id: source, effects: group })
       continue
     }

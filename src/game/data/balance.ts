@@ -99,6 +99,10 @@ export const BALANCE = {
     sacrificeCasualties: 4,
     selfGovernanceCoop: 18,
   },
+  rescue: {
+    contactDaysRemaining: 5,
+    contactMorale: 15,
+  },
   skyline: {
     darkPowerBelow: 30,
     gloomyMoraleBelow: 40,
