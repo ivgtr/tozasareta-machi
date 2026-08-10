@@ -58,7 +58,8 @@ async function textBounds(page, text) {
 async function buttonBounds(page, label) {
   const handle = await page.waitForFunction(
     ({ bridge, text }) =>
-      globalThis[bridge]?.buttonTargets().find((target) => target.label === text)?.hitBounds ?? false,
+      globalThis[bridge]?.buttonTargets().find((target) => target.label === text)?.hitBounds ??
+      false,
     { bridge: BRIDGE, text: label },
   )
   return handle.jsonValue()
