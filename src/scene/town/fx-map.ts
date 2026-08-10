@@ -3,7 +3,7 @@ import type { TaskId } from '../../game/types'
 import { TASK_PRESENTATION, type TaskFxKind } from '../task-presentation'
 import type { FacilityId } from './layout'
 
-export type FxKind = TaskFxKind | 'float' | 'weather' | 'act' | 'arrival'
+export type FxKind = TaskFxKind | 'float' | 'weather' | 'arrival'
 
 export interface FxEntry {
   facility: FacilityId | null
@@ -33,7 +33,6 @@ const EVENT_FX: Record<string, FxEntry> = {
   road_collapse: { facility: 'road', kind: 'pulse' },
   volunteers: { facility: 'plaza', kind: 'float' },
   ration_protest: { facility: 'plaza', kind: 'pulse' },
-  rescue_contact: { facility: 'hq', kind: 'float' },
   infection: { facility: 'clinic', kind: 'pulse' },
   protest: { facility: 'plaza', kind: 'pulse' },
   water_shortage: { facility: 'plaza', kind: 'pulse' },
@@ -73,8 +72,6 @@ const EVENT_FX: Record<string, FxEntry> = {
   expedition_return: { facility: 'road', kind: 'arrival' },
 }
 
-const ACT_SOURCES = new Set(['act_stalemate', 'act_final'])
-
 function taskFx(source: string): FxEntry | undefined {
   const id = source.slice('task:'.length)
   if (id === 'procure') return PROCURE_FX
@@ -103,7 +100,6 @@ function settlementFx(target: string): FxEntry {
 export function resolveFx(source: string, target: string): FxEntry {
   if (source.startsWith('task:')) return taskFx(source) ?? GENERIC
   if (source === 'settlement') return settlementFx(target)
-  if (ACT_SOURCES.has(source)) return { facility: null, kind: 'act' }
   if (target.startsWith('unit:')) return { facility: 'road', kind: 'arrival' }
   const id = source.startsWith('event:') ? source.slice('event:'.length) : source
   return EVENT_FX[id] ?? GENERIC
@@ -112,7 +108,6 @@ export function resolveFx(source: string, target: string): FxEntry {
 export function hasExplicitFx(source: string): boolean {
   if (source.startsWith('task:')) return taskFx(source) !== undefined
   if (source === 'settlement') return true
-  if (ACT_SOURCES.has(source)) return true
   const id = source.startsWith('event:') ? source.slice('event:'.length) : source
   return id in EVENT_FX
 }

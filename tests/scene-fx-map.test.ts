@@ -9,8 +9,6 @@ function knownSources(): string[] {
     'task:ration',
     'task:procure',
     'settlement',
-    'act_stalemate',
-    'act_final',
     ...EVENTS.map((e) => `event:${e.id}`),
     'event:expedition_return',
   ]
@@ -37,6 +35,12 @@ describe('fx対応表の網羅性', () => {
       facility: 'road',
       kind: 'arrival',
     })
+  })
+
+  it('StoryMilestoneへ移行したsourceを旧Town FX契約へ戻さない', () => {
+    for (const source of ['act_stalemate', 'act_final', 'rescue_near', 'event:rescue_contact']) {
+      expect(hasExplicitFx(source), source).toBe(false)
+    }
   })
 
   it('未対応 source は汎用浮遊表示へフォールバックする', () => {
