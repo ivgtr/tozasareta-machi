@@ -26,12 +26,23 @@ describe('presentation fixtures', () => {
       id: 'road_collapse',
     })
     expect(fixturePresentationMode('event-incident')).toBe('event')
+    expect(buildPresentationFixture('event-phase4').beat).toMatchObject({
+      kind: 'event',
+      id: 'typhoon',
+    })
+    expect(fixturePresentationMode('event-phase4')).toBe('event')
     expect(buildPresentationFixture('arrival').beat?.kind).toBe('arrival')
     expect(buildPresentationFixture('choice').state).toMatchObject({
       day: 8,
       phase: 'choice',
       pendingChoice: { eventId: 'trade_offer' },
     })
+    expect(buildPresentationFixture('choice-phase4').state).toMatchObject({
+      day: 8,
+      phase: 'choice',
+      pendingChoice: { eventId: 'stockpile_crisis' },
+    })
+    expect(fixturePresentationMode('choice-phase4')).toBe('choice')
   })
 
   it('builds representative fixtures for all four endings', () => {

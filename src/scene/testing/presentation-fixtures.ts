@@ -21,7 +21,9 @@ export const PRESENTATION_FIXTURE_NAMES = [
   'rescue-near',
   'event',
   'event-incident',
+  'event-phase4',
   'choice',
+  'choice-phase4',
   'arrival',
   'ending',
   'ending-sacrifice',
@@ -277,6 +279,16 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
       scene: 'play',
     }
   }
+  if (name === 'event-phase4') {
+    const effects = [effect('event:typhoon', 'morale', -3, '台風が接近し、屋外作業が危険になった')]
+    return {
+      name,
+      state,
+      baseState: state,
+      beat: { kind: 'event', id: 'typhoon', effects },
+      scene: 'play',
+    }
+  }
   if (name === 'choice') {
     return {
       name,
@@ -286,6 +298,21 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
         pendingChoice: {
           eventId: 'trade_offer',
           optionIds: ['buy_food', 'buy_medical', 'sell_stockpile', 'buy_stockpile', 'decline'],
+        },
+      },
+      scene: 'play',
+    }
+  }
+  if (name === 'choice-phase4') {
+    return {
+      name,
+      state: {
+        ...state,
+        units: state.units.filter((unit) => unit.id !== 'farmer'),
+        phase: 'choice',
+        pendingChoice: {
+          eventId: 'stockpile_crisis',
+          optionIds: ['distribute', 'reserve'],
         },
       },
       scene: 'play',
@@ -320,5 +347,6 @@ export function fixturePresentationMode(name: PresentationFixtureName): string {
   if (name.startsWith('ending')) return 'ending'
   if (name.endsWith('-result')) return 'flow'
   if (name.startsWith('event')) return 'event'
+  if (name.startsWith('choice')) return 'choice'
   return name
 }

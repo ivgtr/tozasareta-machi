@@ -45,7 +45,9 @@ const visualTargets = [
   { fixture: 'major-result' },
   { fixture: 'event' },
   { fixture: 'event-incident' },
+  { fixture: 'event-phase4' },
   { fixture: 'choice' },
+  { fixture: 'choice-phase4' },
   { fixture: 'arrival' },
   { fixture: 'ending' },
   { fixture: 'ending-sacrifice' },
@@ -131,7 +133,9 @@ async function showFixture(page, name) {
                 ? 'flow'
                 : fixture.startsWith('event')
                   ? 'event'
-                  : fixture
+                  : fixture.startsWith('choice')
+                    ? 'choice'
+                    : fixture
         return value.presentationMode === expectedMode
       },
       { bridge: BRIDGE, fixture: name },
