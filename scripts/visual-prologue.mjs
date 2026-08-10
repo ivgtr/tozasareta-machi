@@ -18,7 +18,6 @@ const BRIDGE = '__TOZASARETA_MACHI_E2E__'
 const UPDATE = process.env.UPDATE_VISUAL_BASELINES === '1'
 const PIXEL_COLOR_THRESHOLD = 0.5
 const MAX_DIFF_RATIO = 0.003
-const BOOTSTRAP_MISSING = process.env.PROLOGUE_VISUAL_REQUIRE_BASELINE !== '1'
 const layouts = [
   { name: 'wide', viewport: { width: 1280, height: 720 } },
   { name: 'narrow', viewport: { width: 480, height: 854 } },
@@ -94,10 +93,6 @@ async function compare(name, actualBuffer) {
   try {
     baselineBuffer = await readFile(baselinePath)
   } catch {
-    if (BOOTSTRAP_MISSING) {
-      process.stdout.write(`  captured ${name} (baseline bootstrap)\n`)
-      return
-    }
     failures.push(`Missing baseline ${name}. Run npm run test:visual:update.`)
     return
   }

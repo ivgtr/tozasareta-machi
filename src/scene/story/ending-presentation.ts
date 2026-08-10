@@ -129,7 +129,7 @@ export class EndingPresentation extends PresentationSurface {
       )
     })
 
-    this.addRecordGrid(columnX, resourceY + 142, columnW, model)
+    this.addRecordGrid(columnX, resourceY + 126, columnW, model)
     this.addActions(p.x + p.width - pad, p.y + p.height - 34, false)
   }
 
@@ -261,7 +261,11 @@ export class EndingPresentation extends PresentationSurface {
     })
     title.setPosition(x, y)
     this.content.add(title)
-    const columns = this.deviceClass === 'wide' ? 3 : 2
+    const wide = this.deviceClass === 'wide'
+    const columns = wide ? 3 : 2
+    const labelOffset = wide ? 24 : 28
+    const valueOffset = wide ? 40 : 46
+    const rowGap = wide ? 30 : 42
     const cellW = width / columns
     model.records.forEach((record, index) => {
       const col = index % columns
@@ -270,12 +274,12 @@ export class EndingPresentation extends PresentationSurface {
         fontSize: TEXT_SIZE.labelNarrow,
         color: COLORS.inkDim,
       })
-      label.setPosition(x + col * cellW, y + 28 + row * 42)
+      label.setPosition(x + col * cellW, y + labelOffset + row * rowGap)
       const value = pixelText(this.scene, String(record.value), {
         fontSize: TEXT_SIZE.bodyWide,
         color: COLORS.ink,
       })
-      value.setPosition(x + col * cellW, y + 46 + row * 42)
+      value.setPosition(x + col * cellW, y + valueOffset + row * rowGap)
       this.content.add([label, value])
     })
   }
