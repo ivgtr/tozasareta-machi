@@ -38,6 +38,9 @@ const visualTargets = [
   { fixture: 'choice' },
   { fixture: 'arrival' },
   { fixture: 'ending' },
+  { fixture: 'ending-sacrifice' },
+  { fixture: 'ending-governance' },
+  { fixture: 'ending-collapse' },
   { fixture: 'menu' },
 ]
 
@@ -113,9 +116,11 @@ async function showFixture(page, name) {
             ? 'planning'
             : fixture === 'character-inspector'
               ? 'unit-focus'
-              : fixture.endsWith('-result')
-                ? 'flow'
-                : fixture
+              : fixture.startsWith('ending')
+                ? 'ending'
+                : fixture.endsWith('-result')
+                  ? 'flow'
+                  : fixture
         return value.presentationMode === expectedMode
       },
       { bridge: BRIDGE, fixture: name },
