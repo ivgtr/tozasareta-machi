@@ -17,6 +17,7 @@ export const PRESENTATION_FIXTURE_NAMES = [
   'major-result',
   'act-stalemate',
   'act-final',
+  'rescue-near',
   'event',
   'choice',
   'arrival',
@@ -65,18 +66,30 @@ function planningState(): GameState {
   }
 }
 
-function actFixture(name: 'act-stalemate' | 'act-final'): PresentationFixture {
-  const stalemate = name === 'act-stalemate'
-  const id = stalemate ? 'act_stalemate' : 'act_final'
-  const day = stalemate ? BALANCE.acts.stalemate.start : BALANCE.acts.final.start
+function milestoneFixture(
+  name: 'act-stalemate' | 'act-final' | 'rescue-near',
+): PresentationFixture {
+  const id =
+    name === 'act-stalemate' ? 'act_stalemate' : name === 'act-final' ? 'act_final' : 'rescue_near'
+  const day =
+    name === 'act-stalemate'
+      ? BALANCE.acts.stalemate.start
+      : name === 'act-final'
+        ? BALANCE.acts.final.start
+        : BALANCE.days - BALANCE.rescue.contactDaysRemaining + 1
   const state = { ...planningState(), day }
   const effects: Effect[] = [
     {
       day: day - 1,
       source: id,
-      target: 'flag:act',
-      delta: 0,
-      reason: stalemate ? '膠着期へ移行した' : '正念場へ移行した',
+      target: id === 'rescue_near' ? 'morale' : 'flag:act',
+      delta: id === 'rescue_near' ? BALANCE.rescue.contactMorale : 0,
+      reason:
+        id === 'act_stalemate'
+          ? '膠着期へ移行した'
+          : id === 'act_final'
+            ? '正念場へ移行した'
+            : '救援隊から通信が届いた',
     },
   ]
   return {
@@ -95,7 +108,9 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
 
   if (name === 'title') return { name, state, scene: 'title' }
   if (name === 'menu') return { name, state, scene: 'play', menuOpen: true }
-  if (name === 'act-stalemate' || name === 'act-final') return actFixture(name)
+  if (name === 'act-stalemate' || name === 'act-final' || name === 'rescue-near') {
+    return milestoneFixture(name)
+  }
   if (name === 'planning-assigned') {
     const assigned = state.units.slice(0, 4).map((unit) => unit.id)
     if (assigned.length !== 4) {
@@ -223,7 +238,9 @@ export function buildPresentationFixture(name: PresentationFixtureName): Present
 export function fixturePresentationMode(name: PresentationFixtureName): string {
   if (name === 'planning-assigned') return 'planning'
   if (name === 'character-inspector') return 'unit-focus'
-  if (name === 'act-stalemate' || name === 'act-final') return 'milestone'
+  if (name === 'act-stalemate' || name === 'act-final' || name === 'rescue-near') {
+    return 'milestone'
+  }
   if (name.endsWith('-result')) return 'flow'
   return name
 }

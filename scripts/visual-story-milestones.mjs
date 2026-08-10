@@ -9,10 +9,10 @@ import { chromium } from 'playwright'
 import { PNG } from 'pngjs'
 
 const PROJECT_ROOT = fileURLToPath(new URL('../', import.meta.url))
-const BASELINE_PATH = path.join(PROJECT_ROOT, 'tests/visual-baselines/act-transitions.sig')
-const OUTPUT_DIR = path.join(PROJECT_ROOT, 'test-results/visual-act')
-const PORT = Number(process.env.VISUAL_ACT_PORT ?? 4185)
-const BASE_URL = process.env.VISUAL_ACT_BASE_URL ?? `http://127.0.0.1:${PORT}`
+const BASELINE_PATH = path.join(PROJECT_ROOT, 'tests/visual-baselines/story-milestones.sig')
+const OUTPUT_DIR = path.join(PROJECT_ROOT, 'test-results/visual-story-milestones')
+const PORT = Number(process.env.VISUAL_MILESTONE_PORT ?? 4185)
+const BASE_URL = process.env.VISUAL_MILESTONE_BASE_URL ?? `http://127.0.0.1:${PORT}`
 const APP_URL = `${BASE_URL.replace(/\/$/, '')}/?e2e=1&story=hold`
 const BRIDGE = '__TOZASARETA_MACHI_E2E__'
 const UPDATE = process.env.UPDATE_VISUAL_BASELINES === '1'
@@ -21,7 +21,7 @@ const GRID_HEIGHT = 48
 const MAX_MEAN_DELTA = 3
 const MAX_CHANGED_RATIO = 0.05
 const CHANGED_DELTA = 16
-const fixtures = ['act-stalemate', 'act-final']
+const fixtures = ['act-stalemate', 'act-final', 'rescue-near']
 const layouts = [
   { name: 'wide', viewport: { width: 1280, height: 720 } },
   { name: 'narrow', viewport: { width: 480, height: 854 } },
@@ -42,7 +42,7 @@ async function waitForServer() {
 }
 
 async function startServer() {
-  if (process.env.VISUAL_ACT_BASE_URL) return
+  if (process.env.VISUAL_MILESTONE_BASE_URL) return
   const vite = path.join(PROJECT_ROOT, 'node_modules/vite/bin/vite.js')
   server = spawn(
     process.execPath,
@@ -153,7 +153,7 @@ if (!UPDATE) {
   baselines = JSON.parse(gunzipSync(Buffer.from(encoded, 'base64')).toString('utf8'))
 }
 if (baselines.grid.width !== GRID_WIDTH || baselines.grid.height !== GRID_HEIGHT) {
-  throw new Error('Act visual baseline grid does not match the runner')
+  throw new Error('Story milestone visual baseline grid does not match the runner')
 }
 
 let browser
@@ -205,7 +205,7 @@ try {
       if (UPDATE) baselines.fixtures[name] = signature
       else {
         const expected = baselines.fixtures[name]
-        if (!expected) failures.push(`Missing Act visual baseline: ${name}`)
+        if (!expected) failures.push(`Missing story milestone visual baseline: ${name}`)
         else compareSignature(name, signature, expected)
       }
       await writeFile(path.join(OUTPUT_DIR, `${name}-actual.png`), screenshot)
@@ -224,8 +224,11 @@ if (UPDATE) {
   }).toString('base64')
   await writeFile(BASELINE_PATH, `${encoded}\n`)
 }
-if (failures.length > 0)
-  throw new Error(`Act visual regression failed:\n- ${failures.join('\n- ')}`)
+if (failures.length > 0) {
+  throw new Error(`Story milestone visual regression failed:\n- ${failures.join('\n- ')}`)
+}
 process.stdout.write(
-  UPDATE ? '\nAct visual baselines updated.\n' : '\nAct visual regression passed.\n',
+  UPDATE
+    ? '\nStory milestone visual baselines updated.\n'
+    : '\nStory milestone visual regression passed.\n',
 )

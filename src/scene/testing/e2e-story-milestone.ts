@@ -18,19 +18,27 @@ interface PlaySceneInternals {
   refresh?: () => void
 }
 
-interface ActTransitionE2EBridge {
-  showActTransition?: (fromDay: 10 | 20) => void
+export type StoryMilestoneBoundaryDay = 10 | 20 | 25
+
+interface StoryMilestoneE2EBridge {
+  showStoryMilestone?: (fromDay: StoryMilestoneBoundaryDay) => void
   savePlanningDay?: (day: number) => void
 }
 
 type E2EWindow = Window & {
-  __TOZASARETA_MACHI_E2E__?: ActTransitionE2EBridge
+  __TOZASARETA_MACHI_E2E__?: StoryMilestoneE2EBridge
 }
 
 const IDLE_PLAN: DayPlan = { placements: [], ration: false, procure: false }
 
-function crossBoundary(fromDay: 10 | 20): { state: GameState; effect: Effect } {
-  const source = fromDay === 10 ? 'act_stalemate' : 'act_final'
+function milestoneSource(fromDay: StoryMilestoneBoundaryDay): string {
+  if (fromDay === 10) return 'act_stalemate'
+  if (fromDay === 20) return 'act_final'
+  return 'rescue_near'
+}
+
+function crossBoundary(fromDay: StoryMilestoneBoundaryDay): { state: GameState; effect: Effect } {
+  const source = milestoneSource(fromDay)
   let state: GameState = { ...createInitialState(4400 + fromDay), day: fromDay }
   const effects: Effect[] = []
 
@@ -42,19 +50,19 @@ function crossBoundary(fromDay: 10 | 20): { state: GameState; effect: Effect } {
             optionId: state.pendingChoice?.optionIds[0] ?? '',
           })
         : step(state, { type: 'commitDay', plan: IDLE_PLAN })
-    if (result.state === state) throw new Error(`Act E2E transition stalled at DAY ${fromDay}`)
+    if (result.state === state) throw new Error(`Story milestone E2E stalled at DAY ${fromDay}`)
     effects.push(...result.effects)
     state = result.state
   }
 
   const effect = effects.find((candidate) => candidate.source === source)
   if (state.day !== fromDay + 1 || !effect) {
-    throw new Error(`Act E2E transition did not emit ${source} from DAY ${fromDay}`)
+    throw new Error(`Story milestone E2E did not emit ${source} from DAY ${fromDay}`)
   }
   return { state, effect }
 }
 
-function showActTransition(game: Phaser.Game, fromDay: 10 | 20): void {
+function showStoryMilestone(game: Phaser.Game, fromDay: StoryMilestoneBoundaryDay): void {
   const result = crossBoundary(fromDay)
   const store = sharedStore().get()
   store.state = result.state
@@ -76,10 +84,10 @@ function savePlanningDay(day: number): void {
   saveStore(store)
 }
 
-export function installActTransitionE2E(game: Phaser.Game): void {
+export function installStoryMilestoneE2E(game: Phaser.Game): void {
   const target = window as E2EWindow
   const bridge = target.__TOZASARETA_MACHI_E2E__
   if (!bridge) throw new Error('Base E2E bridge must be installed first')
-  bridge.showActTransition = (fromDay) => showActTransition(game, fromDay)
+  bridge.showStoryMilestone = (fromDay) => showStoryMilestone(game, fromDay)
   bridge.savePlanningDay = (day) => savePlanningDay(day)
 }

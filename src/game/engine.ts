@@ -60,6 +60,21 @@ function actTransition(
   return { mods: next, fx }
 }
 
+function rescueTransition(day: number, fxDay: number): Effect[] {
+  const daysRemaining = BALANCE.rescue.contactDaysRemaining
+  const contactDay = BALANCE.days - daysRemaining + 1
+  if (day !== contactDay) return []
+  return [
+    {
+      day: fxDay,
+      source: 'rescue_near',
+      target: 'morale',
+      delta: BALANCE.rescue.contactMorale,
+      reason: `救援隊から「あと${daysRemaining}日で到着」と連絡が来た`,
+    },
+  ]
+}
+
 function finalizeDay(s: GameState, produced: Effect[]): StepResult {
   const day = s.day + 1
   let phase: Phase = 'planning'
@@ -74,16 +89,20 @@ function finalizeDay(s: GameState, produced: Effect[]): StepResult {
   let modifiers = tickModifiers(s.modifiers, s.day)
   let effects = produced
   let report = s.report
+  let transitionedState = s
   if (phase !== 'ended') {
     const acted = actTransition(modifiers, day, s.day)
     modifiers = acted.mods
-    if (acted.fx.length > 0) {
-      effects = [...produced, ...acted.fx]
-      report = [...(s.report ?? []), ...acted.fx]
+    const rescueFx = rescueTransition(day, s.day)
+    const transitionFx = [...acted.fx, ...rescueFx]
+    if (rescueFx.length > 0) transitionedState = applyEffects(transitionedState, rescueFx)
+    if (transitionFx.length > 0) {
+      effects = [...produced, ...transitionFx]
+      report = [...(s.report ?? []), ...transitionFx]
     }
   }
   const state: GameState = {
-    ...s,
+    ...transitionedState,
     day,
     phase,
     ending,
