@@ -1,10 +1,7 @@
 import { isTaskId } from '../../game/data/tasks'
 import { deathCauseFromSource, type DeathCause } from '../../game/death'
 import type { DayPlan, Effect, TaskId, Unit } from '../../game/types'
-import {
-  isPlayStoryMilestoneId,
-  type PlayStoryMilestoneId,
-} from '../story/milestone-model'
+import { isPlayStoryMilestoneId, type PlayStoryMilestoneId } from '../story/milestone-model'
 
 export interface PlaybackContext {
   taskActors: Partial<Record<TaskId, readonly string[]>>
