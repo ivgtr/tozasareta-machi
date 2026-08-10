@@ -4,6 +4,7 @@ import { SCENE_EVENTS } from './keys'
 import { designSizeOf, deviceClassOf, type DeviceClass } from './layout'
 import { BootScene } from './scenes/BootScene'
 import { PlayScene } from './scenes/PlayScene'
+import { StoryScene } from './scenes/StoryScene'
 import { TitleScene } from './scenes/TitleScene'
 import { COLORS, colorCss } from './tokens'
 
@@ -21,7 +22,7 @@ export function createGame(parent: HTMLElement): Phaser.Game {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    scene: [BootScene, TitleScene, PlayScene],
+    scene: [BootScene, TitleScene, StoryScene, PlayScene],
   })
   parent.style.backgroundColor = colorCss(COLORS.night900)
   game.events.once(Phaser.Core.Events.READY, () => {
