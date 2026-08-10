@@ -42,7 +42,7 @@ export interface TownSelection {
 }
 
 export interface TownCallbacks {
-  onFacilityTap: (id: FacilityId) => void
+  onFacilityPointerDown: (id: FacilityId, pointer: Phaser.Input.Pointer) => void
   onTokenPointerDown: (unitId: string, worldX: number, worldY: number) => void
 }
 
@@ -185,7 +185,9 @@ export class TownLayer extends Phaser.GameObjects.Container {
           pixelPerfect(hitArea, x, y, gameObject),
       )
       if (sprite.input) sprite.input.cursor = 'pointer'
-      sprite.on('pointerdown', () => this.callbacks.onFacilityTap(facility))
+      sprite.on('pointerdown', (pointer: Phaser.Input.Pointer) =>
+        this.callbacks.onFacilityPointerDown(facility, pointer),
+      )
       sprite.on('pointerover', () => {
         this.hoveredFacility = facility
         this.refreshFacilityFeedback(facility)
