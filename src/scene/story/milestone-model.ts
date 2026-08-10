@@ -1,10 +1,10 @@
 import { BALANCE } from '../../game/data/balance'
 import type { ArtKind } from '../art/manifest'
 
-export const ACT_STORY_MILESTONE_IDS = ['act_stalemate', 'act_final'] as const
+export const PLAY_STORY_MILESTONE_IDS = ['act_stalemate', 'act_final', 'rescue_near'] as const
 
-export type ActStoryMilestoneId = (typeof ACT_STORY_MILESTONE_IDS)[number]
-export type StoryMilestoneId = 'prologue' | ActStoryMilestoneId | 'rescue_near'
+export type PlayStoryMilestoneId = (typeof PLAY_STORY_MILESTONE_IDS)[number]
+export type StoryMilestoneId = 'prologue' | PlayStoryMilestoneId
 
 export interface StoryArtRef {
   kind: Extract<ArtKind, 'event' | 'portrait' | 'scene'>
@@ -48,8 +48,9 @@ export interface StoryMilestoneView {
 
 const stalemateElapsedDays = BALANCE.acts.stalemate.start - 1
 const finalDaysRemaining = BALANCE.days - BALANCE.acts.final.start + 1
+const rescueContactDay = BALANCE.days - BALANCE.rescue.contactDaysRemaining + 1
 
-const MILESTONES: Partial<Record<StoryMilestoneId, StoryMilestoneSpec>> = {
+const MILESTONES: Record<StoryMilestoneId, StoryMilestoneSpec> = {
   prologue: {
     id: 'prologue',
     completeLabel: 'DAY 1へ ▶',
@@ -104,20 +105,30 @@ const MILESTONES: Partial<Record<StoryMilestoneId, StoryMilestoneSpec>> = {
       },
     ],
   },
+  rescue_near: {
+    id: 'rescue_near',
+    completeLabel: '計画へ ▶',
+    pages: [
+      {
+        kicker: `救援隊から通信 / DAY ${rescueContactDay}`,
+        title: `救援まであと ${BALANCE.rescue.contactDaysRemaining} 日`,
+        body: `救援隊より孤立地区へ。道路啓開は最終区間に入った。到着予定、${BALANCE.rescue.contactDaysRemaining}日後。`,
+        art: { kind: 'event', id: 'rescue_contact', fallbackGlyph: '通' },
+        speaker: { name: '真壁史子', role: '町長' },
+      },
+    ],
+  },
 }
 
-export function isActStoryMilestoneId(value: string): value is ActStoryMilestoneId {
-  return (ACT_STORY_MILESTONE_IDS as readonly string[]).includes(value)
+export function isPlayStoryMilestoneId(value: string): value is PlayStoryMilestoneId {
+  return (PLAY_STORY_MILESTONE_IDS as readonly string[]).includes(value)
 }
 
 export function storyMilestone(id: StoryMilestoneId): StoryMilestoneSpec {
-  const milestone = MILESTONES[id]
-  if (!milestone) throw new Error(`Story milestone is not implemented: ${id}`)
-  return milestone
+  return MILESTONES[id]
 }
 
 export function createStoryMilestoneSession(id: StoryMilestoneId): StoryMilestoneSession {
-  storyMilestone(id)
   return { id, pageIndex: 0 }
 }
 
